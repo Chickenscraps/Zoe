@@ -2,26 +2,32 @@ import { useState, useEffect } from 'react';
 import type { Database } from '../lib/types';
 import { formatDate } from '../lib/utils';
 import { BrainCircuit, Filter } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 
 type Thought = Database['public']['Tables']['thoughts']['Row'];
 
 export default function Thoughts() {
   const [thoughts, setThoughts] = useState<Thought[]>([]);
   const [filterType, setFilterType] = useState<string>('all');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mock fetch
     const fetchThoughts = async () => {
-        // const { data } = await supabase...
-        
-        const mockThoughts: Thought[] = [
-            { id: 'th1', instance_id: 'demo', content: 'SPY hitting 440 resistance, gamma flip level nearby.', type: 'scan', symbol: 'SPY', created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(), metadata: {} },
-            { id: 'th2', instance_id: 'demo', content: 'Entered NVDA short put based on support hold.', type: 'entry', symbol: 'NVDA', created_at: new Date(Date.now() - 1000 * 60 * 60).toISOString(), metadata: {} },
-            { id: 'th3', instance_id: 'demo', content: 'Looking for weakness in Tech due to yield spike.', type: 'general', symbol: null, created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(), metadata: {} },
-            { id: 'th4', instance_id: 'demo', content: 'Health monitor: API latency spiked to 500ms.', type: 'health', symbol: null, created_at: new Date(Date.now() - 1000 * 60 * 180).toISOString(), metadata: {} },
-        ];
-        
-        setThoughts(mockThoughts);
+        try {
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('thoughts')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(20);
+            
+            if (error) throw error;
+            if (data) setThoughts(data);
+        } catch (err) {
+            console.error('Error fetching thoughts:', err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     fetchThoughts();
@@ -30,6 +36,17 @@ export default function Thoughts() {
   const filteredThoughts = filterType === 'all' 
     ? thoughts 
     : thoughts.filter(t => t.type === filterType);
+
+  if (loading) {
+    return (
+        <div className="space-y-6">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <BrainCircuit className="w-6 h-6 text-brand" /> System Thoughts
+            </h2>
+            <div className="text-text-secondary animate-pulse py-12">Consulting system memory...</div>
+        </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -43,6 +60,7 @@ export default function Thoughts() {
                 value={filterType} 
                 onChange={e => setFilterType(e.target.value)}
                 className="bg-surface border border-border rounded text-sm text-white px-2 py-1 outline-none focus:border-brand"
+                title="Filter by type"
             >
                 <option value="all">All Types</option>
                 <option value="scan">Scan</option>

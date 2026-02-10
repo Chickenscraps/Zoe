@@ -12,22 +12,14 @@ export interface Database {
       positions: {
         Row: {
           id: string
-          instance_id: string
+          account_id: string
           symbol: string
-          strategy: string
-          opened_at: string
-          dte: number
-          short_delta: number
-          ivr: number
-          credit_debit: 'credit' | 'debit'
-          max_risk: number
-          unrealized_pnl: number
-          pct_to_tp: number
-          warnings: Json // string[]
-          status: string
-          entry_price: number
-          current_mark: number
-          qty: number
+          underlying: string | null
+          quantity: number
+          avg_price: number
+          current_price: number
+          market_value: number
+          updated_at: string
         }
       }
       trades: {
@@ -142,6 +134,50 @@ export interface Database {
               created_at: string;
           }
       }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      get_account_overview: {
+        Args: { p_discord_id?: string }
+        Returns: {
+          account_id: string
+          equity: number
+          cash: number
+          buying_power: number
+          pdt_count: number
+          day_pnl: number
+          last_updated: string
+        }[]
+      }
+      get_positions_report: {
+        Args: { p_account_id?: string }
+        Returns: {
+          symbol: string
+          quantity: number
+          avg_price: number
+          current_price: number
+          market_value: number
+          unrealized_pnl: number
+          pnl_percent: number
+        }[]
+      }
+      get_activity_feed: {
+        Args: { p_limit?: number }
+        Returns: {
+          type: 'TRADE' | 'SYSTEM'
+          symbol: string
+          details: string
+          event_ts: string
+        }[]
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
     }
   }
 }

@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import type { Database } from '../lib/types';
 
-type PnlDaily = Database['public']['Tables']['pnl_daily']['Row'];
-type AuditLog = Database['public']['Tables']['audit_log']['Row'];
 type HealthHeartbeat = Database['public']['Tables']['health_heartbeat']['Row'];
+type AccountOverview = Database['public']['Functions']['get_account_overview']['Returns'][0];
+type ActivityFeedItem = Database['public']['Functions']['get_activity_feed']['Returns'][0];
 
-export function useDashboardData(instanceId: string = 'primary-v4-live') {
-  const [pnlHistory, setPnlHistory] = useState<PnlDaily[]>([]);
-  const [recentEvents, setRecentEvents] = useState<AuditLog[]>([]);
+export function useDashboardData(discordId: string = '292890243852664855') {
+  const [accountOverview, setAccountOverview] = useState<AccountOverview | null>(null);
+  const [recentEvents, setRecentEvents] = useState<ActivityFeedItem[]>([]);
   const [healthStatus, setHealthStatus] = useState<HealthHeartbeat[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -17,30 +17,19 @@ export function useDashboardData(instanceId: string = 'primary-v4-live') {
       try {
         setLoading(true);
         
-        // Parallel fetch
-        const [pnlRes, eventsRes, healthRes] = await Promise.all([
-          supabase
-            .from('pnl_daily')
-            .select('*')
-            .eq('instance_id', instanceId)
-            .order('date', { ascending: true })
-            .limit(30),
-            
-          supabase
-            .from('audit_log')
-            .select('*')
-            .eq('instance_id', instanceId)
-            .order('created_at', { ascending: false })
-            .limit(10),
-            
+        // Parallel fetch using RPCs
+        const [overviewRes, feedRes, healthRes] = await Promise.all([
+          supabase.rpc('get_account_overview' as any, { p_discord_id: discordId } as any),
+          supabase.rpc('get_activity_feed' as any, { p_limit: 10 } as any),
           supabase
             .from('health_heartbeat')
             .select('*')
-            .eq('instance_id', instanceId)
-        ]);
+        ]) as any[];
 
-        if (pnlRes.data) setPnlHistory(pnlRes.data);
-        if (eventsRes.data) setRecentEvents(eventsRes.data);
+        if (overviewRes.data && overviewRes.data.length > 0) {
+            setAccountOverview(overviewRes.data[0]);
+        }
+        if (feedRes.data) setRecentEvents(feedRes.data);
         if (healthRes.data) setHealthStatus(healthRes.data);
         
       } catch (error) {
@@ -52,14 +41,13 @@ export function useDashboardData(instanceId: string = 'primary-v4-live') {
 
     fetchData();
 
-    // Realtime subscription for health
+    // Realtime subscription for health (simple table list)
     const subscription = supabase
       .channel('dashboard_updates')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
-        table: 'health_heartbeat',
-        filter: `instance_id=eq.${instanceId}`
+        table: 'health_heartbeat'
       }, (payload) => {
         setHealthStatus(prev => {
            const newStatus = payload.new as HealthHeartbeat;
@@ -77,7 +65,7 @@ export function useDashboardData(instanceId: string = 'primary-v4-live') {
     return () => {
       subscription.unsubscribe();
     };
-  }, [instanceId]);
+  }, [discordId]);
 
-  return { pnlHistory, recentEvents, healthStatus, loading };
+  return { accountOverview, recentEvents, healthStatus, loading };
 }
