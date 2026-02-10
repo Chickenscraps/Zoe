@@ -1,30 +1,59 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Database } from '../lib/types';
 import { DataTable } from '../components/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import { cn } from '../lib/utils';
 import { Lock, FileEdit, CheckCircle } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 
 type PlanItem = Database['public']['Tables']['daily_gameplan_items']['Row'];
 
 export default function Plan() {
   const [activeTab, setActiveTab] = useState<'draft' | 'refined' | 'locked'>('locked');
+  const [planItems, setPlanItems] = useState<PlanItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data
-  const planItems: PlanItem[] = [
-      {
-          id: 'p1', plan_id: 'dp1', symbol: 'SPY', 
-          catalyst_summary: 'CPI Print', regime: 'High Vol', 
-          ivr_tech_snapshot: 'IVR 60, res at 440', preferred_strategy: 'Iron Condor',
-          risk_tier: 'Tier 1', do_not_trade: false, visual_notes: 'Watch 440 level'
-      },
-      {
-          id: 'p2', plan_id: 'dp1', symbol: 'MSFT', 
-          catalyst_summary: 'None', regime: 'Range', 
-          ivr_tech_snapshot: 'IVR 20', preferred_strategy: 'Credit Spread',
-          risk_tier: 'Tier 2', do_not_trade: false, visual_notes: null
-      }
-  ];
+  useEffect(() => {
+    const fetchPlan = async () => {
+        try {
+            setLoading(true);
+            const today = new Date().toISOString().split('T')[0];
+            
+            // 1. Get the gameplan record for today
+            const { data: plan, error: planError } = await supabase
+                .from('daily_gameplans')
+                .select('id, status')
+                .eq('date', today)
+                .single();
+
+            if (planError && planError.code !== 'PGRST116') { // Ignore "no rows returned"
+                throw planError;
+            }
+
+            if (plan) {
+                const planData = plan as any;
+                setActiveTab(planData.status);
+                
+                // 2. Get items for this plan
+                const { data: items, error: itemsError } = await supabase
+                    .from('daily_gameplan_items')
+                    .select('*')
+                    .eq('plan_id', planData.id);
+                
+                if (itemsError) throw itemsError;
+                if (items) setPlanItems(items);
+            } else {
+                setPlanItems([]);
+            }
+        } catch (err) {
+            console.error('Error fetching plan:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    fetchPlan();
+  }, []);
 
   const columns: ColumnDef<PlanItem>[] = [
       { header: 'Symbol', accessorKey: 'symbol', cell: i => <span className="font-bold text-white">{i.getValue() as string}</span> },
@@ -54,41 +83,43 @@ export default function Plan() {
        {/* Tabs */}
        <div className="flex border-b border-border">
            <button 
-             onClick={() => setActiveTab('draft')}
              className={cn(
                  "px-6 py-3 text-sm font-medium flex items-center gap-2 border-b-2 transition-colors",
-                 activeTab === 'draft' ? "border-brand text-white" : "border-transparent text-text-secondary hover:text-white"
+                 activeTab === 'draft' ? "border-brand text-white" : "border-transparent text-text-secondary"
              )}
            >
-               <FileEdit className="w-4 h-4" /> Draft (T-15)
+               <FileEdit className="w-4 h-4" /> Draft
            </button>
            <button 
-             onClick={() => setActiveTab('refined')}
              className={cn(
                  "px-6 py-3 text-sm font-medium flex items-center gap-2 border-b-2 transition-colors",
-                 activeTab === 'refined' ? "border-brand text-white" : "border-transparent text-text-secondary hover:text-white"
+                 activeTab === 'refined' ? "border-brand text-white" : "border-transparent text-text-secondary"
              )}
            >
-               <CheckCircle className="w-4 h-4" /> Refined (T-10)
+               <CheckCircle className="w-4 h-4" /> Refined
            </button>
            <button 
-             onClick={() => setActiveTab('locked')}
              className={cn(
                  "px-6 py-3 text-sm font-medium flex items-center gap-2 border-b-2 transition-colors",
-                 activeTab === 'locked' ? "border-brand text-white" : "border-transparent text-text-secondary hover:text-white"
+                 activeTab === 'locked' ? "border-brand text-white" : "border-transparent text-text-secondary"
              )}
            >
-               <Lock className="w-4 h-4" /> Locked (T-5)
+               <Lock className="w-4 h-4" /> Locked
            </button>
        </div>
 
        <div className="min-h-[400px]">
-           {activeTab === 'locked' ? (
-               <DataTable columns={columns} data={planItems} />
+           {loading ? (
+                <div className="flex items-center justify-center h-40 text-text-muted animate-pulse">
+                    Loading today's gameplan...
+                </div>
+           ) : planItems.length > 0 ? (
+                <DataTable columns={columns} data={planItems} />
            ) : (
-               <div className="flex items-center justify-center h-40 text-text-muted border border-dashed border-border rounded-lg">
-                   {activeTab === 'draft' ? 'Drafting in progress...' : 'Refining plan...'}
-               </div>
+                <div className="flex flex-col items-center justify-center h-40 text-text-muted border border-dashed border-border rounded-lg space-y-2">
+                    <p>No gameplan found for today.</p>
+                    <p className="text-xs italic text-text-secondary">Zoe hasn't generated the market analysis yet.</p>
+                </div>
            )}
        </div>
     </div>
