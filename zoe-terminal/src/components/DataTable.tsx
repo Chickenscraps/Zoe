@@ -1,0 +1,90 @@
+import {
+  useReactTable,
+  getCoreRowModel,
+  flexRender,
+  getSortedRowModel,
+  type SortingState,
+  type ColumnDef,
+} from '@tanstack/react-table';
+import { useState } from 'react';
+import { cn } from '../lib/utils';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+
+interface DataTableProps<TData> {
+  columns: ColumnDef<TData, any>[];
+  data: TData[];
+  onRowClick?: (row: TData) => void;
+  className?: string;
+  emptyMessage?: string;
+}
+
+export function DataTable<TData>({ columns, data, onRowClick, className, emptyMessage = "No data available" }: DataTableProps<TData>) {
+  const [sorting, setSorting] = useState<SortingState>([]);
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: {
+      sorting,
+    },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+
+  return (
+    <div className={cn("rounded-md border border-border overflow-hidden bg-surface", className)}>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left">
+          <thead className="bg-surface-highlight text-text-secondary uppercase text-xs font-semibold">
+            {table.getHeaderGroups().map(headerGroup => (
+              <tr key={headerGroup.id}>
+                {headerGroup.headers.map(header => (
+                  <th 
+                    key={header.id} 
+                    className="px-4 py-3 cursor-pointer select-none hover:text-white transition-colors"
+                    onClick={header.column.getToggleSortingHandler()}
+                  >
+                    <div className="flex items-center gap-1">
+                      {flexRender(header.column.columnDef.header, header.getContext())}
+                      {{
+                        asc: <ChevronUp className="w-3 h-3" />,
+                        desc: <ChevronDown className="w-3 h-3" />,
+                      }[header.column.getIsSorted() as string] ?? null}
+                    </div>
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody className="divide-y divide-border">
+            {table.getRowModel().rows.length > 0 ? (
+              table.getRowModel().rows.map(row => (
+                <tr 
+                  key={row.id} 
+                  className={cn(
+                    "hover:bg-surface-highlight/50 transition-colors",
+                    onRowClick && "cursor-pointer"
+                  )}
+                  onClick={() => onRowClick?.(row.original)}
+                >
+                  {row.getVisibleCells().map(cell => (
+                    <td key={cell.id} className="px-4 py-3 whitespace-nowrap text-text-primary">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={columns.length} className="px-4 py-8 text-center text-text-muted">
+                  {emptyMessage}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
