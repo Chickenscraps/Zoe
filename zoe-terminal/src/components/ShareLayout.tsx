@@ -7,39 +7,62 @@ interface ShareLayoutProps {
 
 export function ShareLayout({ children, title }: ShareLayoutProps) {
   return (
-    <div className="w-[1280px] h-[720px] bg-background text-text-primary p-12 flex flex-col items-center justify-center relative overflow-hidden bg-gradient-to-br from-background to-surface-highlight/10">
+    <div className="w-[1280px] h-[720px] bg-background text-text-primary p-16 flex flex-col items-center justify-center relative overflow-hidden font-sans">
+      <div className="noise-overlay opacity-[0.03]" />
       
-      {/* Background Decor */}
-      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-brand/5 rounded-full blur-[120px] -mr-48 -mt-48" />
-      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-500/5 rounded-full blur-[100px] -ml-24 -mb-24" />
+      {/* Signature Background Pattern */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.04]">
+        <div 
+          className="w-full h-full" 
+          style={{ 
+            backgroundImage: 'linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)',
+            backgroundSize: '40px 40px'
+          }} 
+        />
+      </div>
+
+      {/* Vignette Overlay */}
+      <div className="absolute inset-0 pointer-events-none bg-gradient-radial from-transparent via-background/20 to-background opacity-80" />
 
       {/* Header Branding */}
-      <div className="absolute top-8 left-12 right-12 flex justify-between items-center z-10">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-black italic tracking-tighter text-white">ZOE V4</h1>
-          <div className="h-4 w-px bg-border" />
-          <span className="text-sm font-mono text-text-secondary uppercase tracking-widest">{title || 'INTERNAL TICKET'}</span>
+      <div className="absolute top-12 left-16 right-16 flex justify-between items-end z-10">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl font-black tracking-tighter text-white">
+            ZOE<span className="text-text-muted">_</span>TERMINAL
+          </h1>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-black text-profit tracking-[0.2em] uppercase">{title || 'ANALYTICAL_TICKET'}</span>
+            <div className="w-1 h-1 rounded-full bg-border-strong" />
+            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">v4.0.0-PRO</span>
+          </div>
         </div>
         
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-8">
           <div className="flex flex-col items-end">
-            <span className="text-[10px] text-text-muted uppercase tracking-wider font-bold">Instance ID</span>
-            <span className="text-xs font-mono text-white">primary-v4-live</span>
+            <span className="text-[10px] text-text-muted uppercase tracking-[0.2em] font-black">Node Status</span>
+            <span className="text-xs font-mono font-bold text-white uppercase group flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-profit animate-pulse" />
+              INTEGRITY_VERIFIED
+            </span>
           </div>
-          <div className="bg-blue-500/20 border border-blue-500/30 text-blue-400 px-3 py-1 rounded-sm text-xs font-black tracking-widest">
-            PAPER MODE
+          <div className="bg-profit/10 border border-profit/20 text-profit px-4 py-1.5 rounded-full text-[10px] font-black tracking-[0.2em] uppercase">
+            Paper Mode
           </div>
         </div>
       </div>
 
       {/* Main Content (The Card) */}
-      <div className="z-10 w-full flex justify-center items-center mt-8">
+      <div className="z-10 w-full flex justify-center items-center mt-12">
         {children}
       </div>
 
       {/* Footer / Timestamp */}
-      <div className="absolute bottom-8 left-12 right-12 flex justify-between items-center text-[10px] text-text-muted font-mono uppercase tracking-widest">
-        <span>AUTHENTICITY_VERIFIED_SHA256</span>
+      <div className="absolute bottom-12 left-16 right-16 flex justify-between items-center text-[10px] text-text-muted font-black uppercase tracking-[0.3em]">
+        <div className="flex items-center gap-4">
+          <span>SECURED_BY_SUPABASE_SYSTEMS</span>
+          <div className="w-4 h-px bg-border-strong opacity-30" />
+          <span>STATION_ID_ALPHA_PRIME</span>
+        </div>
         <span>{new Date().toISOString()}</span>
       </div>
     </div>

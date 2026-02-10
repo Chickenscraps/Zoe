@@ -19,6 +19,9 @@ from project_manager import project_manager, Project
 import yaml
 import safety
 import admin_tools
+from collections import deque
+from safety_layer.sanitize import sanitize_outbound_text, sanitize_inbound_text
+from context.room_context import RoomContextBuilder, prepare_message_for_context
 
 # Add project to path
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -89,6 +92,7 @@ tree = bot.tree
 # Global States
 SESSION_ENGAGED_CHANNELS = set()
 USER_MAP = {}
+ROOM_BUFFERS = {} # channel_id -> deque of last 50 messages
 
 # Import singleton instances
 from thought_logger import thought_logger
@@ -279,6 +283,26 @@ async def on_ready():
 @bot.event
 async def on_message(message: discord.Message):
     """Handle incoming messages with strict logic."""
+    channel_id = message.channel.id
+    user_id = str(message.author.id)
+
+    # --- ROOM CONTEXT MAINTENANCE ---
+    if channel_id not in ROOM_BUFFERS:
+        ROOM_BUFFERS[channel_id] = deque(maxlen=50)
+        try:
+            async for old_msg in message.channel.history(limit=20, oldest_first=True):
+                if old_msg.author.bot and old_msg.author != bot.user: continue
+                role = "admin" if str(old_msg.author.id) in [str(u) for u in ZOECONFIG.get("admin", {}).get("admin_user_ids", [])] else "user"
+                record = prepare_message_for_context(old_msg.author.name, role, old_msg.content)
+                ROOM_BUFFERS[channel_id].append(record)
+        except:
+            pass
+    
+    # Add current message
+    role = "admin" if str(message.author.id) in [str(u) for u in ZOECONFIG.get("admin", {}).get("admin_user_ids", [])] else "user"
+    record = prepare_message_for_context(message.author.name, role, message.content)
+    ROOM_BUFFERS[channel_id].append(record)
+
     # 0. Basic Ignore (Self, Bots)
     if message.author.bot or message.author == bot.user:
         return
@@ -291,8 +315,6 @@ async def on_message(message: discord.Message):
     ADMIN_CHANNELS = cfg.get("admin_channel_ids", [])
     ADMIN_USER_IDS = [str(uid) for uid in admin_cfg.get("admin_user_ids", [])]
     
-    user_id = str(message.author.id)
-    channel_id = message.channel.id
     is_dm = isinstance(message.channel, discord.DMChannel)
     is_admin = user_id in ADMIN_USER_IDS
     # Admin Context: Is Admin AND (Is Admin Channel or DM)
@@ -624,17 +646,15 @@ async def generate_and_respond(message: discord.Message, visual_context: str = "
             # Call LLM
             tools_to_use = TOOLS_SCHEMA if has_tools else None
             
-            # Call LLM via ModelRouter
-            # Construct messages list with history context
-            recent_history = MessageRepository.get_recent(str(message.channel.id), limit=10)
-            history_lines = []
-            for h in recent_history:
-                name = "User"
-                if str(h.user_id) == str(OWNER_DISCORD_USER_ID): name = "Josh"
-                elif str(h.user_id) == str(bot.user.id): name = "Zoe"
-                history_lines.append(f"{name}: {h.content}")
-            
-            history_context = "\n".join(history_lines)
+            # Build ROOM_CONTEXT
+            buffer = ROOM_BUFFERS.get(message.channel.id, [])
+            # Convert deque to list for JSON serialization
+            msg_list = list(buffer)
+            room_ctx_json = RoomContextBuilder.build(
+                channel_id=message.channel.id,
+                guild_id=message.guild.id if message.guild else None,
+                messages=msg_list
+            )
             
             # Startup Ritual Toggle
             ritual_tag = ""
@@ -642,7 +662,12 @@ async def generate_and_respond(message: discord.Message, visual_context: str = "
                 ritual_tag = "[STARTUP RITUAL] "
                 SESSION_ENGAGED_CHANNELS.add(str(message.channel.id))
             
-            full_content = f"{ritual_tag}RECENT CHAT HISTORY:\n{history_context}\n\nCURRENT MESSAGE:\n{content}"
+            # Inject context at the top of the user message (or system prompt)
+            # The prompt says: "Keep this near the top (system or developer message)"
+            # Let's add it to system_prompt.
+            system_prompt += f"\n\nROOM_CONTEXT (last 10 messages, sanitized):\n{room_ctx_json}"
+
+            full_content = f"{ritual_tag}CURRENT MESSAGE:\n{content}"
             messages = [{'role': 'user', 'content': full_content}]
             
             # Note: ModelRouter.chat takes messages list. System prompt is separate arg.
@@ -688,11 +713,15 @@ async def generate_and_respond(message: discord.Message, visual_context: str = "
 
                 
                 # SANITIZE
-                cleaned_text = safety.sanitize_output(raw_text, is_admin_context=has_tools)
+                cleaned_text = sanitize_outbound_text(raw_text)
                 if cleaned_text:
                     # Enforce allowlist on the final output too
                     final_safe_text = safety.enforce_allowlist_mentions(cleaned_text, ZOECONFIG.get("MENTION_ALLOWLIST", []))
                     await message.channel.send(final_safe_text)
+                    # Add to buffer
+                    ROOM_BUFFERS[message.channel.id].append(
+                        prepare_message_for_context("Zoe", "assistant", final_safe_text)
+                    )
                 else:
                     await message.channel.send("done ✓")
                 
@@ -701,13 +730,17 @@ async def generate_and_respond(message: discord.Message, visual_context: str = "
                 raw_text = msg['content']
                 
                 # SANITIZE
-                cleaned_text = safety.sanitize_output(raw_text, is_admin_context=has_tools)
+                cleaned_text = sanitize_outbound_text(raw_text)
                 
                 # Enforce allowlist
                 final_safe_text = safety.enforce_allowlist_mentions(cleaned_text, ZOECONFIG.get("MENTION_ALLOWLIST", []))
                 
                 if final_safe_text:
-                    await message.channel.send(final_safe_text)
+                    resp_msg = await message.channel.send(final_safe_text)
+                    # Add to buffer
+                    ROOM_BUFFERS[message.channel.id].append(
+                        prepare_message_for_context("Zoe", "assistant", final_safe_text)
+                    )
 
 
             # 5. LOG MOOD

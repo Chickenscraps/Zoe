@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { ShareLayout } from '../../components/ShareLayout';
 import { supabase } from '../../lib/supabaseClient';
+import { Lock } from 'lucide-react';
+import { cn } from '../../lib/utils';
 
 interface GamePlan {
   id: string;
@@ -52,48 +54,52 @@ const SharePlan: React.FC = () => {
   if (!plan) return <div className="p-8 text-white">No gameplan found for today</div>;
 
   return (
-    <ShareLayout title="Daily Gameplan">
-      <div data-testid="plan-ticket" className="flex flex-col h-full">
+    <ShareLayout title="STRATEGIC_PRE_MARKET_PROTOCOL">
+      <div 
+        data-testid="plan-ticket" 
+        className="card-premium p-12 w-[1100px] flex flex-col gap-10 relative overflow-hidden"
+      >
         {/* Header */}
-        <div className="flex justify-between items-end mb-8 border-b border-zinc-800 pb-6">
+        <div className="flex justify-between items-end pb-8 border-b border-border/50 relative z-10">
           <div>
-             <div className="text-zinc-500 font-mono text-xs uppercase tracking-[0.2em] mb-1">Market Logic</div>
-             <h1 className="text-4xl font-bold text-white tracking-tighter">PRE-MARKET PROTOCOL</h1>
+             <div className="text-profit font-black text-[10px] uppercase tracking-[0.3em] mb-3">Market Logic Layer</div>
+             <h1 className="text-5xl font-black text-white tracking-tighter uppercase">Protocol Status: <span className="text-profit">Active</span></h1>
           </div>
           <div className="text-right">
-             <div className="text-zinc-500 font-mono text-xs uppercase tracking-[0.2em] mb-1">Execution Date</div>
-             <div className="text-xl text-white font-bold">{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+             <div className="text-text-muted font-black text-[10px] uppercase tracking-[0.3em] mb-3">Release Timestamp</div>
+             <div className="text-2xl text-white font-black tracking-tight tabular-nums">{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}</div>
           </div>
         </div>
 
         {/* Plan Table */}
-        <div className="flex-1 overflow-hidden">
-          <table className="w-full text-left">
+        <div className="flex-1 overflow-hidden relative z-10">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-zinc-800/50">
-                <th className="py-3 font-mono text-[10px] text-zinc-600 uppercase tracking-widest">Symbol</th>
-                <th className="py-3 font-mono text-[10px] text-zinc-600 uppercase tracking-widest">Strategy</th>
-                <th className="py-3 font-mono text-[10px] text-zinc-600 uppercase tracking-widest">Regime</th>
-                <th className="py-3 font-mono text-[10px] text-zinc-600 uppercase tracking-widest text-right">Risk</th>
+              <tr className="border-b border-border">
+                <th className="py-4 px-4 font-black text-[10px] text-text-muted uppercase tracking-[0.2em]">Asset Symbol</th>
+                <th className="py-4 px-4 font-black text-[10px] text-text-muted uppercase tracking-[0.2em]">Execution Strategy</th>
+                <th className="py-4 px-4 font-black text-[10px] text-text-muted uppercase tracking-[0.2em]">Market Regime</th>
+                <th className="py-4 px-4 font-black text-[10px] text-text-muted uppercase tracking-[0.2em] text-right">Risk Tier</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800/30">
-              {items.slice(0, 5).map((item) => (
-                <tr key={item.id}>
-                  <td className="py-4">
-                    <span className="text-lg font-bold text-white">{item.symbol}</span>
-                    <div className="text-[10px] text-zinc-500 font-mono italic max-w-xs truncate">{item.catalyst_summary}</div>
+            <tbody className="divide-y divide-border/50">
+              {items.slice(0, 6).map((item) => (
+                <tr key={item.id} className="group hover:bg-white/[0.02] transition-colors">
+                  <td className="py-6 px-4">
+                    <span className="text-2xl font-black text-white tracking-tighter tabular-nums">{item.symbol}</span>
+                    <div className="text-[11px] text-text-muted font-medium italic mt-1 max-w-xs truncate opacity-70 group-hover:opacity-100 transition-opacity">{item.catalyst_summary}</div>
                   </td>
-                  <td className="py-4 font-mono text-sm text-zinc-300">{item.preferred_strategy}</td>
-                  <td className="py-4">
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                  <td className="py-6 px-4 font-black text-xs text-white uppercase tracking-tight">{item.preferred_strategy}</td>
+                  <td className="py-6 px-4">
+                    <span className="text-[10px] px-3 py-1 rounded-full bg-white/5 text-white border border-white/10 font-black uppercase tracking-widest">
                       {item.regime}
                     </span>
                   </td>
-                  <td className="py-4 text-right">
-                    <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
-                      item.risk_tier === 'Tier 1' ? 'bg-green-500/10 text-green-500 border border-green-500/30' : 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/30'
-                    }`}>
+                  <td className="py-6 px-4 text-right">
+                    <span className={cn(
+                      "text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-[0.15em]",
+                      item.risk_tier === 'Tier 1' ? 'bg-profit/10 text-profit border border-profit/20' : 'bg-warning/10 text-warning border border-warning/20'
+                    )}>
                       {item.risk_tier.toUpperCase()}
                     </span>
                   </td>
@@ -102,17 +108,23 @@ const SharePlan: React.FC = () => {
             </tbody>
           </table>
           
-          {items.length > 5 && (
-            <div className="mt-4 text-center text-zinc-600 font-mono text-[10px] uppercase tracking-widest">
-              + {items.length - 5} more tickers in full report
+          {items.length > 6 && (
+            <div className="mt-8 text-center text-text-dim font-black text-[10px] uppercase tracking-[0.4em] italic opacity-50">
+              + {items.length - 6} Additional Nodes Encapsulated in Full Report
             </div>
           )}
         </div>
 
         {/* Brand Footer */}
-        <div className="mt-8 pt-6 border-t border-zinc-800 flex justify-between items-center text-[10px] font-mono tracking-widest text-zinc-600">
-          <div>ZOE V4 | AUTONOMOUS RESEARCH LAYER</div>
-          <div className="bg-white text-black px-2 py-0.5 font-bold">LOCKED</div>
+        <div className="flex justify-between items-center text-[10px] font-black tracking-[0.3em] text-text-dim uppercase mt-4 relative z-10">
+          <div className="flex items-center gap-4">
+            <span className="text-white opacity-40">System Core</span>
+            <div className="w-1 h-1 rounded-full bg-border" />
+            <span className="text-white">Autonomous Research Layer</span>
+          </div>
+          <div className="bg-white text-black px-4 py-1.5 font-black flex items-center gap-3">
+            <Lock className="w-3 h-3" /> SESSION_LOCKED
+          </div>
         </div>
       </div>
     </ShareLayout>

@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ShareLayout } from '../../components/ShareLayout';
 import { supabase } from '../../lib/supabaseClient';
+import { Activity } from 'lucide-react';
+import { formatCurrency, cn } from '../../lib/utils';
 
 interface PositionDetail {
   id: string;
@@ -59,84 +61,99 @@ const SharePosition: React.FC = () => {
   const isGreen = (position.pnl_open || 0) >= 0;
 
   return (
-    <ShareLayout title="Open Position">
-      <div data-testid="position-ticket" className="flex flex-col h-full justify-between">
+    <ShareLayout title="OPEN_MARKET_EXPOSURE">
+      <div 
+        data-testid="position-ticket" 
+        className="card-premium p-12 w-[1000px] flex flex-col gap-10 relative overflow-hidden"
+      >
         {/* Header Section */}
-        <div className="flex justify-between items-start">
-          <div>
-            <div className="text-4xl font-bold text-white tracking-tighter flex items-center gap-3">
-              {position.symbol}
-              <span className={`text-xs px-2 py-1 rounded border ${
-                position.direction === 'long' ? 'bg-green-500/10 border-green-500/50 text-green-400' : 'bg-red-500/10 border-red-500/50 text-red-400'
-              }`}>
-                {position.direction.toUpperCase()}
-              </span>
+        <div className="flex justify-between items-start relative z-10">
+          <div className="flex items-center gap-8">
+            <div className="w-20 h-20 bg-background border border-border rounded-2xl flex items-center justify-center shadow-crisp">
+              <Activity className="w-10 h-10 text-white opacity-40" />
             </div>
-            <div className="text-zinc-500 font-mono mt-1 text-sm">
-              STRATEGY: {position.strategy.toUpperCase()}
+            <div>
+              <div className="flex items-center gap-4">
+                <h2 className="text-6xl font-black text-white tracking-tighter tabular-nums">{position.symbol}</h2>
+                <span className={cn(
+                  "text-[10px] px-3 py-1 rounded-full border font-black uppercase tracking-[0.2em]",
+                  position.direction === 'long' ? "bg-profit/10 text-profit border-profit/20" : "bg-loss/10 text-loss border-loss/20"
+                )}>
+                  {position.direction.toUpperCase()}
+                </span>
+              </div>
+              <p className="text-text-muted font-black tracking-[0.2em] uppercase text-xs mt-2">Strategy: {position.strategy}</p>
             </div>
           </div>
           
           <div className="text-right">
-            <div className={`text-5xl font-bold tracking-tighter ${isGreen ? 'text-green-400' : 'text-red-400'}`}>
+            <div className={cn(
+              "text-6xl font-black tracking-tighter tabular-nums",
+              isGreen ? 'text-profit' : 'text-loss'
+            )}>
               {isGreen ? '+' : ''}{position.pnl_percent?.toFixed(2)}%
             </div>
-            <div className={`text-xl font-mono ${isGreen ? 'text-green-500/70' : 'text-red-500/70'}`}>
-              {isGreen ? '+' : ''}${position.pnl_open?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <div className={cn(
+              "text-xl font-black tabular-nums mt-1",
+              isGreen ? 'text-profit/60' : 'text-loss/60'
+            )}>
+              {isGreen ? '+' : ''}{formatCurrency(position.pnl_open || 0)}
             </div>
           </div>
         </div>
 
+        <div className="h-px bg-border/50 relative z-10" />
+
         {/* Body Section - Market Data */}
-        <div className="grid grid-cols-2 gap-8 my-8">
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-            <div className="text-zinc-500 text-xs font-mono mb-2 uppercase tracking-widest">Entry Detail</div>
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-zinc-400 text-sm">Entry Price</span>
-              <span className="text-white font-mono">${position.entry_price.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-zinc-400 text-sm">Quantity</span>
-              <span className="text-white font-mono">{position.quantity} Contracts</span>
+        <div className="grid grid-cols-2 gap-10 relative z-10">
+          <div className="bg-background/50 border border-border rounded-2xl p-8 flex flex-col gap-4">
+            <div className="text-text-muted text-[10px] uppercase font-black tracking-[0.2em] mb-2">Entry Intelligence</div>
+            <div className="flex justify-between items-center">
+              <span className="text-text-dim text-xs font-black uppercase tracking-widest">Entry Benchmark</span>
+              <span className="text-white font-black tabular-nums">{formatCurrency(position.entry_price)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-zinc-400 text-sm">Cost Basis</span>
-              <span className="text-white font-mono">${(position.entry_price * position.quantity * 100).toLocaleString()}</span>
+              <span className="text-text-dim text-xs font-black uppercase tracking-widest">Quantity</span>
+              <span className="text-white font-black tabular-nums">{position.quantity} Contracts</span>
+            </div>
+            <div className="pt-4 border-t border-border flex justify-between items-center">
+              <span className="text-text-dim text-xs font-black uppercase tracking-widest">Cost Basis</span>
+              <span className="text-white font-black tabular-nums">{formatCurrency(position.entry_price * position.quantity * 100)}</span>
             </div>
           </div>
 
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-            <div className="text-zinc-500 text-xs font-mono mb-2 uppercase tracking-widest">Market Comparison</div>
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-zinc-400 text-sm">Last Mark</span>
-              <span className="text-white font-mono">${position.current_price?.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-zinc-400 text-sm">Current Value</span>
-              <span className="text-white font-mono">${(position.current_price! * position.quantity * 100).toLocaleString()}</span>
+          <div className="bg-background/50 border border-border rounded-2xl p-8 flex flex-col gap-4">
+            <div className="text-text-muted text-[10px] uppercase font-black tracking-[0.2em] mb-2">Market Dynamics</div>
+            <div className="flex justify-between items-center">
+              <span className="text-text-dim text-xs font-black uppercase tracking-widest">Current Mark</span>
+              <span className="text-white font-black tabular-nums">{formatCurrency(position.current_price || 0)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-zinc-400 text-sm">Status</span>
-              <span className="text-blue-400 font-mono uppercase text-xs">Active Exposure</span>
+              <span className="text-text-dim text-xs font-black uppercase tracking-widest">Notional Value</span>
+              <span className="text-white font-black tabular-nums">{formatCurrency((position.current_price || 0) * position.quantity * 100)}</span>
+            </div>
+            <div className="pt-4 border-t border-border flex justify-between items-center">
+              <span className="text-text-dim text-xs font-black uppercase tracking-widest">Status Code</span>
+              <span className="text-profit font-black uppercase text-[10px] tracking-[0.2em]">ACTIVE_EXPOSURE</span>
             </div>
           </div>
         </div>
 
         {/* Footer Info */}
-        <div className="border-t border-zinc-800 pt-6 flex justify-between items-center">
-          <div className="flex items-center gap-6">
-            <div>
-              <div className="text-zinc-600 text-[10px] uppercase font-mono tracking-widest mb-1">Risk Profile</div>
-              <div className="text-zinc-400 text-xs font-mono">Standard Options (100x)</div>
+        <div className="flex justify-between items-center text-[10px] font-black text-text-dim uppercase tracking-[0.2em] bg-background/50 px-6 py-4 rounded-xl border border-border relative z-10">
+          <div className="flex items-center gap-8">
+            <div className="flex items-center gap-3">
+              <span className="text-white/40">RISK_PROFILE</span>
+              <span className="text-white">DERIVATIVE_100X</span>
             </div>
-            <div className="h-8 w-px bg-zinc-800"></div>
-            <div>
-              <div className="text-zinc-600 text-[10px] uppercase font-mono tracking-widest mb-1">Position ID</div>
-              <div className="text-zinc-400 text-xs font-mono">{position.id.slice(0, 12)}...</div>
+            <div className="w-1 h-1 rounded-full bg-border" />
+            <div className="flex items-center gap-3">
+              <span className="text-white/40">POSITION_ID</span>
+              <span className="text-white font-mono">{position.id.slice(0, 12).toUpperCase()}</span>
             </div>
           </div>
           
-          <div className="text-zinc-700 font-mono text-[10px] italic">
+          <div className="italic tracking-normal normal-case opacity-40">
             "Paper trading for intellectual dominance."
           </div>
         </div>

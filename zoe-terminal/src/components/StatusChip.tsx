@@ -3,15 +3,15 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import type { LucideIcon } from 'lucide-react';
 
 const statusChipVariants = cva(
-  "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border",
+  "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.1em] border",
   {
     variants: {
       status: {
-        ok: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-        warning: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
-        error: "bg-red-500/10 text-red-500 border-red-500/20",
-        down: "bg-gray-500/10 text-gray-500 border-gray-500/20",
-        neutral: "bg-surface-highlight text-text-secondary border-border",
+        ok: "bg-profit/10 text-profit border-profit/20",
+        warning: "bg-warning/10 text-warning border-warning/20",
+        error: "bg-loss/10 text-loss border-loss/20",
+        down: "bg-white/5 text-text-muted border-white/10",
+        neutral: "bg-surface-highlight/50 text-white border-border",
       },
     },
     defaultVariants: {

@@ -56,69 +56,67 @@ export default function Plan() {
   }, []);
 
   const columns: ColumnDef<PlanItem>[] = [
-      { header: 'Symbol', accessorKey: 'symbol', cell: i => <span className="font-bold text-white">{i.getValue() as string}</span> },
+      { header: 'Symbol', accessorKey: 'symbol', cell: i => <span className="font-black text-white tracking-widest">{i.getValue() as string}</span> },
       { header: 'Regime', accessorKey: 'regime' },
-      { header: 'Strategy', accessorKey: 'preferred_strategy' },
-      { header: 'Catalyst', accessorKey: 'catalyst_summary' },
+      { header: 'Preferred Action', accessorKey: 'preferred_strategy' },
+      { header: 'Catalyst Signal', accessorKey: 'catalyst_summary' },
       { 
-          header: 'Risk', 
+          header: 'Risk Profile', 
           accessorKey: 'risk_tier',
           cell: i => <span className={cn(
-              "text-xs px-2 py-0.5 rounded border",
+              "text-[10px] px-3 py-1 rounded-full border font-black uppercase tracking-widest",
               i.getValue() === 'Tier 1' ? "bg-profit/10 text-profit border-profit/20" : "bg-warning/10 text-warning border-warning/20"
           )}>{i.getValue() as string}</span>
       },
-      { header: 'Notes', accessorKey: 'ivr_tech_snapshot', cell: i => <span className="text-xs text-text-muted">{i.getValue() as string}</span> }
+      { header: 'Intelligence Snapshot', accessorKey: 'ivr_tech_snapshot', cell: i => <span className="text-[11px] font-medium text-text-muted leading-relaxed italic">{i.getValue() as string}</span> }
   ];
 
   return (
-    <div className="space-y-6">
-       <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold text-white">Pre-Market Plan</h2>
-          <div className="text-sm text-text-secondary">
-             for {new Date().toLocaleDateString()}
+    <div className="space-y-10">
+       <div className="flex justify-between items-end border-b border-border pb-8">
+          <div>
+            <h2 className="text-3xl font-black text-white tracking-tighter">Autonomous Gameplan</h2>
+            <p className="text-sm text-text-muted mt-2 font-medium tracking-tight">System-generated strategy for the current session.</p>
+          </div>
+          <div className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">
+             Snapshot as of {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </div>
        </div>
 
        {/* Tabs */}
-       <div className="flex border-b border-border">
-           <button 
-             className={cn(
-                 "px-6 py-3 text-sm font-medium flex items-center gap-2 border-b-2 transition-colors",
-                 activeTab === 'draft' ? "border-brand text-white" : "border-transparent text-text-secondary"
-             )}
-           >
-               <FileEdit className="w-4 h-4" /> Draft
-           </button>
-           <button 
-             className={cn(
-                 "px-6 py-3 text-sm font-medium flex items-center gap-2 border-b-2 transition-colors",
-                 activeTab === 'refined' ? "border-brand text-white" : "border-transparent text-text-secondary"
-             )}
-           >
-               <CheckCircle className="w-4 h-4" /> Refined
-           </button>
-           <button 
-             className={cn(
-                 "px-6 py-3 text-sm font-medium flex items-center gap-2 border-b-2 transition-colors",
-                 activeTab === 'locked' ? "border-brand text-white" : "border-transparent text-text-secondary"
-             )}
-           >
-               <Lock className="w-4 h-4" /> Locked
-           </button>
+       <div className="flex gap-8 border-b border-border/50">
+           {[
+             { id: 'draft', label: 'Draft', icon: FileEdit },
+             { id: 'refined', label: 'Refined', icon: CheckCircle },
+             { id: 'locked', label: 'Locked', icon: Lock }
+           ].map((tab) => (
+             <button 
+               key={tab.id}
+               className={cn(
+                   "pb-4 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 border-b-2 transition-all duration-300",
+                   activeTab === tab.id ? "border-profit text-white" : "border-transparent text-text-muted hover:text-text-secondary"
+               )}
+             >
+                 <tab.icon className={cn("w-3.5 h-3.5", activeTab === tab.id ? "text-profit" : "")} /> {tab.label}
+             </button>
+           ))}
        </div>
 
        <div className="min-h-[400px]">
            {loading ? (
-                <div className="flex items-center justify-center h-40 text-text-muted animate-pulse">
-                    Loading today's gameplan...
+                <div className="flex flex-col items-center justify-center h-64 text-text-muted animate-pulse gap-4">
+                    <div className="w-12 h-12 border-2 border-border border-t-profit rounded-full animate-spin" />
+                    <span className="text-[10px] font-black uppercase tracking-widest italic">Interpreting market signals...</span>
                 </div>
            ) : planItems.length > 0 ? (
                 <DataTable columns={columns} data={planItems} />
            ) : (
-                <div className="flex flex-col items-center justify-center h-40 text-text-muted border border-dashed border-border rounded-lg space-y-2">
-                    <p>No gameplan found for today.</p>
-                    <p className="text-xs italic text-text-secondary">Zoe hasn't generated the market analysis yet.</p>
+                <div className="flex flex-col items-center justify-center h-64 text-text-muted card-premium space-y-4 bg-surface/30">
+                    <Lock className="w-8 h-8 opacity-20" />
+                    <div className="text-center">
+                      <p className="font-black text-white uppercase tracking-widest">No Intelligence Record Found</p>
+                      <p className="text-[11px] font-medium text-text-muted mt-1 uppercase tracking-tighter italic">Zoe has not finalized the session strategy yet.</p>
+                    </div>
                 </div>
            )}
        </div>

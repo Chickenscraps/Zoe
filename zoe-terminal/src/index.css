@@ -1,51 +1,94 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #09090b;
-  --color-surface: #18181b;
-  --color-surface-highlight: #27272a;
-  --color-border: #3f3f46;
+  --color-background: #0b0c0f;
+  --color-surface: #0f1116;
+  --color-surface-base: #141823;
+  --color-surface-highlight: #1a2030;
+  --color-border: rgba(255,255,255,0.08);
+  --color-border-strong: rgba(255,255,255,0.14);
   
-  --color-brand: #e11d48;
-  --color-brand-hover: #be123c;
-  --color-brand-secondary: #f43f5e;
+  --color-profit: #2ee59d;
+  --color-loss: #ff5b6e;
+  --color-warning: #fbbf24;
   
-  --color-profit: #22c55e;
-  --color-loss: #ef4444;
-  --color-warning: #eab308;
-  
-  --color-text-primary: #f4f4f5;
-  --color-text-secondary: #a1a1aa;
-  --color-text-muted: #71717a;
+  --color-text-primary: #f3f4f6;
+  --color-text-secondary: rgba(243,244,246,0.72);
+  --color-text-muted: rgba(243,244,246,0.56);
+
+  --shadow-soft: 0 10px 30px rgba(0,0,0,0.35);
+  --shadow-crisp: inset 0 1px 0 rgba(255,255,255,0.06);
+
+  --radius-cards: 20px;
+  --radius-btns: 14px;
 }
 
 @layer base {
   body {
-    @apply bg-background text-text-primary antialiased;
+    @apply bg-background text-text-primary antialiased min-h-screen relative overflow-x-hidden selection:bg-profit/30 selection:text-white;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Signature Background Pattern */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background-image: 
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 32px 32px;
+    mask-image: radial-gradient(circle at center, black 40%, transparent 90%);
+  }
+
+  /* Vignette Effect */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background: radial-gradient(circle at 50% 50%, transparent 20%, #0b0c0f 100%);
+    opacity: 0.6;
   }
 }
 
-/* Custom scrollbar for Webkit */
+/* Noise overlay */
+.noise-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  opacity: 0.02;
+  z-index: 9999;
+}
+
+/* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background-color: var(--color-background); 
+  background-color: transparent; 
 }
 ::-webkit-scrollbar-thumb {
   background-color: var(--color-surface-highlight);
-  border-radius: 4px;
+  border: 3px solid var(--color-background);
+  border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background-color: var(--color-border);
+  background-color: var(--color-border-strong);
 }
 
 @layer components {
-  .card {
-    @apply bg-surface border border-border rounded-lg p-4;
+  .card-premium {
+    @apply bg-surface-base border border-border rounded-cards shadow-soft transition-all duration-300 hover:border-border-strong;
   }
-  .btn-primary {
-    @apply bg-brand text-background px-4 py-2 rounded-md font-medium hover:bg-white transition-colors;
+  .btn-premium {
+    @apply bg-text-primary text-background px-6 py-2.5 rounded-btns font-bold shadow-crisp hover:opacity-90 active:scale-[0.98] transition-all;
   }
 }
