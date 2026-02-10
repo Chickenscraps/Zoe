@@ -57,6 +57,8 @@ class DashboardRenderer:
         
         selector = f'[data-testid="{kind}-ticket"]'
         if kind == 'pnl': selector = '[data-testid="pnl-summary"]'
+        if kind == 'position': selector = '[data-testid="position-ticket"]'
+        if kind == 'plan': selector = '[data-testid="plan-ticket"]'
         
         page = await self.context.new_page()
         try:

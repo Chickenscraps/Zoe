@@ -1,6 +1,6 @@
 import { ShareLayout } from '../../components/ShareLayout';
 import { formatCurrency, formatPercentage } from '../../lib/utils';
-import { TrendingUp, Activity, BarChart3, Wallet } from 'lucide-react';
+import { TrendingUp, Activity, Wallet } from 'lucide-react';
 
 export default function SharePnL() {
   // Mock data for the summary

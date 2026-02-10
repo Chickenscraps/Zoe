@@ -5,7 +5,7 @@ import { formatCurrency, formatDate } from '../../lib/utils';
 import { Target, Clock, TrendingUp, Zap } from 'lucide-react';
 
 export default function ShareTrade() {
-  const { id } = useParams();
+  useParams();
 
   // In a real app, this would use a useTrade hook with the ID
   // For the renderer, we'll use mock data if ID starts with mock

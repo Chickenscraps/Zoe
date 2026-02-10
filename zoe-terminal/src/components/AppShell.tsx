@@ -26,8 +26,14 @@ const NAV_ITEMS = [
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+
+  const closeSidebar = () => {
+    if (window.innerWidth < 1024) {
+      setSidebarOpen(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background text-text-primary flex">
@@ -35,7 +41,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside 
         className={cn(
           "fixed inset-y-0 left-0 z-50 w-64 bg-surface border-r border-border transform transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0",
-          !sidebarOpen && "-translate-x-full lg:hidden"
+          !sidebarOpen && "-translate-x-full"
         )}
       >
         <div className="h-16 flex items-center px-6 border-b border-border">
@@ -53,6 +59,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.path}
                 to={item.path}
+                onClick={closeSidebar}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
                   isActive 
@@ -75,6 +82,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-16 border-b border-border bg-background/50 backdrop-blur-sm sticky top-0 z-40 flex items-center justify-between px-6">
@@ -86,14 +101,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
           
           <div className="flex items-center gap-4 ml-auto">
-            <div className="hidden md:flex items-center gap-6 text-sm">
+            <div className="flex items-center gap-4 md:gap-6 text-sm">
                <div className="flex flex-col items-end">
-                 <span className="text-xs text-text-secondary">Paper Equity</span>
+                 <span className="text-[10px] md:text-xs text-text-secondary leading-tight">Equity</span>
                  <span className="font-mono font-medium text-white">$2,000.00</span>
                </div>
-               <div className="h-8 w-px bg-border" />
-               <div className="bg-blue-500/10 border border-blue-500/20 text-blue-400 px-2 py-0.5 rounded text-xs font-medium tracking-wider">
-                 PAPER MODE
+               <div className="h-6 w-px bg-border hidden xs:block" />
+               <div className="hidden xs:block bg-blue-500/10 border border-blue-500/20 text-blue-400 px-2 py-0.5 rounded text-[10px] font-medium tracking-wider">
+                 PAPER
                </div>
             </div>
           </div>

@@ -77,7 +77,7 @@ export default function Overview() {
           
           <div className="bg-surface border border-border rounded-lg p-4">
              <h3 className="text-sm font-medium text-text-secondary mb-4">Account Snapshot</h3>
-             <div className="grid grid-cols-3 gap-4 text-center">
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                 <div className="p-4 bg-background border border-border rounded-lg">
                   <p className="text-xs text-text-muted mb-1">Buying Power</p>
                   <p className="text-lg font-bold text-text-primary">{formatCurrency(accountOverview?.buying_power ?? 0)}</p>

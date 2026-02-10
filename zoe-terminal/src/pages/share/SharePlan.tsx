@@ -53,7 +53,7 @@ const SharePlan: React.FC = () => {
 
   return (
     <ShareLayout title="Daily Gameplan">
-      <div className="flex flex-col h-full">
+      <div data-testid="plan-ticket" className="flex flex-col h-full">
         {/* Header */}
         <div className="flex justify-between items-end mb-8 border-b border-zinc-800 pb-6">
           <div>

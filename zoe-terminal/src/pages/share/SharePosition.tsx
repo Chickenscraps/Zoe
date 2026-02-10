@@ -60,7 +60,7 @@ const SharePosition: React.FC = () => {
 
   return (
     <ShareLayout title="Open Position">
-      <div className="flex flex-col h-full justify-between">
+      <div data-testid="position-ticket" className="flex flex-col h-full justify-between">
         {/* Header Section */}
         <div className="flex justify-between items-start">
           <div>

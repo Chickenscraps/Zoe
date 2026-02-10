@@ -34,8 +34,8 @@ export function DataTable<TData>({ columns, data, onRowClick, className, emptyMe
 
   return (
     <div className={cn("rounded-md border border-border overflow-hidden bg-surface", className)}>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left">
+      <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+        <table className="w-full text-sm text-left min-w-[600px]">
           <thead className="bg-surface-highlight text-text-secondary uppercase text-xs font-semibold">
             {table.getHeaderGroups().map(headerGroup => (
               <tr key={headerGroup.id}>
