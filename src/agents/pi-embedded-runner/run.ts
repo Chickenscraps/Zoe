@@ -100,7 +100,16 @@ export async function runEmbeddedPiAgent(
       const agentDir = params.agentDir ?? resolveOpenClawAgentDir();
       const fallbackConfigured =
         (params.config?.agents?.defaults?.model?.fallbacks?.length ?? 0) > 0;
-      await ensureOpenClawModelsJson(params.config, agentDir);
+      const { providers } = await ensureOpenClawModelsJson(params.config, agentDir);
+      if (providers) {
+        if (!params.config) {
+          params.config = {};
+        }
+        if (!params.config.models) {
+          params.config.models = {};
+        }
+        params.config.models.providers = providers;
+      }
 
       const { model, error, authStorage, modelRegistry } = resolveModel(
         provider,

@@ -69,74 +69,6 @@ const QWEN_PORTAL_DEFAULT_COST = {
   cacheWrite: 0,
 };
 
-const OLLAMA_BASE_URL = "http://127.0.0.1:11434/v1";
-const OLLAMA_API_BASE_URL = "http://127.0.0.1:11434";
-const OLLAMA_DEFAULT_CONTEXT_WINDOW = 128000;
-const OLLAMA_DEFAULT_MAX_TOKENS = 8192;
-const OLLAMA_DEFAULT_COST = {
-  input: 0,
-  output: 0,
-  cacheRead: 0,
-  cacheWrite: 0,
-};
-
-interface OllamaModel {
-  name: string;
-  modified_at: string;
-  size: number;
-  digest: string;
-  details?: {
-    family?: string;
-    parameter_size?: string;
-  };
-}
-
-interface OllamaTagsResponse {
-  models: OllamaModel[];
-}
-
-async function discoverOllamaModels(): Promise<ModelDefinitionConfig[]> {
-  // Skip Ollama discovery in test environments
-  if (process.env.VITEST || process.env.NODE_ENV === "test") {
-    return [];
-  }
-  try {
-    const response = await fetch(`${OLLAMA_API_BASE_URL}/api/tags`, {
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!response.ok) {
-      console.warn(`Failed to discover Ollama models: ${response.status}`);
-      return [];
-    }
-    const data = (await response.json()) as OllamaTagsResponse;
-    if (!data.models || data.models.length === 0) {
-      console.warn("No Ollama models found on local instance");
-      return [];
-    }
-    return data.models.map((model) => {
-      const modelId = model.name;
-      const isReasoning =
-        modelId.toLowerCase().includes("r1") || modelId.toLowerCase().includes("reasoning");
-      return {
-        id: modelId,
-        name: modelId,
-        reasoning: isReasoning,
-        input: ["text"],
-        cost: OLLAMA_DEFAULT_COST,
-        contextWindow: OLLAMA_DEFAULT_CONTEXT_WINDOW,
-        maxTokens: OLLAMA_DEFAULT_MAX_TOKENS,
-        // Disable streaming by default for Ollama to avoid SDK issue #1205
-        // See: https://github.com/badlogic/pi-mono/issues/1205
-        params: {
-          streaming: false,
-        },
-      };
-    });
-  } catch (error) {
-    console.warn(`Failed to discover Ollama models: ${String(error)}`);
-    return [];
-  }
-}
 
 function normalizeApiKeyConfig(value: string): string {
   const trimmed = value.trim();
@@ -394,14 +326,6 @@ async function buildVeniceProvider(): Promise<ProviderConfig> {
   };
 }
 
-async function buildOllamaProvider(): Promise<ProviderConfig> {
-  const models = await discoverOllamaModels();
-  return {
-    baseUrl: OLLAMA_BASE_URL,
-    api: "openai-completions",
-    models,
-  };
-}
 
 export async function resolveImplicitProviders(params: {
   agentDir: string;
@@ -488,14 +412,6 @@ export async function resolveImplicitProviders(params: {
       models: [buildCloudflareAiGatewayModelDefinition()],
     };
     break;
-  }
-
-  // Ollama provider - only add if explicitly configured
-  const ollamaKey =
-    resolveEnvApiKeyVarName("ollama") ??
-    resolveApiKeyFromProfiles({ provider: "ollama", store: authStore });
-  if (ollamaKey) {
-    providers.ollama = { ...(await buildOllamaProvider()), apiKey: ollamaKey };
   }
 
   return providers;

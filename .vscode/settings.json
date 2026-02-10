@@ -18,5 +18,21 @@
   "typescript.reportStyleChecksAsWarnings": false,
   "typescript.updateImportsOnFileMove.enabled": "always",
   "typescript.tsdk": "node_modules/typescript/lib",
-  "typescript.experimental.useTsgo": true
+  "typescript.experimental.useTsgo": true,
+  "redhat.dependency.analytics.java.home": "C:\\Users\\josha\\Downloads\\1\\java-1.8.0-openjdk-1.8.0.392-1.b08.redhat.windows.x86_64",
+  "java.configuration.runtimes": [
+    {
+      "name": "JavaSE-1.8",
+      "path": "C:\\Users\\josha\\Downloads\\1\\java-1.8.0-openjdk-1.8.0.392-1.b08.redhat.windows.x86_64",
+      "default": true
+    }
+  ],
+  "redhat.dependency.analytics.pnpm.executable.path": "pnpm",
+  "redhat.dependency.analytics.manifestExclusionPatterns": [
+    "ui-clawdbot/package.json",
+    "ui/package.json",
+    "packages/**/package.json",
+    "extensions/**/package.json",
+    "vendor/**/package.json"
+  ]
 }

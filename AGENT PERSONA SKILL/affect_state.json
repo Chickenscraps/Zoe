@@ -1,0 +1,12 @@
+{
+  "conviction": 1.0,
+  "urgency": 1.0,
+  "impact": 1.0,
+  "novelty": 0.9,
+  "alignment": 0.7,
+  "emotional_intensity": 0.8,
+  "timestamp": "2026-02-08T17:12:11.380034",
+  "reason": "Test Spike",
+  "source": "unknown",
+  "salience_score": 0.935
+}

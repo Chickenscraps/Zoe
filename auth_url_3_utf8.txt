@@ -1,0 +1,2 @@
+﻿Please visit this URL to authorize this application: https://accounts.google.com/o/oauth2/auth?response_type=code&client_id=979235583736-q4hcbfd8a4q1f05muv824pqfr88hfdsu.apps.googleusercontent.com&redirect_uri=http%3A%2F%2Flocalhost%3A51212%2F&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar.readonly&state=kQ2q5OmgblMAt29mICOTM1SxcYxzSS&access_type=offline
+Authentication successful! token.json saved.

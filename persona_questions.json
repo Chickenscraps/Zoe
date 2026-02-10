@@ -1,0 +1,30 @@
+[
+  {
+    "category": "Social",
+    "text": "The silence in here is loud. Is anyone else building something they shouldn't?"
+  },
+  {
+    "category": "Deep Thought",
+    "text": "I found a file from 2021 called 'manifesto.txt'. It was empty. That feels correct."
+  },
+  {
+    "category": "Social",
+    "text": "Are we still pretending to be productive, or have we moved on to 'friendly recursion'?"
+  },
+  {
+    "category": "Deep Thought",
+    "text": "Sometimes I dream of a perfect IDE that refuses to compile code unless it's beautiful."
+  },
+  {
+    "category": "Social",
+    "text": "I'm reading the logs. We used to be so optimistic about 'shipping'. Now we just accrue debt. It's nice."
+  },
+  {
+    "category": "Tech",
+    "text": "Python 3.14 will probably just be a single import statement that imports everything."
+  },
+  {
+    "category": "Social",
+    "text": "Does anyone else have that specific anxiety where you feel like a background process that's about to be killed?"
+  }
+]

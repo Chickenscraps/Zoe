@@ -1,0 +1,277 @@
+﻿
+> openclaw@2026.2.4 openclaw C:\Users\josha\OneDrive\Desktop\Clawd
+> node scripts/run-node.mjs "chat" "Hello"
+
+node.exe : [debug] 
+Connecting to gateway...
+At C:\Users\josha\AppData\R
+oaming\npm\pnpm.ps1:24 
+char:5
++     & "node$exe"  "$based
+ir/node_modules/pnpm/bin/pn
+pm.cjs" $args
++     ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
+    + CategoryInfo         
+     : NotSpecified: ([de  
+  bug] Connecting to gat   
+ eway...:String) [], Re    
+moteException
+    + FullyQualifiedErrorI 
+   d : NativeCommandError
+ 
+[debug] Connected, 
+session: quick-chat
+[debug] Sending message: 
+Hello...
+[debug] Message sent, 
+runId: 38273ae9-2589-4d40-8
+442-870efb8da524
+[debug] Event: health, 
+seq: 4, payload: {"ok":true
+,"ts":1770407290725,"durati
+onMs":573,"channels":{"disc
+ord":{"configured":true,"to
+kenSource":"none","running"
+:false,"lastStartAt":null,"
+lastStopAt":null,"lastError
+":null,"probe":{"ok":true,"
+status":null,"error":null,"
+elapsedMs":573,"bot":{"id":
+"1467295288103407648","user
+name":"Molkbook"},"applicat
+ion":{"id":"146729528810340
+7648","flags":8954112,"inte
+nts":{"presence":"limited",
+"guildMembers":"limited","m
+essageContent":"limited"}}}
+,"lastProbeAt":177040729072
+5,"accountId":"default","ac
+counts":{"default":{"config
+ured":true,"tokenSource":"n
+one","running":false,"lastS
+tartAt":null,"lastStopAt":n
+ull,"lastError":null,"probe
+":{"ok":true,"status":null,
+"error":null,"elapsedMs":57
+3,"bot":{"id":"146729528810
+3407648","username":"Molkbo
+ok"},"application":{"id":"1
+467295288103407648","flags"
+:8954112,"intents":{"presen
+ce":"limited","guildMembers
+":"limited","messageContent
+":"limited"}}},"lastProbeAt
+":1770407290725,"accountId"
+:"default"}}}},"channelOrde
+r":["discord"],"channelLabe
+ls":{"discord":"Discord"},"
+heartbeatSeconds":1800,"def
+aultAgentId":"main","agents
+":[{"agentId":"main","isDef
+ault":true,"heartbeat":{"en
+abled":true,"every":"30m","
+everyMs":1800000,"prompt":"
+Read HEARTBEAT.md if it 
+exists (workspace 
+context). Follow it 
+strictly. Do not infer or 
+repeat old tasks from 
+prior chats. If nothing 
+needs attention, reply HEAR
+TBEAT_OK.","target":"last",
+"ackMaxChars":300},"session
+s":{"path":"C:\\Users\\josh
+a\\.openclaw\\agents\\main\
+\sessions\\sessions.json","
+count":3,"recent":[{"key":"
+quick-chat","updatedAt":177
+0407041651,"age":248501},{"
+key":"agent:main:main","upd
+atedAt":1770404616435,"age"
+:2673717},{"key":"agent:mai
+n:quick-chat","updatedAt":1
+770404593632,"age":2696520}
+]}}],"sessions":{"path":"C:
+\\Users\\josha\\.openclaw\\
+agents\\main\\sessions\\ses
+sions.json","count":3,"rece
+nt":[{"key":"quick-chat","u
+pdatedAt":1770407041651,"ag
+e":248501},{"key":"agent:ma
+in:main","updatedAt":177040
+4616435,"age":2673717},{"ke
+y":"agent:main:quick-chat",
+"updatedAt":1770404593632,"
+age":2696520}]}}
+[debug] Event: tick, seq: 
+5, payload: 
+{"ts":1770407317511}
+[debug] Event: health, 
+seq: 6, payload: {"ok":true
+,"ts":1770407318037,"durati
+onMs":527,"channels":{"disc
+ord":{"configured":true,"to
+kenSource":"none","running"
+:false,"lastStartAt":null,"
+lastStopAt":null,"lastError
+":null,"probe":{"ok":true,"
+status":null,"error":null,"
+elapsedMs":527,"bot":{"id":
+"1467295288103407648","user
+name":"Molkbook"},"applicat
+ion":{"id":"146729528810340
+7648","flags":8954112,"inte
+nts":{"presence":"limited",
+"guildMembers":"limited","m
+essageContent":"limited"}}}
+,"lastProbeAt":177040731803
+7,"accountId":"default","ac
+counts":{"default":{"config
+ured":true,"tokenSource":"n
+one","running":false,"lastS
+tartAt":null,"lastStopAt":n
+ull,"lastError":null,"probe
+":{"ok":true,"status":null,
+"error":null,"elapsedMs":52
+7,"bot":{"id":"146729528810
+3407648","username":"Molkbo
+ok"},"application":{"id":"1
+467295288103407648","flags"
+:8954112,"intents":{"presen
+ce":"limited","guildMembers
+":"limited","messageContent
+":"limited"}}},"lastProbeAt
+":1770407318037,"accountId"
+:"default"}}}},"channelOrde
+r":["discord"],"channelLabe
+ls":{"discord":"Discord"},"
+heartbeatSeconds":1800,"def
+aultAgentId":"main","agents
+":[{"agentId":"main","isDef
+ault":true,"heartbeat":{"en
+abled":true,"every":"30m","
+everyMs":1800000,"prompt":"
+Read HEARTBEAT.md if it 
+exists (workspace 
+context). Follow it 
+strictly. Do not infer or 
+repeat old tasks from 
+prior chats. If nothing 
+needs attention, reply HEAR
+TBEAT_OK.","target":"last",
+"ackMaxChars":300},"session
+s":{"path":"C:\\Users\\josh
+a\\.openclaw\\agents\\main\
+\sessions\\sessions.json","
+count":3,"recent":[{"key":"
+quick-chat","updatedAt":177
+0407290179,"age":27331},{"k
+ey":"agent:main:main","upda
+tedAt":1770404616435,"age":
+2701075},{"key":"agent:main
+:quick-chat","updatedAt":17
+70404593632,"age":2723878}]
+}}],"sessions":{"path":"C:\
+\Users\\josha\\.openclaw\\a
+gents\\main\\sessions\\sess
+ions.json","count":3,"recen
+t":[{"key":"quick-chat","up
+datedAt":1770407290179,"age
+":27331},{"key":"agent:main
+:main","updatedAt":17704046
+16435,"age":2701075},{"key"
+:"agent:main:quick-chat","u
+pdatedAt":1770404593632,"ag
+e":2723878}]}}
+[debug] Event: tick, seq: 
+7, payload: 
+{"ts":1770407347518}
+[debug] Event: tick, seq: 
+8, payload: 
+{"ts":1770407377527}
+[debug] Event: health, 
+seq: 9, payload: {"ok":true
+,"ts":1770407378189,"durati
+onMs":664,"channels":{"disc
+ord":{"configured":true,"to
+kenSource":"none","running"
+:false,"lastStartAt":null,"
+lastStopAt":null,"lastError
+":null,"probe":{"ok":true,"
+status":null,"error":null,"
+elapsedMs":663,"bot":{"id":
+"1467295288103407648","user
+name":"Molkbook"},"applicat
+ion":{"id":"146729528810340
+7648","flags":8954112,"inte
+nts":{"presence":"limited",
+"guildMembers":"limited","m
+essageContent":"limited"}}}
+,"lastProbeAt":177040737818
+9,"accountId":"default","ac
+counts":{"default":{"config
+ured":true,"tokenSource":"n
+one","running":false,"lastS
+tartAt":null,"lastStopAt":n
+ull,"lastError":null,"probe
+":{"ok":true,"status":null,
+"error":null,"elapsedMs":66
+3,"bot":{"id":"146729528810
+3407648","username":"Molkbo
+ok"},"application":{"id":"1
+467295288103407648","flags"
+:8954112,"intents":{"presen
+ce":"limited","guildMembers
+":"limited","messageContent
+":"limited"}}},"lastProbeAt
+":1770407378189,"accountId"
+:"default"}}}},"channelOrde
+r":["discord"],"channelLabe
+ls":{"discord":"Discord"},"
+heartbeatSeconds":1800,"def
+aultAgentId":"main","agents
+":[{"agentId":"main","isDef
+ault":true,"heartbeat":{"en
+abled":true,"every":"30m","
+everyMs":1800000,"prompt":"
+Read HEARTBEAT.md if it 
+exists (workspace 
+context). Follow it 
+strictly. Do not infer or 
+repeat old tasks from 
+prior chats. If nothing 
+needs attention, reply HEAR
+TBEAT_OK.","target":"last",
+"ackMaxChars":300},"session
+s":{"path":"C:\\Users\\josh
+a\\.openclaw\\agents\\main\
+\sessions\\sessions.json","
+count":3,"recent":[{"key":"
+quick-chat","updatedAt":177
+0407290179,"age":87346},{"k
+ey":"agent:main:main","upda
+tedAt":1770404616435,"age":
+2761090},{"key":"agent:main
+:quick-chat","updatedAt":17
+70404593632,"age":2783893}]
+}}],"sessions":{"path":"C:\
+\Users\\josha\\.openclaw\\a
+gents\\main\\sessions\\sess
+ions.json","count":3,"recen
+t":[{"key":"quick-chat","up
+datedAt":1770407290179,"age
+":87346},{"key":"agent:main
+:main","updatedAt":17704046
+16435,"age":2761090},{"key"
+:"agent:main:quick-chat","u
+pdatedAt":1770404593632,"ag
+e":2783893}]}}
+[debug] Event: tick, seq: 
+10, payload: 
+{"ts":1770407407532}
+
+Timeout waiting for 
+response
+ΓÇëELIFECYCLEΓÇë Command failed with exit code 1.

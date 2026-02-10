@@ -169,7 +169,7 @@
     "@typescript/native-preview": "7.0.0-dev.20260205.1",
     "@vitest/coverage-v8": "^4.0.18",
     "lit": "^3.3.2",
-    "ollama": "^0.6.3",
+
     "oxfmt": "0.28.0",
     "oxlint": "^1.43.0",
     "oxlint-tsgolint": "^0.11.4",
@@ -180,8 +180,8 @@
     "vitest": "^4.0.18"
   },
   "peerDependencies": {
-    "@napi-rs/canvas": "^0.1.89",
-    "node-llama-cpp": "3.15.1"
+    "@napi-rs/canvas": "^0.1.89"
+
   },
   "overrides": {
     "tar": "7.5.7"
@@ -189,7 +189,7 @@
   "engines": {
     "node": ">=22.12.0"
   },
-  "packageManager": "pnpm@10.23.0",
+  "packageManager": "pnpm@10.29.2",
   "pnpm": {
     "minimumReleaseAge": 2880,
     "overrides": {
@@ -209,7 +209,7 @@
       "@whiskeysockets/baileys",
       "authenticate-pam",
       "esbuild",
-      "node-llama-cpp",
+
       "protobufjs",
       "sharp"
     ]

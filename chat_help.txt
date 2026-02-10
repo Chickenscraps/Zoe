@@ -1,0 +1,18 @@
+﻿
+> openclaw@2026.2.4 openclaw C:\Users\josha\OneDrive\Desktop\Clawd
+> node scripts/run-node.mjs "chat" "--help"
+
+
+≡ƒª₧ OpenClaw 2026.2.4 (991cf4d) ΓÇö I'll refactor your busywork like it owes me money.
+
+Usage: openclaw chat [options] <message>
+
+Send a chat message and print the response
+
+Options:
+  -h, --help       display help for command
+  --raw            Print raw response without formatting (default: false)
+  --session <key>  Session key (default: "quick-chat")
+  --timeout <ms>   Timeout in ms (default: "120000")
+  --token <token>  Gateway token
+  --url <url>      Gateway WebSocket URL

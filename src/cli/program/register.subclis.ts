@@ -41,6 +41,14 @@ const entries: SubCliEntry[] = [
     },
   },
   {
+    name: "chat",
+    description: "Send a chat message and print the response",
+    register: async (program) => {
+      const mod = await import("../chat-cli.js");
+      mod.registerChatCli(program);
+    },
+  },
+  {
     name: "gateway",
     description: "Gateway control",
     register: async (program) => {

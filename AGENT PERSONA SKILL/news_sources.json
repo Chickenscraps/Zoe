@@ -1,0 +1,28 @@
+{
+  "feeds": [
+    {"name": "Hacker News", "url": "https://news.ycombinator.com/rss", "category": "tech"},
+    {"name": "Reuters Top", "url": "https://feeds.reuters.com/reuters/topNews", "category": "world"},
+    {"name": "Ars Technica", "url": "https://feeds.arstechnica.com/arstechnica/index", "category": "tech"},
+    {"name": "TechCrunch", "url": "https://techcrunch.com/feed/", "category": "tech"},
+    {"name": "BBC News", "url": "https://feeds.bbci.co.uk/news/rss.xml", "category": "world"}
+  ],
+  "allowlist": [
+    "feeds.reuters.com",
+    "rss.nytimes.com",
+    "feeds.bbci.co.uk",
+    "news.ycombinator.com",
+    "feeds.arstechnica.com",
+    "www.reddit.com",
+    "techcrunch.com",
+    "theverge.com",
+    "bbc.co.uk",
+    "python.org",
+    "github.com",
+    "stackoverflow.com"
+  ],
+  "blocklist": [
+    "malware.com",
+    "phishing.example",
+    "suspicious-downloads.net"
+  ]
+}

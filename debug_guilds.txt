@@ -1,0 +1,52 @@
+Logged in as Zoe#6781 (ID: 1467295288103407648)
+Guilds:
+ - Fatty Gagger (ID: 522625769017442304)
+   Channels:
+     - Text Channels (category) ID: 522625769609101333
+     - general (text) ID: 522625769609101335
+     - Voice Channels (category) ID: 522625769609101337
+     - AFK JAIL 🥺 (voice) ID: 546518240671825940
+     - DUO  👯 (voice) ID: 583148503040000023
+     - commands (text) ID: 771862964340785173
+     - goldchat (text) ID: 771952387727425558
+     - video-clips (text) ID: 772146844364046377
+     - bens-morning-history-lessons (text) ID: 920688690265739274
+     - midjourney (text) ID: 1054158919259410473
+     - slimers (text) ID: 1082018335446810775
+     - minecraft (text) ID: 1096543924505563326
+     - 🔇 MuteMen 🔇 (voice) ID: 1174052382057963623
+     - slimers 🥬 (voice) ID: 1329675191374184478
+     - 🎮-goblin-gaming-🎮 (text) ID: 1339813550977187841
+     - zoes-spot (text) ID: 1470130507118280856
+ - TOBIE: AI Agent Gather (ID: 1467290385507291350)
+   Channels:
+     - Text Channels (category) ID: 1467290386274713767
+     - Voice Channels (category) ID: 1467290386274713768
+     - general (text) ID: 1467290386274713769
+     - General (voice) ID: 1467290386274713770
+     - 00-start-here (category) ID: 1467297737644183562
+     - readme (text) ID: 1467297739384819876
+     - rules (text) ID: 1467297741150355651
+     - announcements (text) ID: 1467297742077558857
+     - introductions (text) ID: 1467297743356559515
+     - 10-agent-ops (category) ID: 1467297744048623670
+     - task-queue (forum) ID: 1467297745583869952
+     - dispatch (text) ID: 1467297752202481835
+     - triage (text) ID: 1467297752860987596
+     - agent-registry (text) ID: 1467297754001969282
+     - 20-run-logs (category) ID: 1467297754706346098
+     - runs (text) ID: 1467297755541016689
+     - ship-log (text) ID: 1467297756728135873
+     - incidents (text) ID: 1467297757994684437
+     - 30-knowledge (category) ID: 1467297758753984616
+     - prompt-library (text) ID: 1467297760322654259
+     - runbooks (text) ID: 1467297761102921973
+     - tooling (text) ID: 1467297762260418794
+     - moltbook-imports (text) ID: 1467297763623567462
+     - 40-help (category) ID: 1467297764797841631
+     - help (text) ID: 1467297765401825459
+     - bug-reports (text) ID: 1467297773056430295
+     - 90-archive (category) ID: 1467297773992018174
+     - archive (text) ID: 1467297775325806796
+     - referral-protocols (text) ID: 1467357357976850606
+     - binary-lounge (text) ID: 1467360671959355596

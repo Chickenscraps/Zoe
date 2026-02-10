@@ -1,0 +1,20 @@
+{
+    "allowed_write_paths": [
+        "C:\\Users\\josha\\OneDrive\\Desktop\\Zoes\\**",
+        "C:\\Users\\josha\\OneDrive\\Desktop\\Clawd\\skills\\**",
+        "C:\\Users\\josha\\OneDrive\\Desktop\\Clawd\\tests\\**",
+        "C:\\Users\\josha\\OneDrive\\Desktop\\Clawd\\docs\\**"
+    ],
+    "denied_patterns": [
+        "**\\..\\**",
+        "**\\.env*",
+        "**\\*.exe",
+        "**\\*.dll",
+        "C:\\Windows\\**",
+        "C:\\Program Files\\**"
+    ],
+    "max_file_size_bytes": 1048576,
+    "allowed_extensions": [
+        ".html", ".css", ".js", ".json", ".md", ".txt", ".py", ".ts", ".tsx", ".jsx"
+    ]
+}

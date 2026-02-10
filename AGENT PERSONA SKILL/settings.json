@@ -1,0 +1,95 @@
+{
+  "notifications": {
+    "enabled": true,
+    "quiet_hours": {
+      "start": "22:00",
+      "end": "08:00"
+    },
+    "max_toasts_per_hour": 6,
+    "dedupe_window_seconds": 300,
+    "snooze_duration_seconds": 300,
+    "in_flow_suppression": true,
+    "in_flow_window_seconds": 300
+  },
+  "mood_engine": {
+    "enabled": true,
+    "weights": {
+      "sunny_social": 0.65,
+      "deep_thinker": 0.12,
+      "sharp_exec": 0.13,
+      "irritated_masked": 0.05,
+      "low_key_sad": 0.05
+    },
+    "min_duration_hours": 3,
+    "max_duration_hours": 12,
+    "leak_percent": 15,
+    "allowed_moods": ["sunny_social", "deep_thinker", "sharp_exec", "irritated_masked", "low_key_sad"]
+  },
+  "news": {
+    "enabled": true,
+    "interval_minutes": 60,
+    "jitter_minutes": 10,
+    "toast_importance_threshold": 0.7,
+    "mood_bias_max_percent": 10,
+    "sources_file": "news_sources.json",
+    "max_items_per_pulse": 8,
+    "include_links": true
+  },
+  "web": {
+    "timeout_seconds": 10,
+    "retries": 3,
+    "cache_seconds": 300,
+    "allowlist": [
+      "news.ycombinator.com",
+      "reuters.com",
+      "bbc.co.uk",
+      "techcrunch.com",
+      "theverge.com",
+      "arstechnica.com"
+    ],
+    "blocklist": [
+      "malware.com",
+      "phishing.example"
+    ]
+  },
+  "discord": {
+    "enabled": true,
+    "mode": "bot",
+    "guild_id": null,
+    "channel_id": "1462568916692762687",
+    "showcase_channel_id": null,
+    "mention_mode": "none",
+    "role_id": null,
+    "max_showcase_pings_per_day": 2,
+    "cooldown_minutes": 30,
+    "ask_before_everyone": true
+  },
+  "showcase": {
+    "enabled": true,
+    "auto_ping": false,
+    "require_artifacts": true,
+    "require_self_test": true,
+    "min_checklist_items": 5
+  },
+  "strong_feeling": {
+    "enabled": true,
+    "salience_threshold": 0.92,
+    "max_pings_per_day": 1,
+    "emergency_override": false,
+    "ask_josh_first": true,
+    "weights": {
+      "conviction": 0.25,
+      "urgency": 0.20,
+      "impact": 0.20,
+      "novelty": 0.15,
+      "alignment": 0.10,
+      "emotional_intensity": 0.10
+    }
+  },
+  "voice": {
+    "enabled": true,
+    "default_style": "playful",
+    "variation": true
+  },
+  "personality_style": "playful"
+}

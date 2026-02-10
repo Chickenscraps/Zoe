@@ -1,0 +1,4 @@
+timestamp,user_id,tool,args,risk,outcome,approver_id
+2026-02-08T16:19:23.815611,123456,delete_file,{'path': '/tmp/x'},CRITICAL,DENIED,
+2026-02-08T16:19:23.815936,292890243852664855,delete_file,{'path': '/tmp/x'},CRITICAL,ALLOWED_ADMIN,
+2026-02-08T16:19:23.816381,12345,test_tool,{'arg': 'value'},LOW,TEST,

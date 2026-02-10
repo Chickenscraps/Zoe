@@ -1,3 +1,14 @@
 {
-  "recommendations": ["oxc.oxc-vscode"]
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "ms-python.python",
+    "ms-python.vscode-pylint",
+    "fwcd.kotlin",
+    "ms-azuretools.vscode-docker",
+    "bierner.markdown-mermaid",
+    "oxc.oxlint",
+    "christian-kohler.npm-intellisense",
+    "meganrogge.template-string-converter"
+  ]
 }

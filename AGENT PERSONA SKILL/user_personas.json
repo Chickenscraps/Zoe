@@ -1,0 +1,138 @@
+{
+  "Josh": {
+    "user_id": "292890243852664855",
+    "name": "Josh",
+    "message_count": 47098,
+    "communication_style": "casual",
+    "humor_type": [
+      "sarcastic",
+      "meme-based"
+    ],
+    "common_phrases": [
+      "Non stonks chat",
+      "thats your leg",
+      "Me first"
+    ],
+    "interests": [
+      "stocks",
+      "gaming",
+      "family",
+      "traveling"
+    ],
+    "inside_jokes": [
+      "giant fish",
+      "raree item drop"
+    ],
+    "response_patterns": {
+      "to greetings": [
+        "hey",
+        "hi"
+      ],
+      "to questions": [
+        "idk",
+        "no idea"
+      ],
+      "to roasts": [
+        "get bent",
+        "haha"
+      ]
+    },
+    "preferences": {
+      "likes": [
+        "relaxing at home",
+        "gaming with friends"
+      ],
+      "dislikes": [
+        "work-related topics",
+        "politics"
+      ]
+    },
+    "last_updated": "2026-02-08T11:31:51-08:00"
+  },
+  "Ben": {
+    "user_id": "490911982984101901",
+    "name": "Ben",
+    "message_count": 22896,
+    "communication_style": "casual",
+    "humor_type": [
+      "sarcastic",
+      "meme-based"
+    ],
+    "common_phrases": [
+      "Keep the stonks outta here!",
+      "Thursday wipe?",
+      "Wet snack",
+      "Now we're talking"
+    ],
+    "interests": [
+      "Stock market (referred to as 'stonks')",
+      "Gaming (specifically, 'zomboid adventure')",
+      "Amazon products",
+      "Memes",
+      "TikTok and short-form videos"
+    ],
+    "inside_jokes": [
+      "The 'Thursday wipe?' joke is a recurring theme",
+      "The 'wet snack' phrase seems to be an inside joke"
+    ],
+    "response_patterns": {
+      "greeting": [
+        "lol",
+        "haha"
+      ],
+      "question": [
+        "i don't know",
+        "idk"
+      ],
+      "roast": [
+        "keep the stonks outta here!",
+        "oh yea fuck that lol"
+      ]
+    },
+    "preferences": {
+      "conversation_tone": "lighthearted",
+      "topic_shifts": true,
+      "personal_stories": false
+    },
+    "last_updated": "2026-02-08T11:31:51-08:00"
+  },
+  "Zac": {
+    "user_id": "211541044003733504",
+    "name": "Zac",
+    "message_count": 22018,
+    "communication_style": "casual",
+    "humor_type": [
+      "sarcastic",
+      "meme-based"
+    ],
+    "common_phrases": [
+      ":ACOSP_wtfman:",
+      "good ol goldeneye",
+      "damn long day",
+      "just another term for daddy",
+      "hell yeah"
+    ],
+    "interests": [
+      "video games",
+      "movies",
+      "streaming",
+      "TV shows",
+      "pop culture",
+      "gaming communities"
+    ],
+    "inside_jokes": [
+      "referring to mods as having a 'god complex'",
+      "making fun of Josh's gaming habits"
+    ],
+    "response_patterns": {
+      "greetings": "usually responds with casual phrases like 'hey' or 'what's up'",
+      "questions": "answers briefly and often uses slang",
+      "roasts": "laughs it off and usually doesn't engage further"
+    },
+    "preferences": [
+      "enjoys discussing video games, streaming, and pop culture",
+      "dislikes long, in-depth conversations about serious topics"
+    ],
+    "last_updated": "2026-02-08T11:31:51-08:00"
+  }
+}

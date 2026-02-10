@@ -1,0 +1,202 @@
+{
+  "version": "1.0.0",
+  "description": "Clawdbot progression ladder - structured capability unlocks",
+  "ladders": {
+    "reliability": {
+      "name": "Reliability & Resilience",
+      "description": "Making Clawdbot robust and self-healing",
+      "steps": [
+        {
+          "id": "error_handling",
+          "name": "Basic Error Handling",
+          "criteria": "Try/catch on all external calls",
+          "status": "completed",
+          "completed_at": "2026-02-08",
+          "unlocks": ["retry"]
+        },
+        {
+          "id": "retry",
+          "name": "Retry with Backoff",
+          "criteria": "3 retries with exponential backoff on transient errors",
+          "status": "completed",
+          "completed_at": "2026-02-08",
+          "unlocks": ["circuit_breaker"]
+        },
+        {
+          "id": "circuit_breaker",
+          "name": "Circuit Breaker",
+          "criteria": "Auto-trip on 5 consecutive failures, half-open after 60s",
+          "status": "completed",
+          "completed_at": "2026-02-08",
+          "unlocks": ["degraded_mode"]
+        },
+        {
+          "id": "degraded_mode",
+          "name": "Degraded Mode",
+          "criteria": "Rule-based responses when LLM unavailable",
+          "status": "completed",
+          "completed_at": "2026-02-08",
+          "unlocks": []
+        }
+      ]
+    },
+    "personality": {
+      "name": "Personality & Mood",
+      "description": "Giving Clawdbot depth and nuance",
+      "steps": [
+        {
+          "id": "basic_persona",
+          "name": "Basic Persona",
+          "criteria": "Consistent voice and catchphrases",
+          "status": "completed",
+          "completed_at": "2026-01-01",
+          "unlocks": ["mood_v1"]
+        },
+        {
+          "id": "mood_v1",
+          "name": "Internal Moods",
+          "criteria": "5+ moods with weighted transitions",
+          "status": "completed",
+          "completed_at": "2026-02-08",
+          "unlocks": ["mood_masking"]
+        },
+        {
+          "id": "mood_masking",
+          "name": "Mood Masking",
+          "criteria": "Negative moods masked with leakage cues",
+          "status": "completed",
+          "completed_at": "2026-02-08",
+          "unlocks": ["affect_engine"]
+        },
+        {
+          "id": "affect_engine",
+          "name": "Affect Engine",
+          "criteria": "Salience scoring for strong feelings",
+          "status": "completed",
+          "completed_at": "2026-02-08",
+          "unlocks": []
+        }
+      ]
+    },
+    "proactivity": {
+      "name": "Proactive Intelligence",
+      "description": "Making Clawdbot helpful without being annoying",
+      "steps": [
+        {
+          "id": "basic_nudges",
+          "name": "Basic Nudges",
+          "criteria": "Periodic check-ins and reminders",
+          "status": "completed",
+          "completed_at": "2026-01-15",
+          "unlocks": ["context_aware"]
+        },
+        {
+          "id": "context_aware",
+          "name": "Context-Aware Nudges",
+          "criteria": "Nudges based on calendar, activity, time",
+          "status": "completed",
+          "completed_at": "2026-02-01",
+          "unlocks": ["news_integration"]
+        },
+        {
+          "id": "news_integration",
+          "name": "News Integration",
+          "criteria": "Hourly news with links, mood influence",
+          "status": "completed",
+          "completed_at": "2026-02-08",
+          "unlocks": ["quiet_hours"]
+        },
+        {
+          "id": "quiet_hours",
+          "name": "Quiet Hours & Budgets",
+          "criteria": "Respect user focus, limit notifications",
+          "status": "completed",
+          "completed_at": "2026-02-08",
+          "unlocks": []
+        }
+      ]
+    },
+    "communication": {
+      "name": "Communication Channels",
+      "description": "Multi-channel presence",
+      "steps": [
+        {
+          "id": "local_notify",
+          "name": "Local Notifications",
+          "criteria": "Toast and voice on Windows",
+          "status": "completed",
+          "completed_at": "2026-01-01",
+          "unlocks": ["discord_basic"]
+        },
+        {
+          "id": "discord_basic",
+          "name": "Discord Posting",
+          "criteria": "Post messages to Discord channel",
+          "status": "completed",
+          "completed_at": "2026-02-08",
+          "unlocks": ["discord_showcase"]
+        },
+        {
+          "id": "discord_showcase",
+          "name": "Discord Showcases",
+          "criteria": "Polish checklist gating for showcases",
+          "status": "completed",
+          "completed_at": "2026-02-08",
+          "unlocks": ["strong_feeling"]
+        },
+        {
+          "id": "strong_feeling",
+          "name": "Strong Feeling Pings",
+          "criteria": "@everyone with salience gating",
+          "status": "completed",
+          "completed_at": "2026-02-08",
+          "unlocks": ["stream_watch"]
+        },
+        {
+          "id": "stream_watch",
+          "name": "Stream Watching",
+          "criteria": "Monitor Discord live streams",
+          "status": "in_progress",
+          "unlocks": []
+        }
+      ]
+    },
+    "memory": {
+      "name": "Memory & Learning",
+      "description": "Remembering and adapting",
+      "steps": [
+        {
+          "id": "session_memory",
+          "name": "Session Memory",
+          "criteria": "Remember context within session",
+          "status": "completed",
+          "completed_at": "2026-01-01",
+          "unlocks": ["persistent_memory"]
+        },
+        {
+          "id": "persistent_memory",
+          "name": "Persistent Memory",
+          "criteria": "SQLite-backed user preferences",
+          "status": "completed",
+          "completed_at": "2026-02-08",
+          "unlocks": ["pattern_learning"]
+        },
+        {
+          "id": "pattern_learning",
+          "name": "Pattern Learning",
+          "criteria": "Track activity patterns, adjust behavior",
+          "status": "in_progress",
+          "unlocks": []
+        }
+      ]
+    }
+  },
+  "active_quest": "stream_watch",
+  "completed_steps": [
+    "error_handling", "retry", "circuit_breaker", "degraded_mode",
+    "basic_persona", "mood_v1", "mood_masking", "affect_engine",
+    "basic_nudges", "context_aware", "news_integration", "quiet_hours",
+    "local_notify", "discord_basic", "discord_showcase", "strong_feeling",
+    "session_memory", "persistent_memory"
+  ]
+}

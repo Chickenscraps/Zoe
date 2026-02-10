@@ -84,7 +84,7 @@ async function readJson(pathname: string): Promise<unknown> {
 export async function ensureOpenClawModelsJson(
   config?: OpenClawConfig,
   agentDirOverride?: string,
-): Promise<{ agentDir: string; wrote: boolean }> {
+): Promise<{ agentDir: string; wrote: boolean; providers: Record<string, ProviderConfig> }> {
   const cfg = config ?? loadConfig();
   const agentDir = agentDirOverride?.trim() ? agentDirOverride.trim() : resolveOpenClawAgentDir();
 
@@ -107,7 +107,7 @@ export async function ensureOpenClawModelsJson(
   }
 
   if (Object.keys(providers).length === 0) {
-    return { agentDir, wrote: false };
+    return { agentDir, wrote: false, providers: {} };
   }
 
   const mode = cfg.models?.mode ?? DEFAULT_MODE;
@@ -138,10 +138,9 @@ export async function ensureOpenClawModelsJson(
   }
 
   if (existingRaw === next) {
-    return { agentDir, wrote: false };
+    return { agentDir, wrote: false, providers: normalizedProviders };
   }
 
-  await fs.mkdir(agentDir, { recursive: true, mode: 0o700 });
   await fs.writeFile(targetPath, next, { mode: 0o600 });
-  return { agentDir, wrote: true };
+  return { agentDir, wrote: true, providers: normalizedProviders };
 }

@@ -1,0 +1,110 @@
+{
+  "fetched_at": "2026-02-08T14:20:53.178556",
+  "stories": [
+    {
+      "title": "Vouch",
+      "url": "https://github.com/mitchellh/vouch",
+      "score": 456,
+      "source": "hackernews",
+      "time": "2026-02-07T19:09:28"
+    },
+    {
+      "title": "Apple XNU: Clutch Scheduler",
+      "url": "https://github.com/apple-oss-distributions/xnu/blob/main/doc/scheduler/sched_clutch_edge.md",
+      "score": 35,
+      "source": "hackernews",
+      "time": "2026-02-08T12:38:55"
+    },
+    {
+      "title": "Shifts in U.S. Social Media Use, 2020\u20132024: Decline, Fragmentation, Polarization",
+      "url": "https://arxiv.org/abs/2510.25417",
+      "score": 14,
+      "source": "hackernews",
+      "time": "2026-02-08T13:52:28"
+    },
+    {
+      "title": "Roundcube Webmail: SVG feImage bypasses image blocking to track email opens",
+      "url": "https://nullcathedral.com/posts/2026-02-08-roundcube-svg-feimage-remote-image-bypass/",
+      "score": 79,
+      "source": "hackernews",
+      "time": "2026-02-08T10:24:26"
+    },
+    {
+      "title": "More Mac malware from Google search",
+      "url": "https://eclecticlight.co/2026/01/30/more-malware-from-google-search/",
+      "score": 11,
+      "source": "hackernews",
+      "time": "2026-02-08T12:52:55"
+    },
+    {
+      "title": "The Little Bool of Doom (2025)",
+      "url": "https://blog.svgames.pl/article/the-little-bool-of-doom",
+      "score": 62,
+      "source": "hackernews",
+      "time": "2026-02-08T10:02:50"
+    },
+    {
+      "title": "A GTA modder has got the 1997 original working on modern PCs and Steam Deck",
+      "url": "https://gtaforums.com/topic/986492-grand-theft-auto-ready2play-full-game-windows-version/",
+      "score": 72,
+      "source": "hackernews",
+      "time": "2026-02-08T12:34:51"
+    },
+    {
+      "title": "International Image Interoperability Framework",
+      "url": "https://iiif.io/",
+      "score": 18,
+      "source": "hackernews",
+      "time": "2026-02-03T00:40:49"
+    },
+    {
+      "title": "Show HN: I created a Mars colony RPG based on Kim Stanley Robinson's Mars books",
+      "url": "https://underhillgame.com/",
+      "score": 99,
+      "source": "hackernews",
+      "time": "2026-02-08T09:08:30"
+    },
+    {
+      "title": "Everything \u2013 Locate files and folders by name instantly",
+      "url": "https://www.voidtools.com/",
+      "score": 58,
+      "source": "hackernews",
+      "time": "2026-02-08T13:19:30"
+    },
+    {
+      "title": "GitHub Agentic Workflows",
+      "url": "https://github.github.io/gh-aw/",
+      "score": 177,
+      "source": "hackernews",
+      "time": "2026-02-08T05:40:56"
+    },
+    {
+      "title": "Running Your Own As: BGP on FreeBSD with FRR, GRE Tunnels, and Policy Routing",
+      "url": "https://blog.hofstede.it/running-your-own-as-bgp-on-freebsd-with-frr-gre-tunnels-and-policy-routing/",
+      "score": 116,
+      "source": "hackernews",
+      "time": "2026-02-08T06:02:58"
+    },
+    {
+      "title": "Formally Verifying PBS Kids with Lean4",
+      "url": "https://www.shadaj.me/writing/cyberchase-lean",
+      "score": 60,
+      "source": "hackernews",
+      "time": "2026-02-02T07:30:56"
+    },
+    {
+      "title": "I put a real-time 3D shader on the Game Boy Color",
+      "url": "https://blog.otterstack.com/posts/202512-gbshader/",
+      "score": 213,
+      "source": "hackernews",
+      "time": "2026-02-08T08:28:51"
+    },
+    {
+      "title": "Exploiting signed bootloaders to circumvent UEFI Secure Boot",
+      "url": "https://habr.com/en/articles/446238/",
+      "score": 78,
+      "source": "hackernews",
+      "time": "2026-02-08T06:40:52"
+    }
+  ]
+}

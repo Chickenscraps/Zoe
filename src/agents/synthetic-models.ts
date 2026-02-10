@@ -75,22 +75,7 @@ export const SYNTHETIC_MODEL_CATALOG = [
     contextWindow: 159000,
     maxTokens: 8192,
   },
-  {
-    id: "hf:meta-llama/Llama-3.3-70B-Instruct",
-    name: "Llama 3.3 70B Instruct",
-    reasoning: false,
-    input: ["text"],
-    contextWindow: 128000,
-    maxTokens: 8192,
-  },
-  {
-    id: "hf:meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
-    name: "Llama 4 Maverick 17B 128E Instruct FP8",
-    reasoning: false,
-    input: ["text"],
-    contextWindow: 524000,
-    maxTokens: 8192,
-  },
+
   {
     id: "hf:moonshotai/Kimi-K2-Instruct-0905",
     name: "Kimi K2 Instruct 0905",

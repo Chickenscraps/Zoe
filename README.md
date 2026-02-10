@@ -1,4 +1,4 @@
-# 🦞 OpenClaw — Personal AI Assistant
+# 🦞 Mr Gagger — Personal AI Assistant
 
 <p align="center">
     <picture>

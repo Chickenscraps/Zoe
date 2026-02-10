@@ -1,0 +1,48 @@
+﻿
+> openclaw@2026.2.4 openclaw C:\Users\josha\OneDrive\Desktop\Clawd
+> node scripts/run-node.mjs "chat" "Why is the sky blue?"
+
+node.exe : [debug] 
+Connecting to 
+gateway...
+At C:\Users\josha\AppD
+ata\Roaming\npm\pnpm.p
+s1:24 char:5
++     & "node$exe"  "$
+basedir/node_modules/p
+npm/bin/pnpm.cjs" 
+$args
++     ~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: ([debug] Co   
+ nnecting to gatew    
+ay...:String) [],     
+RemoteException
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+[debug] Connected, 
+session: quick-chat
+[debug] Sending 
+message: Why is the 
+sky blue?...
+[debug] Message sent, 
+runId: aa81d260-e086-4
+637-9d51-1c5391831a11
+[debug] Event: agent, 
+seq: 436
+[debug] Event: agent, 
+seq: 437
+[debug] Event: chat, 
+seq: 438
+[debug] Chat payload 
+state: final, text 
+length: 0
+[debug] Done, 
+responseText length: 0
+

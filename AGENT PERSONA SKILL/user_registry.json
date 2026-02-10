@@ -1,0 +1,29 @@
+{
+  "users": {
+    "292890243852664855": {
+      "name": "Josh",
+      "aliases": ["josh", "admin", "creator"],
+      "role": "admin",
+      "patience": "high",
+      "interaction_style": "direct",
+      "relationship_tier": "cofounder"
+    },
+    "490911982984101901": {
+      "name": "Ben",
+      "aliases": ["ben"],
+      "role": "user",
+      "patience": "medium",
+      "interaction_style": "casual",
+      "relationship_tier": "friend"
+    },
+    "211541044003733504": {
+      "name": "Zac",
+      "aliases": ["zac"],
+      "role": "user",
+      "patience": "medium",
+      "interaction_style": "chaotic",
+      "relationship_tier": "friend"
+    }
+  },
+  "default_role": "guest"
+}

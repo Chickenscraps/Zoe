@@ -1,0 +1,277 @@
+﻿
+> openclaw@2026.2.4 openclaw C:\Users\josha\OneDrive\Desktop\Clawd
+> node scripts/run-node.mjs "chat" "Why is the sky blue?"
+
+node.exe : [debug] 
+Connecting to gateway...
+At C:\Users\josha\AppData\R
+oaming\npm\pnpm.ps1:24 
+char:5
++     & "node$exe"  "$based
+ir/node_modules/pnpm/bin/pn
+pm.cjs" $args
++     ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
+    + CategoryInfo         
+     : NotSpecified: ([de  
+  bug] Connecting to gat   
+ eway...:String) [], Re    
+moteException
+    + FullyQualifiedErrorI 
+   d : NativeCommandError
+ 
+[debug] Connected, 
+session: quick-chat
+[debug] Sending message: 
+Why is the sky blue?...
+[debug] Message sent, 
+runId: 7791f305-fe3a-4e72-9
+1bc-cc19454d71ea
+[debug] Event: health, 
+seq: 23, payload: {"ok":tru
+e,"ts":1770407621472,"durat
+ionMs":415,"channels":{"dis
+cord":{"configured":true,"t
+okenSource":"none","running
+":false,"lastStartAt":null,
+"lastStopAt":null,"lastErro
+r":null,"probe":{"ok":true,
+"status":null,"error":null,
+"elapsedMs":415,"bot":{"id"
+:"1467295288103407648","use
+rname":"Molkbook"},"applica
+tion":{"id":"14672952881034
+07648","flags":8954112,"int
+ents":{"presence":"limited"
+,"guildMembers":"limited","
+messageContent":"limited"}}
+},"lastProbeAt":17704076214
+72,"accountId":"default","a
+ccounts":{"default":{"confi
+gured":true,"tokenSource":"
+none","running":false,"last
+StartAt":null,"lastStopAt":
+null,"lastError":null,"prob
+e":{"ok":true,"status":null
+,"error":null,"elapsedMs":4
+15,"bot":{"id":"14672952881
+03407648","username":"Molkb
+ook"},"application":{"id":"
+1467295288103407648","flags
+":8954112,"intents":{"prese
+nce":"limited","guildMember
+s":"limited","messageConten
+t":"limited"}}},"lastProbeA
+t":1770407621472,"accountId
+":"default"}}}},"channelOrd
+er":["discord"],"channelLab
+els":{"discord":"Discord"},
+"heartbeatSeconds":1800,"de
+faultAgentId":"main","agent
+s":[{"agentId":"main","isDe
+fault":true,"heartbeat":{"e
+nabled":true,"every":"30m",
+"everyMs":1800000,"prompt":
+"Read HEARTBEAT.md if it 
+exists (workspace 
+context). Follow it 
+strictly. Do not infer or 
+repeat old tasks from 
+prior chats. If nothing 
+needs attention, reply HEAR
+TBEAT_OK.","target":"last",
+"ackMaxChars":300},"session
+s":{"path":"C:\\Users\\josh
+a\\.openclaw\\agents\\main\
+\sessions\\sessions.json","
+count":3,"recent":[{"key":"
+quick-chat","updatedAt":177
+0407290179,"age":330878},{"
+key":"agent:main:main","upd
+atedAt":1770404616435,"age"
+:3004622},{"key":"agent:mai
+n:quick-chat","updatedAt":1
+770404593632,"age":3027425}
+]}}],"sessions":{"path":"C:
+\\Users\\josha\\.openclaw\\
+agents\\main\\sessions\\ses
+sions.json","count":3,"rece
+nt":[{"key":"quick-chat","u
+pdatedAt":1770407290179,"ag
+e":330878},{"key":"agent:ma
+in:main","updatedAt":177040
+4616435,"age":3004622},{"ke
+y":"agent:main:quick-chat",
+"updatedAt":1770404593632,"
+age":3027425}]}}
+[debug] Event: tick, seq: 
+24, payload: 
+{"ts":1770407647594}
+[debug] Event: tick, seq: 
+25, payload: 
+{"ts":1770407677606}
+[debug] Event: health, 
+seq: 26, payload: {"ok":tru
+e,"ts":1770407678042,"durat
+ionMs":472,"channels":{"dis
+cord":{"configured":true,"t
+okenSource":"none","running
+":false,"lastStartAt":null,
+"lastStopAt":null,"lastErro
+r":null,"probe":{"ok":true,
+"status":null,"error":null,
+"elapsedMs":472,"bot":{"id"
+:"1467295288103407648","use
+rname":"Molkbook"},"applica
+tion":{"id":"14672952881034
+07648","flags":8954112,"int
+ents":{"presence":"limited"
+,"guildMembers":"limited","
+messageContent":"limited"}}
+},"lastProbeAt":17704076780
+42,"accountId":"default","a
+ccounts":{"default":{"confi
+gured":true,"tokenSource":"
+none","running":false,"last
+StartAt":null,"lastStopAt":
+null,"lastError":null,"prob
+e":{"ok":true,"status":null
+,"error":null,"elapsedMs":4
+72,"bot":{"id":"14672952881
+03407648","username":"Molkb
+ook"},"application":{"id":"
+1467295288103407648","flags
+":8954112,"intents":{"prese
+nce":"limited","guildMember
+s":"limited","messageConten
+t":"limited"}}},"lastProbeA
+t":1770407678042,"accountId
+":"default"}}}},"channelOrd
+er":["discord"],"channelLab
+els":{"discord":"Discord"},
+"heartbeatSeconds":1800,"de
+faultAgentId":"main","agent
+s":[{"agentId":"main","isDe
+fault":true,"heartbeat":{"e
+nabled":true,"every":"30m",
+"everyMs":1800000,"prompt":
+"Read HEARTBEAT.md if it 
+exists (workspace 
+context). Follow it 
+strictly. Do not infer or 
+repeat old tasks from 
+prior chats. If nothing 
+needs attention, reply HEAR
+TBEAT_OK.","target":"last",
+"ackMaxChars":300},"session
+s":{"path":"C:\\Users\\josh
+a\\.openclaw\\agents\\main\
+\sessions\\sessions.json","
+count":3,"recent":[{"key":"
+quick-chat","updatedAt":177
+0407621072,"age":56498},{"k
+ey":"agent:main:main","upda
+tedAt":1770404616435,"age":
+3061135},{"key":"agent:main
+:quick-chat","updatedAt":17
+70404593632,"age":3083938}]
+}}],"sessions":{"path":"C:\
+\Users\\josha\\.openclaw\\a
+gents\\main\\sessions\\sess
+ions.json","count":3,"recen
+t":[{"key":"quick-chat","up
+datedAt":1770407621072,"age
+":56498},{"key":"agent:main
+:main","updatedAt":17704046
+16435,"age":3061135},{"key"
+:"agent:main:quick-chat","u
+pdatedAt":1770404593632,"ag
+e":3083938}]}}
+[debug] Event: tick, seq: 
+27, payload: 
+{"ts":1770407707619}
+[debug] Event: tick, seq: 
+28, payload: 
+{"ts":1770407737619}
+[debug] Event: health, 
+seq: 29, payload: {"ok":tru
+e,"ts":1770407737990,"durat
+ionMs":402,"channels":{"dis
+cord":{"configured":true,"t
+okenSource":"none","running
+":false,"lastStartAt":null,
+"lastStopAt":null,"lastErro
+r":null,"probe":{"ok":true,
+"status":null,"error":null,
+"elapsedMs":402,"bot":{"id"
+:"1467295288103407648","use
+rname":"Molkbook"},"applica
+tion":{"id":"14672952881034
+07648","flags":8954112,"int
+ents":{"presence":"limited"
+,"guildMembers":"limited","
+messageContent":"limited"}}
+},"lastProbeAt":17704077379
+90,"accountId":"default","a
+ccounts":{"default":{"confi
+gured":true,"tokenSource":"
+none","running":false,"last
+StartAt":null,"lastStopAt":
+null,"lastError":null,"prob
+e":{"ok":true,"status":null
+,"error":null,"elapsedMs":4
+02,"bot":{"id":"14672952881
+03407648","username":"Molkb
+ook"},"application":{"id":"
+1467295288103407648","flags
+":8954112,"intents":{"prese
+nce":"limited","guildMember
+s":"limited","messageConten
+t":"limited"}}},"lastProbeA
+t":1770407737990,"accountId
+":"default"}}}},"channelOrd
+er":["discord"],"channelLab
+els":{"discord":"Discord"},
+"heartbeatSeconds":1800,"de
+faultAgentId":"main","agent
+s":[{"agentId":"main","isDe
+fault":true,"heartbeat":{"e
+nabled":true,"every":"30m",
+"everyMs":1800000,"prompt":
+"Read HEARTBEAT.md if it 
+exists (workspace 
+context). Follow it 
+strictly. Do not infer or 
+repeat old tasks from 
+prior chats. If nothing 
+needs attention, reply HEAR
+TBEAT_OK.","target":"last",
+"ackMaxChars":300},"session
+s":{"path":"C:\\Users\\josh
+a\\.openclaw\\agents\\main\
+\sessions\\sessions.json","
+count":3,"recent":[{"key":"
+quick-chat","updatedAt":177
+0407621072,"age":116516},{"
+key":"agent:main:main","upd
+atedAt":1770404616435,"age"
+:3121153},{"key":"agent:mai
+n:quick-chat","updatedAt":1
+770404593632,"age":3143956}
+]}}],"sessions":{"path":"C:
+\\Users\\josha\\.openclaw\\
+agents\\main\\sessions\\ses
+sions.json","count":3,"rece
+nt":[{"key":"quick-chat","u
+pdatedAt":1770407621072,"ag
+e":116516},{"key":"agent:ma
+in:main","updatedAt":177040
+4616435,"age":3121153},{"ke
+y":"agent:main:quick-chat",
+"updatedAt":1770404593632,"
+age":3143956}]}}
+
+Timeout waiting for 
+response
+ΓÇëELIFECYCLEΓÇë Command failed with exit code 1.

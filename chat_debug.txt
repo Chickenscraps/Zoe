@@ -1,0 +1,8 @@
+﻿
+> openclaw@2026.2.4 openclaw C:\Users\josha\OneDrive\Desktop\Clawd
+> node scripts/run-node.mjs "chat" "Hello Llama" "--session" "agent:main:test" "--timeout" "60" "--verbose" "full"
+
+[ollama] Discovered 2 models from http://127.0.0.1:11434
+[ollama] Adding model: kimi-k2.5:cloud
+[ollama] Adding model: llama3:latest
+ΓÇëELIFECYCLEΓÇë Command failed with exit code 1.
