@@ -8,7 +8,7 @@ import json
 import asyncio
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List, Dict, Any, Dict, Any, List, Set, Union
 
 import discord
 from discord import app_commands
@@ -45,9 +45,69 @@ poly_trader = None # Polymarket Trader
 # Creative Pipeline Removed
 creative_pipeline_started = False
 
+import time
+from database import ProfileRepository
+
+# --- RECONSTRUCTED CONFIG ---
+try:
+    with open("config.yaml", "r") as f:
+        ZOECONFIG = yaml.safe_load(f)
+except FileNotFoundError:
+    print("⚠️ config.yaml NOT found. Using defaults.")
+    ZOECONFIG = {
+        "discord": {"allowed_chat_channel_ids": [], "thoughts_channel_id": None, "admin_channel_ids": []},
+        "admin": {"admin_user_ids": ["292890243852664855"]},
+        "persona": {"mention_allowlist": []},
+        "model": {"runtime_default": "gemini-2.5-flash-lite"}
+    }
+
+class BotConfig:
+    def __init__(self, cfg):
+        model_cfg = cfg.get("model", {})
+        self.model = model_cfg.get("runtime_default", "gemini-2.5-flash-lite")
+
+bot_config = BotConfig(ZOECONFIG)
+
+# --- BOT INITIALIZATION ---
+def get_token():
+    config_path = os.path.expanduser("~/.openclaw/openclaw.json")
+    try:
+        with open(config_path, "r") as f:
+            config = json.load(f)
+            return config.get("channels", {}).get("discord", {}).get("token")
+    except:
+        return os.environ.get("DISCORD_BOT_TOKEN")
+
+TOKEN = get_token()
+OWNER_DISCORD_USER_ID = int(os.getenv("OWNER_DISCORD_USER_ID", "292890243852664855"))
+
+intents = discord.Intents.all()
+bot = commands.Bot(command_prefix="!", intents=intents)
+client = bot  # Alias
+tree = bot.tree
+
+# Global States
+SESSION_ENGAGED_CHANNELS = set()
+USER_MAP = {}
+
+# Import singleton instances
+from thought_logger import thought_logger
+from market_data import market_data
+from paper_broker import paper_broker
+from trading_engine_v4 import engine as TRADING_ENGINE
+from model_router import model_router
+from approval_gate import ApprovalGate
+from game_server_manager import GameServerManager
 
 
-# ... (Previous code) ...
+# Load User Map
+try:
+    profiles = ProfileRepository.get_all()
+    for p in profiles:
+        for d_id in p.discord_ids:
+            USER_MAP[str(d_id)] = p.profile_id
+except Exception as e:
+    print(f"⚠️ Failed to load USER_MAP: {e}")
 
 # Update System Prompt to match Zoe V4 (Autonomous Intelligence Persona)
 def build_system_prompt(profile: Optional[UserProfile], mood_trend: dict, memories: list, user_id: str = None) -> str:
@@ -124,6 +184,12 @@ async def on_ready():
     print("   🛡️ Approval Gate active (Rule: CHICKENSCRAPS)")
     
     # Initialize Game Manager
+    print("   🎮 Game Manager ready")
+    
+    # Initialize Engagement Engine
+    global engagement_engine
+    engagement_engine = EngagementEngine(bot)
+    print("   🎨 Engagement Engine ready")
     global game_manager
     game_manager = GameServerManager(approval_gate)
     print("   🎮 Game Manager active")
@@ -337,6 +403,77 @@ async def on_message(message: discord.Message):
     )
     MessageRepository.insert(msg_event)
 
+# ============================================================================
+# Engagement Engine (Gifs & Screenshots)
+# ============================================================================
+
+class EngagementEngine:
+    """Orchestrates beauty-posts: screenshots, GIFs, and captions."""
+    def __init__(self, bot):
+        self.bot = bot
+        self.channel_id = int(os.getenv("DISCORD_TRADES_CHANNEL_ID", "1462568915195527273"))
+        
+    async def post_trade_event(self, event_type: str, trade_id: str, symbol: str, details: Dict[str, Any]):
+        """Post a high-end trade announcement."""
+        channel = self.bot.get_channel(self.channel_id)
+        if not channel: return
+
+        # 1. Generate Caption & GIF
+        from media_utils import CaptionGenerator, gif_picker
+        caption = CaptionGenerator.get_caption(event_type)
+        gif_url = await gif_picker.get_gif(event_type)
+
+        # 2. Render Screenshot
+        from renderer import renderer
+        png_bytes = await renderer.render(kind="trade", target_id=trade_id)
+        
+        # 3. Upload Artifact & Get URL
+        public_url = None
+        if png_bytes:
+            filename = f"trade_{trade_id}_{int(time.time())}.png"
+            public_url = await renderer.upload_to_supabase(png_bytes, filename)
+            
+            # Record in artifacts table
+            from supabase_memory import supabase_memory
+            supabase_memory.add_artifact(
+                artifact_id=str(uuid.uuid4()),
+                instance_id="primary-v4-live",
+                kind="trade_ticket",
+                related_id=trade_id,
+                url=public_url,
+                metadata={"symbol": symbol, "event": event_type, **details}
+            )
+
+        # 4. Create Embed
+        embed = discord.Embed(
+            title=f"PAPER TRADE {event_type.split('_')[1]}ED: {symbol}",
+            description=caption,
+            color=0x00ff00 if "GREEN" in event_type or "OPEN" in event_type else 0xff0000,
+            timestamp=datetime.now()
+        )
+        
+        # Add Fields
+        for k, v in details.items():
+            embed.add_field(name=k.upper(), value=str(v), inline=True)
+            
+        embed.set_footer(text=f"Instance: primary-v4-live | Trade ID: {trade_id}")
+        
+        files = []
+        if png_bytes:
+            from io import BytesIO
+            img_file = discord.File(BytesIO(png_bytes), filename="trade_ticket.png")
+            embed.set_image(url="attachment://trade_ticket.png")
+            files.append(img_file)
+            
+        # 5. Post
+        await channel.send(embed=embed, files=files)
+        
+        # Optional: Post GIF separately if enabled
+        if gif_url and os.getenv("GIFS_ENABLED", "true").lower() == "true":
+             await channel.send(gif_url)
+
+engagement_engine: Optional[EngagementEngine] = None
+
 
 # ============================================================================
 # Core Logic
@@ -450,7 +587,7 @@ async def generate_and_respond(message: discord.Message, visual_context: str = "
 - NEVER guess or hallucinate file contents. If you didn't run `list_dir`, you DON'T know what's there.
 - If asked "can you see my desktop?", runs `list_dir(path='desktop')` IMMEDIATELY.
 - DO NOT OUTPUT RAW JSON FOR TOOLS. Use the proper function call interface.
-- You are on WINDOWS. Do not use Linux paths like `/var/log` or `/etc`. use `C:\` paths.
+- You are on WINDOWS. Do not use Linux paths like `/var/log` or `/etc`. use `C:\\` paths.
 
  desktop_mode = \"Layer B\":
 - LAUNCHING APPS: Use `manage_process(action='start', app_name='Spotify')`. No vision needed.

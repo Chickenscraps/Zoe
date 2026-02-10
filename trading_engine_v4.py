@@ -189,6 +189,27 @@ class TradingEngine:
             
         # Execute
         fill = self.broker.submit_order(symbol, quantity, side, price)
+        
+        # Trigger Engagement (Async Fire & Forget or integration)
+        try:
+            from clawdbot import engagement_engine
+            if engagement_engine:
+                import asyncio
+                event_type = "TRADE_OPEN" if side == 'buy' else "TRADE_CLOSE_GREEN" # simplistic mapping
+                asyncio.create_task(engagement_engine.post_trade_event(
+                    event_type=event_type,
+                    trade_id=fill['id'],
+                    symbol=symbol,
+                    details={
+                        "side": side,
+                        "qty": quantity,
+                        "price": price,
+                        "strategy": "V4_AUTOMATED"
+                    }
+                ))
+        except Exception as e:
+            logger.warning(f"⚠️ Engagement trigger failed: {e}")
+
         return f"✅ Order Filled: {side} {quantity} {symbol} @ {price}"
 
     def get_status(self) -> str:

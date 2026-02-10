@@ -141,6 +141,28 @@ class SupabaseMemoryStore:
             print(f"❌ Memory Search Failed: {e}")
             return []
 
+    def add_artifact(self, artifact_id: str, instance_id: str, kind: str, related_id: str, url: str, metadata: Dict[str, Any] = None) -> bool:
+        """Add artifact metadata record."""
+        if not self.initialized:
+            return False
+        
+        payload = {
+            "id": artifact_id or str(uuid.uuid4()),
+            "instance_id": instance_id,
+            "kind": kind,
+            "related_id": related_id,
+            "url": url,
+            "captured_at": datetime.now().isoformat(),
+            "metadata": metadata or {}
+        }
+        
+        try:
+            self.client.table("artifacts").insert(payload).execute()
+            return True
+        except Exception as e:
+            print(f"❌ Add Artifact Failed: {e}")
+            return False
+
     def delete_memory(self, memory_id: str) -> bool:
         if not self.initialized:
             return False
