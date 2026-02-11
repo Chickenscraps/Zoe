@@ -1,8 +1,29 @@
 import os
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from polygon import RESTClient
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
+
+# ── Symbol mapping: Zoe universe name → Polygon crypto ticker ────────
+_CRYPTO_SYMBOL_MAP = {
+    "BTC-USD": "X:BTCUSD",
+    "ETH-USD": "X:ETHUSD",
+    "SOL-USD": "X:SOLUSD",
+    "DOGE-USD": "X:DOGEUSD",
+    "AVAX-USD": "X:AVAXUSD",
+}
+
+# ── Timeframe parsing: human-readable → (multiplier, timespan) ───────
+_TIMEFRAME_MAP = {
+    "1m":  (1,  "minute"),
+    "5m":  (5,  "minute"),
+    "15m": (15, "minute"),
+    "30m": (30, "minute"),
+    "1h":  (1,  "hour"),
+    "4h":  (4,  "hour"),
+    "1d":  (1,  "day"),
+}
+
 
 class MarketData:
     def __init__(self):
@@ -13,10 +34,15 @@ class MarketData:
         else:
             self.client = RESTClient(self.api_key)
             print("[OK] MarketData: Polygon client initialized.")
-        
+
+
         # Simple in-memory cache for quotes (ttl=10s)
         self.quote_cache = {}
         self.cache_ttl = 10
+
+        # Crypto bar cache: (symbol, timeframe) -> {"bars": [...], "fetched_at": float}
+        self._crypto_bar_cache: Dict[Tuple[str, str], Dict] = {}
+        self._crypto_bar_cache_ttl = 60  # seconds
 
     def get_price(self, symbol: str) -> float:
         """Get real-time price for a symbol."""
@@ -114,6 +140,128 @@ class MarketData:
         except Exception as e:
             print(f"[ERR] Option Chain Error ({symbol}): {e}")
             return []
+
+    # ── Crypto Bars (Polygon Crypto Aggregates) ────────────────────────
+
+    def _to_polygon_crypto(self, symbol: str) -> str:
+        """Map 'BTC-USD' → 'X:BTCUSD' for Polygon crypto endpoints."""
+        mapped = _CRYPTO_SYMBOL_MAP.get(symbol)
+        if mapped:
+            return mapped
+        # Fallback: try to construct it
+        if "-USD" in symbol:
+            base = symbol.replace("-USD", "")
+            return f"X:{base}USD"
+        return symbol
+
+    def _parse_timeframe(self, timeframe: str) -> Tuple[int, str]:
+        """Parse '15m' → (15, 'minute'), '1h' → (1, 'hour'), etc."""
+        result = _TIMEFRAME_MAP.get(timeframe)
+        if result:
+            return result
+        raise ValueError(f"Unknown timeframe '{timeframe}'. Supported: {list(_TIMEFRAME_MAP.keys())}")
+
+    def get_crypto_bars(self, symbol: str, timeframe: str = "15m", limit: int = 200) -> List[Dict]:
+        """
+        Fetch crypto OHLCV bars from Polygon.
+
+        Args:
+            symbol:    Zoe-format symbol e.g. "BTC-USD"
+            timeframe: One of 1m, 5m, 15m, 30m, 1h, 4h, 1d
+            limit:     Max bars to return (default 200)
+
+        Returns:
+            List of dicts with keys: timestamp, open, high, low, close, volume
+            Sorted chronologically (oldest first).
+        """
+        if not self.client:
+            return []
+
+        # Check cache
+        cache_key = (symbol, timeframe)
+        cached = self._crypto_bar_cache.get(cache_key)
+        if cached and (time.time() - cached["fetched_at"] < self._crypto_bar_cache_ttl):
+            return cached["bars"]
+
+        try:
+            poly_symbol = self._to_polygon_crypto(symbol)
+            multiplier, timespan = self._parse_timeframe(timeframe)
+
+            # Date range: go back far enough to get `limit` bars
+            # For minute bars, 200 × 15m = 3000 min ≈ 2.1 days; use 7 days for safety
+            # For hour bars, 200 × 1h = 200h ≈ 8.3 days; use 14 days
+            # For day bars, 200 × 1d = 200 days; use 250 days
+            if timespan == "minute":
+                lookback_days = max(7, (limit * multiplier) // 1440 + 3)
+            elif timespan == "hour":
+                lookback_days = max(14, (limit * multiplier) // 24 + 3)
+            else:
+                lookback_days = limit + 50
+
+            to_date = datetime.utcnow().strftime("%Y-%m-%d")
+            from_date = (datetime.utcnow() - timedelta(days=lookback_days)).strftime("%Y-%m-%d")
+
+            aggs = []
+            for a in self.client.list_aggs(
+                poly_symbol,
+                multiplier,
+                timespan,
+                from_date,
+                to_date,
+                limit=limit,
+                sort="desc",
+            ):
+                aggs.append({
+                    "timestamp": a.timestamp,
+                    "open": float(a.open),
+                    "high": float(a.high),
+                    "low": float(a.low),
+                    "close": float(a.close),
+                    "volume": float(a.volume) if a.volume else 0.0,
+                })
+                if len(aggs) >= limit:
+                    break
+
+            # Reverse to chronological (oldest first)
+            bars = aggs[::-1]
+
+            # Update cache
+            self._crypto_bar_cache[cache_key] = {
+                "bars": bars,
+                "fetched_at": time.time(),
+            }
+
+            return bars
+
+        except Exception as e:
+            print(f"[ERR] Crypto Bars Error ({symbol} {timeframe}): {e}")
+            return []
+
+    def get_crypto_price(self, symbol: str) -> float:
+        """Get latest crypto price from Polygon (last trade)."""
+        if not self.client:
+            return 0.0
+
+        poly_symbol = self._to_polygon_crypto(symbol)
+
+        # Check quote cache
+        cached = self.quote_cache.get(poly_symbol)
+        if cached and (time.time() - cached["timestamp"] < self.cache_ttl):
+            return cached["price"]
+
+        try:
+            trade = self.client.get_last_crypto_trade(poly_symbol)
+            price = float(trade.price)
+            self.quote_cache[poly_symbol] = {"price": price, "timestamp": time.time()}
+            return price
+        except Exception as e:
+            # Fallback: use last bar close
+            bars = self.get_crypto_bars(symbol, "1m", 1)
+            if bars:
+                return bars[-1]["close"]
+            print(f"[ERR] Crypto Price Error ({symbol}): {e}")
+            return 0.0
+
 
 try:
     market_data = MarketData()

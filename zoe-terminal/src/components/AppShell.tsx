@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -10,15 +10,17 @@ import {
   Activity,
   Settings,
   Menu,
-  X
+  X,
+  Layers,
 } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
-import { supabase } from '../lib/supabaseClient';
+import { useDashboardData } from '../hooks/useDashboardData';
 
 const NAV_ITEMS = [
   { label: 'Overview', path: '/', icon: LayoutDashboard },
   { label: 'Positions', path: '/positions', icon: Briefcase },
   { label: 'Trades', path: '/trades', icon: History },
+  { label: 'Structure', path: '/structure', icon: Layers },
   { label: 'Scanner', path: '/scanner', icon: Scan },
   { label: 'Plan', path: '/plan', icon: Map },
   { label: 'Thoughts', path: '/thoughts', icon: BrainCircuit },
@@ -28,24 +30,15 @@ const NAV_ITEMS = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [equity, setEquity] = useState<number>(0);
   const location = useLocation();
+  const { cryptoCash, accountOverview, healthSummary } = useDashboardData();
 
-  useEffect(() => {
-    async function fetchEquity() {
-      try {
-        const { data } = await supabase
-          .rpc('get_account_overview' as any, { p_discord_id: '292890243852664855' } as any);
-        const rows = data as any;
-        if (rows && Array.isArray(rows) && rows.length > 0) {
-          setEquity(rows[0].equity ?? 0);
-        }
-      } catch (err) {
-        console.error('Error fetching equity:', err);
-      }
-    }
-    fetchEquity();
-  }, []);
+  // Dynamic equity: prefer crypto cash snapshot, fall back to account overview, then default
+  const equity = cryptoCash?.cash_available ?? accountOverview?.equity ?? 0;
+
+  // Dynamic mode: if reconciliation data exists and is fresh, we're live; otherwise paper
+  const isLive = healthSummary.status === 'LIVE' && !healthSummary.stale;
+  const tradingMode = isLive ? 'live' : 'paper';
 
   const closeSidebar = () => {
     if (window.innerWidth < 1024) {
@@ -123,15 +116,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-6 ml-auto">
             <div className="flex items-center gap-6 text-sm">
                <div className="flex flex-col items-end">
-                 <span className="text-[10px] text-text-muted uppercase font-medium tracking-widest leading-tight">Net Equity</span>
-                 <span className={cn("font-mono text-lg font-semibold", equity >= 2000 ? "text-profit" : "text-loss")}>
-                   {formatCurrency(equity)}
-                 </span>
+                 <span className="text-[10px] text-text-muted uppercase font-bold tracking-widest leading-tight">Net Equity</span>
+                 <span className="font-mono text-lg font-black text-white">{formatCurrency(equity)}</span>
                </div>
                <div className="h-8 w-px bg-border hidden xs:block" />
-               <div className="hidden xs:block bg-profit/10 border border-profit/20 text-profit px-3 py-1 rounded-full text-[10px] font-semibold tracking-widest uppercase">
-                 Paper Mode
-               </div>
+               {tradingMode === 'paper' ? (
+                 <div className="hidden xs:block bg-profit/10 border border-profit/20 text-profit px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase">
+                   Paper Mode
+                 </div>
+               ) : (
+                 <div className="hidden xs:block bg-loss/10 border border-loss/20 text-loss px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase animate-pulse">
+                   LIVE
+                 </div>
+               )}
             </div>
           </div>
         </header>
