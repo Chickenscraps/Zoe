@@ -1,0 +1,22 @@
+{
+  "name": "@zoe/strategy-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@zoe/shared": "workspace:*",
+    "@zoe/market-data": "workspace:*",
+    "@zoe/paper-broker": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.0"
+  }
+}

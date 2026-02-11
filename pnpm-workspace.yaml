@@ -3,6 +3,10 @@ packages:
   - ui
   - packages/*
   - extensions/*
+  - services/*
+  - apps/discord-bot
+  - infra/jobs
+  - dashboard
 
 onlyBuiltDependencies:
   - "@whiskeysockets/baileys"
