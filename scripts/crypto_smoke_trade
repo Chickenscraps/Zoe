@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+import os
+
+from integrations.robinhood_crypto_client import RobinhoodCryptoClient, RobinhoodCryptoConfig
+from services.crypto_trader import CryptoTraderConfig, CryptoTraderService, InMemoryCryptoRepository
+
+
+def main() -> int:
+    run_mode = "live" if os.getenv("RH_LIVE_TRADING", "false").lower() == "true" else "paper"
+    print(f"RUN_MODE={run_mode}")
+
+    cfg = RobinhoodCryptoConfig.from_env()
+    trader_cfg = CryptoTraderConfig()
+
+    if run_mode == "paper" or not trader_cfg.live_ready():
+        print("Paper mode smoke test only (live gate not satisfied).")
+        print("PASS paper smoke")
+        return 0
+
+    service = CryptoTraderService(RobinhoodCryptoClient(cfg), InMemoryCryptoRepository(), trader_cfg)
+    try:
+        service.reconcile()
+        result = service.place_order(
+            initiator_id=trader_cfg.admin_user_id,
+            symbol="BTC-USD",
+            side="buy",
+            notional=1.0,
+        )
+        service.poll_open_orders()
+        service.reconcile()
+        print("PASS live smoke")
+        print(f"order_id={result.get('id', 'unknown')}")
+        return 0
+    except Exception as err:
+        print(f"FAIL live smoke: {err}")
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
