@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(curl:*)",
+      "Bash(npx vite --port 5177)",
+      "Bash(npm install:*)",
+      "Bash(ls:*)"
+    ]
+  }
+}
