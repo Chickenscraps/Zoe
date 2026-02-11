@@ -1,14 +1,49 @@
-import { Activity, Server, Database as DbIcon, Shield, Wifi } from 'lucide-react';
+import { Activity, Server, Database as DbIcon, Shield, Wifi, Bitcoin } from 'lucide-react';
 import { StatusChip } from '../components/StatusChip';
 import { formatDate } from '../lib/utils';
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
 
 export default function Health() {
+  const [rhStatus, setRhStatus] = useState<{ status: string; latency: string; message?: string }>({
+    status: 'neutral',
+    latency: '-',
+    message: 'Checking...',
+  });
+
+  useEffect(() => {
+    supabase
+      .from('health_heartbeat')
+      .select('*')
+      .eq('component', 'robinhood_crypto')
+      .order('last_heartbeat', { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        if (!data || data.length === 0) {
+          setRhStatus({ status: 'neutral', latency: '-', message: 'Not configured' });
+          return;
+        }
+        const row = data[0];
+        const details = (row.details ?? {}) as Record<string, unknown>;
+        const latencyMs = typeof details.latency_ms === 'number' ? `${details.latency_ms}ms` : '-';
+        setRhStatus({
+          status: row.status === 'ok' ? 'ok' : row.status === 'warning' ? 'warning' : 'error',
+          latency: latencyMs,
+          message: typeof details.error === 'string' ? details.error : undefined,
+        });
+      })
+      .catch(() => {
+        setRhStatus({ status: 'neutral', latency: '-', message: 'Unable to fetch status' });
+      });
+  }, []);
+
   const services = [
       { name: 'Data Provider (Polygon)', status: 'ok', latency: '45ms', uptime: '99.9%', icon: Wifi },
       { name: 'Trading Engine', status: 'ok', latency: '12ms', uptime: '100%', icon: Server },
       { name: 'Supabase Database', status: 'ok', latency: '85ms', uptime: '99.99%', icon: DbIcon },
       { name: 'Risk Manager', status: 'warning', latency: '-', uptime: '98%', message: 'High load detected', icon: Shield },
       { name: 'Discord Gateway', status: 'ok', latency: '120ms', uptime: '99.5%', icon: Activity },
+      { name: 'Robinhood Crypto Connector', status: rhStatus.status, latency: rhStatus.latency, uptime: '-', icon: Bitcoin, message: rhStatus.message },
   ];
 
   return (
