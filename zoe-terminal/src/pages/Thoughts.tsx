@@ -40,7 +40,7 @@ export default function Thoughts() {
   if (loading) {
     return (
         <div className="space-y-6">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
                 <BrainCircuit className="w-6 h-6 text-brand" /> System Thoughts
             </h2>
             <div className="text-text-secondary animate-pulse py-12">Consulting system memory...</div>
@@ -51,7 +51,7 @@ export default function Thoughts() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+        <h2 className="text-xl font-semibold text-white flex items-center gap-2">
             <BrainCircuit className="w-6 h-6 text-brand" /> System Thoughts
         </h2>
         <div className="flex items-center gap-2">
@@ -76,7 +76,7 @@ export default function Thoughts() {
           {filteredThoughts.length > 0 ? filteredThoughts.map(thought => (
               <div key={thought.id} className="bg-surface border border-border rounded-lg p-4 flex gap-4">
                   <div className="flex-shrink-0 pt-1">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold uppercase
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold uppercase
                         ${thought.type === 'entry' ? 'bg-blue-500/20 text-blue-400' :
                           thought.type === 'exit' ? 'bg-purple-500/20 text-purple-400' :
                           thought.type === 'scan' ? 'bg-yellow-500/20 text-yellow-400' :
@@ -86,10 +86,10 @@ export default function Thoughts() {
                           {thought.type[0]}
                       </div>
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start mb-1">
                           <div className="flex items-center gap-2">
-                              {thought.symbol && <span className="font-bold text-white text-sm">{thought.symbol}</span>}
+                              {thought.symbol && <span className="font-semibold text-white text-sm">{thought.symbol}</span>}
                               <span className="text-xs text-text-muted uppercase px-1.5 py-0.5 rounded bg-surface-highlight border border-border">{thought.type}</span>
                           </div>
                           <span className="text-xs text-text-secondary">{formatDate(thought.created_at)}</span>

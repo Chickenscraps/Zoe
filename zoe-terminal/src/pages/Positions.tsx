@@ -1,20 +1,37 @@
-import { usePositions } from '../hooks/usePositions';
 import { DataTable } from '../components/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useMemo } from 'react';
-import type { Database } from '../lib/types';
 import { formatCurrency, formatPercentage } from '../lib/utils';
 
-type PositionReportItem = Database['public']['Functions']['get_positions_report']['Returns'][0];
+interface PositionRow {
+  symbol: string;
+  quantity: number;
+  avg_price: number;
+  current_price: number;
+  market_value: number;
+  pnl_percent: number;
+  unrealized_pnl: number;
+}
+
+// Blank placeholder row
+const EMPTY_POSITIONS: PositionRow[] = [
+  {
+    symbol: '--',
+    quantity: 0,
+    avg_price: 0,
+    current_price: 0,
+    market_value: 0,
+    pnl_percent: 0,
+    unrealized_pnl: 0,
+  },
+];
 
 export default function Positions() {
-  const { positions, loading } = usePositions();
-
-  const columns = useMemo<ColumnDef<PositionReportItem>[]>(() => [
+  const columns = useMemo<ColumnDef<PositionRow>[]>(() => [
     {
       header: 'Symbol',
       accessorKey: 'symbol',
-      cell: info => <span className="font-bold text-white">{info.getValue() as string}</span>
+      cell: info => <span className="font-semibold text-white">{info.getValue() as string}</span>
     },
     {
       header: 'Qty',
@@ -62,20 +79,18 @@ export default function Positions() {
     }
   ], []);
 
-  if (loading) return <div className="text-text-secondary animate-pulse p-8">Loading positions...</div>;
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-         <h2 className="text-xl font-bold text-white">Open Positions</h2>
+         <h2 className="text-xl font-semibold text-white">Open Positions</h2>
          <div className="text-sm text-text-secondary">
-            {positions.length} active trades
+            0 active trades
          </div>
       </div>
-      
-      <DataTable 
-        columns={columns} 
-        data={positions} 
+
+      <DataTable
+        columns={columns}
+        data={EMPTY_POSITIONS}
       />
     </div>
   );

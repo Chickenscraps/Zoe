@@ -2,10 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(npx tsc:*)",
-      "Bash(curl:*)",
-      "Bash(npx vite --port 5177)",
-      "Bash(npm install:*)",
-      "Bash(ls:*)"
+      "Bash(npx vite build)",
+      "Bash(npx netlify:*)",
+      "Bash(npx netlify-cli:*)",
+      "WebFetch(domain:clawdbot-zoe-dash.netlify.app)"
     ]
   }
 }

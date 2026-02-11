@@ -53,6 +53,12 @@
     background: radial-gradient(circle at 50% 50%, transparent 20%, #0b0c0f 100%);
     opacity: 0.6;
   }
+
+  /* Focus ring (accessible, neutral grey) */
+  *:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.2);
+    outline-offset: 2px;
+  }
 }
 
 /* Noise overlay */
@@ -86,9 +92,150 @@
 
 @layer components {
   .card-premium {
-    @apply bg-surface-base border border-border rounded-cards shadow-soft transition-all duration-300 hover:border-border-strong;
+    @apply bg-surface-base border border-border rounded-cards shadow-soft transition-all duration-150 hover:border-border-strong hover:-translate-y-px;
   }
   .btn-premium {
-    @apply bg-text-primary text-background px-6 py-2.5 rounded-btns font-bold shadow-crisp hover:opacity-90 active:scale-[0.98] transition-all;
+    @apply bg-text-primary text-background px-6 py-2.5 rounded-btns font-bold shadow-crisp hover:opacity-[0.92] hover:scale-[0.99] active:scale-[0.98] transition-all duration-100;
+  }
+}
+
+/* ============================================
+   MICRO-ANIMATIONS
+   ============================================ */
+
+/* Page entrance */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: fadeInUp 200ms ease-out both;
+}
+
+/* PnL pulse — green (profit tick) */
+@keyframes pnlPulseGreen {
+  0% {
+    box-shadow: 0 0 0 0 rgba(46, 229, 157, 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 12px 4px rgba(46, 229, 157, 0.2);
+    transform: scale(1.02);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(46, 229, 157, 0);
+    transform: scale(1);
+  }
+}
+
+.pnl-pulse-green {
+  animation: pnlPulseGreen 400ms ease-out;
+}
+
+/* PnL pulse — red (loss tick) */
+@keyframes pnlPulseRed {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 91, 110, 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 12px 4px rgba(255, 91, 110, 0.2);
+    transform: scale(1.02);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 91, 110, 0);
+    transform: scale(1);
+  }
+}
+
+.pnl-pulse-red {
+  animation: pnlPulseRed 400ms ease-out;
+}
+
+/* Warning attention grab */
+@keyframes warningAttention {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  25% {
+    transform: scale(1.05);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(0.97);
+    opacity: 1;
+  }
+  75% {
+    transform: scale(1.02);
+    opacity: 0.9;
+  }
+}
+
+.warning-attention {
+  animation: warningAttention 600ms ease-in-out;
+}
+
+/* Skeleton shimmer */
+@keyframes skeletonShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-highlight) 25%,
+    rgba(255, 255, 255, 0.06) 50%,
+    var(--color-surface-highlight) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.5s infinite;
+}
+
+/* Screenshot mode — disables noise/hover for share page captures */
+.screenshot-mode .noise-overlay,
+.screenshot-mode ::-webkit-scrollbar {
+  display: none !important;
+}
+
+.screenshot-mode {
+  cursor: default !important;
+}
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  .page-enter,
+  .pnl-pulse-green,
+  .pnl-pulse-red,
+  .warning-attention,
+  .skeleton-shimmer {
+    animation: none !important;
+  }
+
+  .card-premium,
+  .btn-premium {
+    transition: none !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

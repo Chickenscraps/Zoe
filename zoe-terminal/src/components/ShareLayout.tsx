@@ -7,7 +7,7 @@ interface ShareLayoutProps {
 
 export function ShareLayout({ children, title }: ShareLayoutProps) {
   return (
-    <div className="w-[1280px] h-[720px] bg-background text-text-primary p-16 flex flex-col items-center justify-center relative overflow-hidden font-sans">
+    <div className="screenshot-mode w-[1280px] h-[720px] bg-background text-text-primary p-16 flex flex-col items-center justify-center relative overflow-hidden font-sans">
       <div className="noise-overlay opacity-[0.03]" />
       
       {/* Signature Background Pattern */}
@@ -27,11 +27,11 @@ export function ShareLayout({ children, title }: ShareLayoutProps) {
       {/* Header Branding */}
       <div className="absolute top-12 left-16 right-16 flex justify-between items-end z-10">
         <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-black tracking-tighter text-white">
+          <h1 className="text-3xl font-bold tracking-tighter text-white">
             ZOE<span className="text-text-muted">_</span>TERMINAL
           </h1>
           <div className="flex items-center gap-3">
-            <span className="text-xs font-black text-profit tracking-[0.2em] uppercase">{title || 'ANALYTICAL_TICKET'}</span>
+            <span className="text-xs font-semibold text-profit tracking-[0.2em] uppercase">{title || 'ANALYTICAL_TICKET'}</span>
             <div className="w-1 h-1 rounded-full bg-border-strong" />
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">v4.0.0-PRO</span>
           </div>
@@ -39,13 +39,13 @@ export function ShareLayout({ children, title }: ShareLayoutProps) {
         
         <div className="flex items-center gap-8">
           <div className="flex flex-col items-end">
-            <span className="text-[10px] text-text-muted uppercase tracking-[0.2em] font-black">Node Status</span>
+            <span className="text-[10px] text-text-muted uppercase tracking-[0.2em] font-semibold">Node Status</span>
             <span className="text-xs font-mono font-bold text-white uppercase group flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-profit animate-pulse" />
               INTEGRITY_VERIFIED
             </span>
           </div>
-          <div className="bg-profit/10 border border-profit/20 text-profit px-4 py-1.5 rounded-full text-[10px] font-black tracking-[0.2em] uppercase">
+          <div className="bg-profit/10 border border-profit/20 text-profit px-4 py-1.5 rounded-full text-[10px] font-semibold tracking-[0.2em] uppercase">
             Paper Mode
           </div>
         </div>
@@ -57,7 +57,7 @@ export function ShareLayout({ children, title }: ShareLayoutProps) {
       </div>
 
       {/* Footer / Timestamp */}
-      <div className="absolute bottom-12 left-16 right-16 flex justify-between items-center text-[10px] text-text-muted font-black uppercase tracking-[0.3em]">
+      <div className="absolute bottom-12 left-16 right-16 flex justify-between items-center text-[10px] text-text-muted font-semibold uppercase tracking-[0.3em]">
         <div className="flex items-center gap-4">
           <span>SECURED_BY_SUPABASE_SYSTEMS</span>
           <div className="w-4 h-px bg-border-strong opacity-30" />

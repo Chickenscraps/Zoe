@@ -36,7 +36,7 @@ export function DataTable<TData>({ columns, data, onRowClick, className, emptyMe
     <div className={cn("card-premium overflow-hidden", className)}>
       <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-border-strong scrollbar-track-transparent">
         <table className="w-full text-sm text-left min-w-[600px] border-collapse">
-          <thead className="bg-surface-highlight/50 text-text-muted uppercase text-[10px] font-black tracking-[0.15em] border-b border-border">
+          <thead className="bg-surface-highlight/50 text-text-muted uppercase text-[10px] font-semibold tracking-[0.15em] border-b border-border sticky top-0 z-10">
             {table.getHeaderGroups().map(headerGroup => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map(header => (

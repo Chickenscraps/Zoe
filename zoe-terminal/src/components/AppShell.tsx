@@ -1,18 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Briefcase, 
-  History, 
-  Scan, 
-  Map, 
-  BrainCircuit, 
-  Activity, 
+import {
+  LayoutDashboard,
+  Briefcase,
+  History,
+  Scan,
+  Map,
+  BrainCircuit,
+  Activity,
   Settings,
   Menu,
   X
 } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, formatCurrency } from '../lib/utils';
+import { supabase } from '../lib/supabaseClient';
 
 const NAV_ITEMS = [
   { label: 'Overview', path: '/', icon: LayoutDashboard },
@@ -27,7 +28,24 @@ const NAV_ITEMS = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [equity, setEquity] = useState<number>(0);
   const location = useLocation();
+
+  useEffect(() => {
+    async function fetchEquity() {
+      try {
+        const { data } = await supabase
+          .rpc('get_account_overview' as any, { p_discord_id: '292890243852664855' } as any);
+        const rows = data as any;
+        if (rows && Array.isArray(rows) && rows.length > 0) {
+          setEquity(rows[0].equity ?? 0);
+        }
+      } catch (err) {
+        console.error('Error fetching equity:', err);
+      }
+    }
+    fetchEquity();
+  }, []);
 
   const closeSidebar = () => {
     if (window.innerWidth < 1024) {
@@ -47,7 +65,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
       >
         <div className="h-20 flex items-center px-8 border-b border-border">
-          <h1 className="text-xl font-black tracking-tighter text-white">
+          <h1 className="text-xl font-bold tracking-tighter text-white">
             ZOE<span className="text-text-muted">_</span>TERMINAL
           </h1>
         </div>
@@ -64,9 +82,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 onClick={closeSidebar}
                 className={cn(
                   "flex items-center gap-3 px-4 py-2.5 rounded-btns text-sm font-semibold transition-all duration-200",
-                  isActive 
-                    ? "bg-surface-highlight text-white shadow-soft" 
-                    : "text-text-secondary hover:text-white hover:bg-surface-highlight/30"
+                  isActive
+                    ? "bg-surface-highlight text-white shadow-soft border-l-[3px] border-l-white/30"
+                    : "text-text-secondary hover:text-white hover:bg-white/[0.03] border-l-[3px] border-l-transparent"
                 )}
               >
                 <Icon className={cn("w-4 h-4", isActive ? "text-profit" : "")} />
@@ -78,7 +96,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         
         <div className="absolute bottom-6 left-6 right-6">
           <div className="bg-surface-base/50 p-4 rounded-cards border border-border flex flex-col gap-1">
-             <div className="text-[10px] uppercase tracking-widest text-text-muted font-bold">Node Instance</div>
+             <div className="text-[10px] uppercase tracking-widest text-text-muted font-medium">Node Instance</div>
              <div className="text-xs font-mono text-white truncate opacity-80">primary-v4-live</div>
           </div>
         </div>
@@ -105,11 +123,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-6 ml-auto">
             <div className="flex items-center gap-6 text-sm">
                <div className="flex flex-col items-end">
-                 <span className="text-[10px] text-text-muted uppercase font-bold tracking-widest leading-tight">Net Equity</span>
-                 <span className="font-mono text-lg font-black text-white">$2,000.00</span>
+                 <span className="text-[10px] text-text-muted uppercase font-medium tracking-widest leading-tight">Net Equity</span>
+                 <span className={cn("font-mono text-lg font-semibold", equity >= 2000 ? "text-profit" : "text-loss")}>
+                   {formatCurrency(equity)}
+                 </span>
                </div>
                <div className="h-8 w-px bg-border hidden xs:block" />
-               <div className="hidden xs:block bg-profit/10 border border-profit/20 text-profit px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase">
+               <div className="hidden xs:block bg-profit/10 border border-profit/20 text-profit px-3 py-1 rounded-full text-[10px] font-semibold tracking-widest uppercase">
                  Paper Mode
                </div>
             </div>
