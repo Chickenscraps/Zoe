@@ -323,6 +323,61 @@ Minimal `~/.openclaw/openclaw.json` (model + defaults):
 
 [Full configuration reference (all keys + examples).](https://docs.openclaw.ai/gateway/configuration)
 
+## How to Edit Zoe's Persona Safely
+
+Zoe's system prompt is composed from four markdown files in `/prompts/`. Edit these files to change her behavior **without touching code**.
+
+| File | What it controls |
+|---|---|
+| `prompts/system.md` | Hard rules, safety boundaries, response format, adaptive effort |
+| `prompts/persona.md` | Voice, social behavior, idle self-talk style, startup ritual |
+| `prompts/trading_policy.md` | Paper trading constraints, PDT simulation, risk limits |
+| `prompts/room_context.md` | ROOM_CONTEXT injection rules (documentation for the LLM) |
+
+**How it works:**
+- `prompt_loader.py` reads all four files at runtime and composes them into one system prompt
+- Files are cached by mtime — edit a file and it's picked up on the next message (no restart needed)
+- Dynamic context (date, goals, memories, ROOM_CONTEXT) is injected programmatically
+
+**Rules for editing:**
+1. Never remove the `## HARD RULES` section from `system.md` — that's the safety floor
+2. Keep `trading_policy.md` strict — "PAPER-ONLY" must always be present
+3. Test changes with: `python scripts/demo_prompt_system.py`
+4. Run the full test suite: `python -m pytest tests/test_prompt_system.py -v`
+
+### Quick Configuration Reference (`config.yaml`)
+
+```yaml
+# Channels
+discord:
+  allowed_chat_channel_ids: [123, 456]    # Channels where Zoe responds
+  thoughts_channel_id: 123                 # Idle self-talk channel
+  admin_channel_ids: [123]                 # Admin tool access
+  trades_channel_id: 456                   # Trade announcements
+
+# Admin
+admin:
+  admin_user_ids: ["292890243852664855"]    # Josh (only admin)
+
+# Model (Gemini only — enforced at code level)
+model:
+  runtime_default: "gemini-2.5-flash-lite" # Default model
+  escalation_model: "gemini-2.5-pro"       # For complex tasks
+  allowed_providers: ["gemini"]            # No fallback
+
+# Idle Mode
+idle:
+  enabled: true
+  min_silence_minutes: 10                  # Wait before idle post
+  cooldown_minutes: 30                     # Max 1 post per interval
+
+# Paper Trading
+trading:
+  paper_only: true
+  max_risk_per_trade: 100
+  pdt_simulation: true
+```
+
 ## Security model (important)
 
 - **Default:** tools run on the host for the **main** session, so the agent has full access when it’s just you.
