@@ -1,99 +1,72 @@
-import { useTrades } from '../hooks/useTrades';
-import { DataTable } from '../components/DataTable';
-import type { ColumnDef } from '@tanstack/react-table';
-import { useMemo } from 'react';
-import type { Database } from '../lib/types';
-import { formatCurrency, formatDate } from '../lib/utils';
-import { useNavigate } from 'react-router-dom';
-
-type Trade = Database['public']['Tables']['trades']['Row'];
+import { useDashboardData } from "../hooks/useDashboardData";
+import { formatCurrency, formatDate } from "../lib/utils";
 
 export default function Trades() {
-  const { trades, loading } = useTrades();
-  const navigate = useNavigate();
+  const { cryptoOrders, cryptoFills, loading } = useDashboardData();
 
-  // Mock data if empty
-  const displayTrades = trades.length > 0 ? trades : [
-    { 
-      trade_id: 't1', instance_id: 'demo', symbol: 'NVDA', strategy: 'Short Put',
-      opened_at: '2023-09-15T10:00:00Z', closed_at: '2023-09-20T14:30:00Z',
-      realized_pnl: 150, r_multiple: 0.5, outcome: 'win', rationale: 'Support hold'
-    },
-    { 
-      trade_id: 't2', instance_id: 'demo', symbol: 'TSLA', strategy: 'Call Deploy',
-      opened_at: '2023-09-18T10:00:00Z', closed_at: '2023-09-19T09:45:00Z',
-      realized_pnl: -200, r_multiple: -1.0, outcome: 'loss', rationale: 'News fakeout'
-    }
-  ] as Trade[];
-
-  const columns = useMemo<ColumnDef<Trade>[]>(() => [
-    {
-      header: 'Symbol',
-      accessorKey: 'symbol',
-      cell: info => <span className="font-bold text-white">{info.getValue() as string}</span>
-    },
-    {
-      header: 'Strategy',
-      accessorKey: 'strategy',
-    },
-    {
-      header: 'Opened',
-      accessorKey: 'opened_at',
-      cell: info => <span className="text-text-secondary">{formatDate(info.getValue() as string)}</span>
-    },
-    {
-      header: 'Closed',
-      accessorKey: 'closed_at',
-      cell: info => {
-        const val = info.getValue() as string;
-        return val ? <span className="text-text-secondary">{formatDate(val)}</span> : '-';
-      }
-    },
-    {
-      header: 'P&L',
-      accessorKey: 'realized_pnl',
-      cell: info => {
-        const val = info.getValue() as number;
-        return (
-          <span className={val >= 0 ? "text-profit font-medium" : "text-loss font-medium"}>
-            {formatCurrency(val)}
-          </span>
-        );
-      }
-    },
-    {
-      header: 'Outcome',
-      accessorKey: 'outcome',
-      cell: info => {
-        const val = info.getValue() as string;
-        return (
-          <span className={`uppercase text-xs font-bold ${
-            val === 'win' ? 'text-profit' : 
-            val === 'loss' ? 'text-loss' : 'text-text-secondary'
-          }`}>
-            {val}
-          </span>
-        );
-      }
-    }
-  ], []);
-
-  if (loading) return <div className="text-text-secondary animate-pulse">Loading trades...</div>;
+  if (loading)
+    return <div className="text-text-secondary animate-pulse">Loading crypto blotter...</div>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
-         <h2 className="text-xl font-bold text-white">Trade History</h2>
-         <div className="text-sm text-text-secondary">
-            {displayTrades.length} closed trades
-         </div>
+        <h2 className="text-xl font-bold text-white">Crypto Trade Blotter</h2>
+        <div className="text-sm text-text-secondary">{cryptoOrders.length} recent orders</div>
       </div>
-      
-      <DataTable 
-        columns={columns} 
-        data={displayTrades} 
-        onRowClick={(row) => navigate(`/trades/${row.trade_id}`)}
-      />
+
+      <div className="card-premium p-6">
+        <h3 className="text-xs font-black uppercase tracking-[0.16em] text-text-muted mb-4">
+          Orders
+        </h3>
+        <div className="space-y-2">
+          {cryptoOrders.length > 0 ? (
+            cryptoOrders.map((order) => (
+              <div
+                key={order.id}
+                className="grid grid-cols-6 gap-2 text-xs border-b border-border/40 py-2"
+              >
+                <span className="font-bold text-white">{order.symbol}</span>
+                <span className={order.side === "buy" ? "text-profit" : "text-loss"}>
+                  {order.side.toUpperCase()}
+                </span>
+                <span className="text-text-secondary">{order.order_type}</span>
+                <span className="text-text-secondary">{formatCurrency(order.notional ?? 0)}</span>
+                <span className="text-text-muted uppercase">{order.status}</span>
+                <span className="text-text-dim">{formatDate(order.requested_at)}</span>
+              </div>
+            ))
+          ) : (
+            <div className="text-xs italic text-text-dim">No orders yet.</div>
+          )}
+        </div>
+      </div>
+
+      <div className="card-premium p-6">
+        <h3 className="text-xs font-black uppercase tracking-[0.16em] text-text-muted mb-4">
+          Fills
+        </h3>
+        <div className="space-y-2">
+          {cryptoFills.length > 0 ? (
+            cryptoFills.map((fill) => (
+              <div
+                key={fill.id}
+                className="grid grid-cols-6 gap-2 text-xs border-b border-border/40 py-2"
+              >
+                <span className="font-bold text-white">{fill.symbol}</span>
+                <span className={fill.side === "buy" ? "text-profit" : "text-loss"}>
+                  {fill.side.toUpperCase()}
+                </span>
+                <span className="text-text-secondary">qty {fill.qty}</span>
+                <span className="text-text-secondary">px {formatCurrency(fill.price)}</span>
+                <span className="text-text-muted">fee {formatCurrency(fill.fee)}</span>
+                <span className="text-text-dim">{formatDate(fill.executed_at)}</span>
+              </div>
+            ))
+          ) : (
+            <div className="text-xs italic text-text-dim">No fills yet.</div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

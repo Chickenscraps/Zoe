@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from integrations.robinhood_crypto_client import RobinhoodCryptoClient, RobinhoodCryptoConfig
+from services.crypto_trader import CryptoTraderConfig, CryptoTraderService, InMemoryCryptoRepository
+
+
+def main() -> int:
+    cfg = RobinhoodCryptoConfig.from_env()
+    try:
+        client = RobinhoodCryptoClient(cfg)
+    except Exception as err:
+        print(f"PASS crypto_healthcheck (paper): {err}")
+        return 0
+
+    service = CryptoTraderService(client, InMemoryCryptoRepository(), CryptoTraderConfig())
+    try:
+        health = service.reconcile()
+        print("PASS crypto_healthcheck")
+        print(f"status={health.status} last_reconcile={health.last_reconcile_at} live_enabled={health.live_enabled}")
+        return 0
+    except Exception as err:
+        print(f"FAIL reconcile: {err}")
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

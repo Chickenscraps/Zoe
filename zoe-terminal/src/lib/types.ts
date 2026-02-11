@@ -1,183 +1,245 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export interface Database {
   public: {
     Tables: {
       positions: {
         Row: {
-          id: string
-          account_id: string
-          symbol: string
-          underlying: string | null
-          quantity: number
-          avg_price: number
-          current_price: number
-          market_value: number
-          updated_at: string
-        }
-      }
+          id: string;
+          account_id: string;
+          symbol: string;
+          underlying: string | null;
+          quantity: number;
+          avg_price: number;
+          current_price: number;
+          market_value: number;
+          updated_at: string;
+        };
+      };
       trades: {
         Row: {
-          trade_id: string
-          instance_id: string
-          symbol: string
-          strategy: string
-          opened_at: string
-          closed_at: string | null
-          realized_pnl: number
-          r_multiple: number | null
-          outcome: 'win' | 'loss' | 'scratch' | 'open'
-          rationale: string | null
-        }
-      }
+          trade_id: string;
+          instance_id: string;
+          symbol: string;
+          strategy: string;
+          opened_at: string;
+          closed_at: string | null;
+          realized_pnl: number;
+          r_multiple: number | null;
+          outcome: "win" | "loss" | "scratch" | "open";
+          rationale: string | null;
+        };
+      };
       pnl_daily: {
         Row: {
-          date: string
-          instance_id: string
-          daily_pnl: number
-          equity: number
-          drawdown: number
-          win_rate: number | null
-          expectancy: number | null
-          cash_buffer_pct: number
-          day_trades_used: number
-          realized_pnl: number
-          unrealized_pnl: number
-        }
-      }
+          date: string;
+          instance_id: string;
+          daily_pnl: number;
+          equity: number;
+          drawdown: number;
+          win_rate: number | null;
+          expectancy: number | null;
+          cash_buffer_pct: number;
+          day_trades_used: number;
+          realized_pnl: number;
+          unrealized_pnl: number;
+        };
+      };
       candidate_scans: {
         Row: {
-          id: string
-          instance_id: string
-          symbol: string
-          score: number
-          score_breakdown: Json // { [key: string]: number }
-          info: Json // { ivr: number, liquidity: string, etc }
-          recommended_strategy: string
-          created_at: string
-        }
-      }
+          id: string;
+          instance_id: string;
+          symbol: string;
+          score: number;
+          score_breakdown: Json;
+          info: Json;
+          recommended_strategy: string;
+          created_at: string;
+        };
+      };
       thoughts: {
         Row: {
-          id: string
-          instance_id: string
-          content: string
-          type: 'scan' | 'entry' | 'exit' | 'health' | 'general'
-          symbol: string | null
-          created_at: string
-          metadata: Json
-        }
-      }
+          id: string;
+          instance_id: string;
+          content: string;
+          type: "scan" | "entry" | "exit" | "health" | "general";
+          symbol: string | null;
+          created_at: string;
+          metadata: Json;
+        };
+      };
       health_heartbeat: {
         Row: {
-          id: string
-          instance_id: string
-          component: string
-          status: 'ok' | 'warning' | 'error' | 'down'
-          last_heartbeat: string
-          details: Json
-        }
-      }
+          id: string;
+          instance_id: string;
+          component: string;
+          status: "ok" | "warning" | "error" | "down";
+          last_heartbeat: string;
+          details: Json;
+        };
+      };
       daily_gameplans: {
         Row: {
-            id: string;
-            instance_id: string;
-            date: string;
-            status: 'draft' | 'refined' | 'locked';
-            created_at: string;
-        }
-      }
+          id: string;
+          instance_id: string;
+          date: string;
+          status: "draft" | "refined" | "locked";
+          created_at: string;
+        };
+      };
       daily_gameplan_items: {
-          Row: {
-              id: string;
-              plan_id: string;
-              symbol: string;
-              catalyst_summary: string | null;
-              regime: string | null;
-              ivr_tech_snapshot: string | null;
-              preferred_strategy: string | null;
-              risk_tier: string | null;
-              do_not_trade: boolean;
-              visual_notes: string | null;
-          }
-      }
+        Row: {
+          id: string;
+          plan_id: string;
+          symbol: string;
+          catalyst_summary: string | null;
+          regime: string | null;
+          ivr_tech_snapshot: string | null;
+          preferred_strategy: string | null;
+          risk_tier: string | null;
+          do_not_trade: boolean;
+          visual_notes: string | null;
+        };
+      };
       config: {
         Row: {
           key: string;
           instance_id: string;
           value: Json;
-        }
-      }
+        };
+      };
       audit_log: {
-          Row: {
-              id: string;
-              instance_id: string;
-              event_type: string;
-              message: string;
-              created_at: string;
-              metadata: Json;
-          }
-      }
+        Row: {
+          id: string;
+          instance_id: string;
+          event_type: string;
+          message: string;
+          created_at: string;
+          metadata: Json;
+        };
+      };
       risk_events: {
-          Row: {
-              id: string;
-              instance_id: string;
-              event_type: string;
-              severity: 'info' | 'warning' | 'critical';
-              message: string;
-              created_at: string;
-          }
-      }
-    }
+        Row: {
+          id: string;
+          instance_id: string;
+          event_type: string;
+          severity: "info" | "warning" | "critical";
+          message: string;
+          created_at: string;
+        };
+      };
+      crypto_orders: {
+        Row: {
+          id: string;
+          client_order_id: string;
+          symbol: string;
+          side: "buy" | "sell";
+          order_type: "market" | "limit";
+          qty: number | null;
+          notional: number | null;
+          status: "new" | "submitted" | "partially_filled" | "filled" | "canceled" | "rejected";
+          requested_at: string;
+          submitted_at: string | null;
+          updated_at: string;
+          raw_response: Json;
+        };
+      };
+      crypto_fills: {
+        Row: {
+          id: string;
+          order_id: string;
+          fill_id: string;
+          symbol: string;
+          side: "buy" | "sell";
+          qty: number;
+          price: number;
+          fee: number;
+          executed_at: string;
+          raw_fill: Json;
+        };
+      };
+      crypto_holdings_snapshots: {
+        Row: {
+          id: string;
+          taken_at: string;
+          holdings: Json;
+          total_crypto_value: number;
+          source: "robinhood";
+        };
+      };
+      crypto_cash_snapshots: {
+        Row: {
+          id: string;
+          taken_at: string;
+          cash_available: number;
+          buying_power: number;
+          source: "robinhood";
+        };
+      };
+      crypto_reconciliation_events: {
+        Row: {
+          id: string;
+          taken_at: string;
+          local_cash: number;
+          rh_cash: number;
+          cash_diff: number;
+          local_holdings: Json;
+          rh_holdings: Json;
+          holdings_diff: Json;
+          status: "ok" | "degraded";
+          reason: string | null;
+        };
+      };
+      daily_notional: {
+        Row: {
+          day: string;
+          notional_used: number;
+        };
+      };
+    };
     Views: {
-      [_ in never]: never
-    }
+      [_ in never]: never;
+    };
     Functions: {
       get_account_overview: {
-        Args: { p_discord_id?: string }
+        Args: { p_discord_id?: string };
         Returns: {
-          account_id: string
-          equity: number
-          cash: number
-          buying_power: number
-          pdt_count: number
-          day_pnl: number
-          last_updated: string
-        }[]
-      }
+          account_id: string;
+          equity: number;
+          cash: number;
+          buying_power: number;
+          pdt_count: number;
+          day_pnl: number;
+          last_updated: string;
+        }[];
+      };
       get_positions_report: {
-        Args: { p_account_id?: string }
+        Args: { p_account_id?: string };
         Returns: {
-          symbol: string
-          quantity: number
-          avg_price: number
-          current_price: number
-          market_value: number
-          unrealized_pnl: number
-          pnl_percent: number
-        }[]
-      }
+          symbol: string;
+          quantity: number;
+          avg_price: number;
+          current_price: number;
+          market_value: number;
+          unrealized_pnl: number;
+          pnl_percent: number;
+        }[];
+      };
       get_activity_feed: {
-        Args: { p_limit?: number }
+        Args: { p_limit?: number };
         Returns: {
-          type: 'TRADE' | 'SYSTEM'
-          symbol: string
-          details: string
-          event_ts: string
-        }[]
-      }
-    }
+          type: "TRADE" | "SYSTEM";
+          symbol: string;
+          details: string;
+          event_ts: string;
+        }[];
+      };
+    };
     Enums: {
-      [_ in never]: never
-    }
+      [_ in never]: never;
+    };
     CompositeTypes: {
-      [_ in never]: never
-    }
-  }
+      [_ in never]: never;
+    };
+  };
 }
