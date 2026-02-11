@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { useDashboardData } from '../hooks/useDashboardData';
+import { MODE, isPaper, isLive } from '../lib/mode';
 
 const NAV_ITEMS = [
   { label: 'Overview', path: '/', icon: LayoutDashboard },
@@ -37,8 +38,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const equity = cryptoCash?.cash_available ?? accountOverview?.equity ?? 0;
 
   // Dynamic mode: if reconciliation data exists and is fresh, we're live; otherwise paper
-  const isLive = healthSummary.status === 'LIVE' && !healthSummary.stale;
-  const tradingMode = isLive ? 'live' : 'paper';
+  const isLiveMode = healthSummary.status === 'LIVE' && !healthSummary.stale;
+  const tradingMode = isLiveMode ? 'live' : 'paper';
 
   const closeSidebar = () => {
     if (window.innerWidth < 1024) {
@@ -49,9 +50,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-text-primary flex relative">
       <div className="noise-overlay" />
-      
+
       {/* Sidebar */}
-      <aside 
+      <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 w-64 bg-surface border-r border-border transform transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0 shadow-crisp",
           !sidebarOpen && "-translate-x-full"
@@ -62,12 +63,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ZOE<span className="text-text-muted">_</span>TERMINAL
           </h1>
         </div>
-        
+
         <nav className="p-4 space-y-2">
           {NAV_ITEMS.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
-            
+
             return (
               <Link
                 key={item.path}
@@ -86,7 +87,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        
+
         <div className="absolute bottom-6 left-6 right-6">
           <div className="bg-surface-base/50 p-4 rounded-cards border border-border flex flex-col gap-1">
              <div className="text-[10px] uppercase tracking-widest text-text-muted font-medium">Node Instance</div>
@@ -97,7 +98,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Mobile Overlay */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-md"
           onClick={() => setSidebarOpen(false)}
         />
@@ -106,13 +107,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-20 border-b border-border bg-background/40 backdrop-blur-xl sticky top-0 z-40 flex items-center justify-between px-8 shadow-crisp">
-          <button 
+          <button
             className="lg:hidden p-2 -ml-2 text-text-secondary hover:text-white transition-colors"
             onClick={() => setSidebarOpen(!sidebarOpen)}
           >
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          
+
           <div className="flex items-center gap-6 ml-auto">
             <div className="flex items-center gap-6 text-sm">
                <div className="flex flex-col items-end">

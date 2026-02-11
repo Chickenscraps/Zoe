@@ -212,7 +212,7 @@ class RobinhoodCryptoClient:
                     if resp.status == 429:
                         # Rate limit hit - backoff
                         retry_after = float(resp.headers.get("Retry-After", 2.0))
-                        print(f"⚠️ RH Rate Limit (429). Sleeping {retry_after}s")
+                        print(f"[RH] Rate Limit (429). Sleeping {retry_after}s")
                         await asyncio.sleep(retry_after)
                         continue
                         
@@ -263,17 +263,36 @@ class RobinhoodCryptoClient:
     async def get_order_fills(self, order_id: str) -> dict[str, Any]:
         return await self._request("GET", f"/api/v1/crypto/trading/orders/{order_id}/fills/")
     
-    async def get_bars(self, symbol: str, interval: str, span: str) -> dict[str, Any]:
-        # NOTE: This endpoint might differ for crypto vs equities. 
-        # Standard RH Crypto API doesn't document historicals well publicly.
-        # Often usage relies on standard RH API or specific crypto market data endpoints.
-        # For now, we'll try a common path or assume we need to use a different source if this fails.
-        # Assuming we use a known endpoint for market data if available, or fetch current quote.
-        # Actually, let's implement `get_best_bid_ask` as verified endpoint.
-        pass
-
     async def get_best_bid_ask(self, symbol: str) -> dict[str, Any]:
+        """Get current best bid/ask for a single symbol."""
         return await self._request("GET", f"/api/v1/crypto/marketdata/best_bid_ask/?symbol={symbol}")
+
+    async def get_best_bid_ask_batch(self, symbols: list[str]) -> dict[str, Any]:
+        """Get best bid/ask for multiple symbols in one call."""
+        query = "&".join(f"symbol={s}" for s in symbols)
+        return await self._request("GET", f"/api/v1/crypto/marketdata/best_bid_ask/?{query}")
+
+    async def get_estimated_price(self, symbol: str, side: str = "both", quantities: list[float] | None = None) -> dict[str, Any]:
+        """Get estimated prices at given quantities (order depth/slippage).
+
+        Args:
+            symbol: e.g. "BTC-USD"
+            side: "bid", "ask", or "both"
+            quantities: list of quantities to estimate price for
+        """
+        qtys = quantities or [1.0]
+        qty_str = ",".join(f"{q:.8f}" for q in qtys)
+        return await self._request(
+            "GET",
+            f"/api/v1/crypto/marketdata/estimated_price/?symbol={symbol}&side={side}&quantity={qty_str}",
+        )
+
+    async def get_trading_pairs(self, symbols: list[str] | None = None) -> dict[str, Any]:
+        """Get trading pair info (min order size, tick size, status, etc.)."""
+        if symbols:
+            query = "&".join(f"symbol={s}" for s in symbols)
+            return await self._request("GET", f"/api/v1/crypto/trading/trading_pairs/?{query}")
+        return await self._request("GET", "/api/v1/crypto/trading/trading_pairs/")
 
     async def close(self):
         if self._session and not self._session.closed:

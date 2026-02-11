@@ -1,173 +1,255 @@
 from __future__ import annotations
 
-import asyncio
+import json
+import os
 from datetime import date, datetime, timezone
-from typing import Any, List, Optional
-from supabase import Client
+from typing import Any
 
-# We wrap blocking calls in asyncio.to_thread to keep the main loop responsive.
+from supabase import create_client, Client
+
 
 class SupabaseCryptoRepository:
-    def __init__(self, supabase_client: Client):
-        self.db = supabase_client
+    """Persists crypto trader data to Supabase with mode isolation."""
 
-    async def _run(self, func, *args, **kwargs):
-        return await asyncio.to_thread(func, *args, **kwargs)
+    def __init__(self, client: Client | None = None):
+        if client is not None:
+            self.sb = client
+        else:
+            url = os.getenv("SUPABASE_URL", "")
+            key = os.getenv("SUPABASE_SERVICE_KEY", "")
+            if not url or not key:
+                raise RuntimeError(
+                    "Missing SUPABASE_URL or SUPABASE_SERVICE_KEY env vars"
+                )
+            self.sb = create_client(url, key)
 
-    async def insert_order(self, order: dict[str, Any]) -> None:
-        def _op():
-            try:
-                self.db.table("crypto_orders").insert(order).execute()
-            except Exception as e:
-                print(f"❌ Failed to insert order {order.get('id')}: {e}")
-        await self._run(_op)
+    # ── Orders ──
 
-    async def update_order_status(self, order_id: str, status: str, raw: dict[str, Any]) -> None:
-        def _op():
-            try:
-                self.db.table("crypto_orders").update(
-                    {"status": status, "raw_response": raw, "updated_at": datetime.now(timezone.utc).isoformat()}
-                ).eq("id", order_id).execute()
-            except Exception as e:
-                print(f"❌ Failed to update order {order_id}: {e}")
-        await self._run(_op)
+    def insert_order(self, order: dict[str, Any]) -> None:
+        self.sb.table("crypto_orders").insert(order).execute()
 
-    async def list_open_orders(self) -> List[dict[str, Any]]:
-        def _op():
-            try:
-                res = self.db.table("crypto_orders").select("*").in_("status", ["submitted", "partially_filled", "pending"]).execute()
-                return res.data if res.data else []
-            except Exception as e:
-                print(f"❌ Failed to list open orders: {e}")
-                return []
-        return await self._run(_op)
+    def update_order_status(self, order_id: str, status: str, raw: dict[str, Any]) -> None:
+        self.sb.table("crypto_orders").update(
+            {"status": status, "raw_response": raw}
+        ).eq("id", order_id).execute()
 
-    async def upsert_fill(self, fill: dict[str, Any]) -> None:
-        def _op():
-            try:
-                self.db.table("crypto_fills").upsert(fill).execute()
-            except Exception as e:
-                print(f"❌ Failed to upsert fill {fill.get('fill_id')}: {e}")
-        await self._run(_op)
+    def list_open_orders(self, mode: str) -> list[dict[str, Any]]:
+        resp = (
+            self.sb.table("crypto_orders")
+            .select("*")
+            .eq("mode", mode)
+            .in_("status", ["submitted", "partially_filled"])
+            .execute()
+        )
+        return resp.data or []
 
-    async def record_audit_event(self, component: str, event: str, level: str = "info", details: dict = None):
-        def _op():
-            try:
-                self.db.table("crypto_audit_log").insert({
-                    "component": component,
-                    "event": event,
-                    "level": level,
-                    "details": details or {},
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                }).execute()
-            except Exception as e:
-                print(f"❌ Failed to record audit log: {e}")
-        await self._run(_op)
+    # ── Fills ──
 
-    # --- Snapshots (Legacy support + New Schema) ---
-    async def insert_cash_snapshot(self, cash_available: float, buying_power: float) -> None:
-        def _op():
-            try:
-                self.db.table("crypto_cash_snapshots").insert({
-                    "taken_at": datetime.now(timezone.utc).isoformat(),
-                    "cash_available": cash_available,
-                    "buying_power": buying_power,
-                }).execute()
-            except Exception as e:
-                print(f"❌ Failed to insert cash snapshot: {e}")
-        await self._run(_op)
+    def upsert_fill(self, fill: dict[str, Any]) -> None:
+        self.sb.table("crypto_fills").upsert(fill, on_conflict="fill_id").execute()
 
-    async def insert_holdings_snapshot(self, holdings: dict[str, Any], total_value: float) -> None:
-        def _op():
-            try:
-                self.db.table("crypto_holdings_snapshots").insert({
-                    "taken_at": datetime.now(timezone.utc).isoformat(),
-                    "holdings": holdings,
-                    "total_crypto_value": total_value,
-                }).execute()
-            except Exception as e:
-                print(f"❌ Failed to insert holdings snapshot: {e}")
-        await self._run(_op)
+    # ── Snapshots ──
 
-    async def get_daily_notional(self, day: date) -> float:
-        def _op():
-            try:
-                res = self.db.table("daily_notional").select("amount").eq("day", str(day)).maybe_single().execute()
-                return float(res.data["amount"]) if res.data else 0.0
-            except Exception as e:
-                print(f"❌ Failed to get daily notional: {e}")
-                return 0.0
-        return await self._run(_op)
+    def insert_holdings_snapshot(self, holdings: dict[str, Any], total_value: float, **kwargs: Any) -> None:
+        row: dict[str, Any] = {"holdings": holdings, "total_crypto_value": total_value}
+        if "mode" in kwargs:
+            row["mode"] = kwargs["mode"]
+        self.sb.table("crypto_holdings_snapshots").insert(row).execute()
 
-    async def set_daily_notional(self, day: date, amount: float) -> None:
-        def _op():
-            try:
-                self.db.table("daily_notional").upsert(
-                    {"day": str(day), "amount": amount}, on_conflict="day"
-                ).execute()
-            except Exception as e:
-                print(f"❌ Failed to set daily notional: {e}")
-        await self._run(_op)
+    def insert_cash_snapshot(self, cash_available: float, buying_power: float, **kwargs: Any) -> None:
+        row: dict[str, Any] = {"cash_available": cash_available, "buying_power": buying_power}
+        if "mode" in kwargs:
+            row["mode"] = kwargs["mode"]
+        self.sb.table("crypto_cash_snapshots").insert(row).execute()
 
-    async def get_positions_count(self) -> int:
-        # Count non-zero positions from latest snapshot or a positions table
-        # For now using snapshot for backward compat
-        def _op():
-            try:
-                res = self.db.table("crypto_holdings_snapshots").select("holdings").order("taken_at", desc=True).limit(1).maybe_single().execute()
-                if not res.data: return 0
-                holdings = res.data.get("holdings", {})
-                return len([k for k, v in holdings.items() if float(v) > 0])
-            except Exception as e:
-                print(f"❌ Failed to get positions count: {e}")
-                return 0
-        return await self._run(_op)
+    def insert_reconciliation_event(self, event: dict[str, Any]) -> None:
+        self.sb.table("crypto_reconciliation_events").insert(event).execute()
 
-    async def get_daily_realized_pnl(self, day: date) -> float:
-        # TODO: Implement accurate daily PnL query
+    # ── Daily notional ──
+
+    def get_daily_notional(self, day: date, mode: str) -> float:
+        resp = (
+            self.sb.table("daily_notional")
+            .select("amount")
+            .eq("day", str(day))
+            .eq("mode", mode)
+            .maybe_single()
+            .execute()
+        )
+        if resp and resp.data:
+            return float(resp.data.get("amount", 0))
         return 0.0
 
-    async def fetch_candles(self, symbol: str, timeframe: str, limit: int) -> List[Any]:
-        # Return DB candles
-        def _op():
-            try:
-                res = self.db.table("crypto_candles").select("*").eq("symbol", symbol).eq("timeframe", timeframe).order("bucket", desc=True).limit(limit).execute()
-                # Sort ascending
-                data = res.data or []
-                data.reverse()
-                return data 
-            except Exception as e:
-                print(f"❌ Failed to fetch candles: {e}")
+    def set_daily_notional(self, day: date, amount: float, mode: str) -> None:
+        self.sb.table("daily_notional").upsert(
+            {"day": str(day), "amount": amount, "mode": mode},
+            on_conflict="day,mode",
+        ).execute()
+
+    # ── Latest snapshots (mode-filtered) ──
+
+    def latest_cash_snapshot(self, mode: str) -> dict[str, Any] | None:
+        resp = (
+            self.sb.table("crypto_cash_snapshots")
+            .select("*")
+            .eq("mode", mode)
+            .order("taken_at", desc=True)
+            .limit(1)
+            .maybe_single()
+            .execute()
+        )
+        return resp.data if resp else None
+
+    def latest_holdings_snapshot(self, mode: str) -> dict[str, Any] | None:
+        resp = (
+            self.sb.table("crypto_holdings_snapshots")
+            .select("*")
+            .eq("mode", mode)
+            .order("taken_at", desc=True)
+            .limit(1)
+            .maybe_single()
+            .execute()
+        )
+        return resp.data if resp else None
+
+    # ── Dashboard tables ──
+
+    def upsert_candidate_scans(self, scans: list[dict[str, Any]]) -> None:
+        if not scans:
+            return
+        self.sb.table("candidate_scans").insert(scans).execute()
+
+    def upsert_pnl_daily(self, row: dict[str, Any]) -> None:
+        self.sb.table("pnl_daily").upsert(
+            row, on_conflict="date,instance_id,mode"
+        ).execute()
+
+    def upsert_health_heartbeat(self, row: dict[str, Any]) -> None:
+        self.sb.table("health_heartbeat").upsert(
+            row, on_conflict="instance_id,component,mode"
+        ).execute()
+
+    def insert_thought(self, row: dict[str, Any]) -> None:
+        self.sb.table("thoughts").insert(row).execute()
+
+    def get_realized_pnl(self, mode: str) -> float:
+        resp = (
+            self.sb.table("crypto_fills")
+            .select("side, qty, price, fee")
+            .eq("mode", mode)
+            .execute()
+        )
+        pnl = 0.0
+        for fill in resp.data or []:
+            qty = float(fill.get("qty", 0))
+            price = float(fill.get("price", 0))
+            fee = float(fill.get("fee", 0))
+            gross = qty * price
+            pnl += (gross if fill.get("side") == "sell" else -gross) - fee
+        return pnl
+
+    # ── Boot reconciliation ──
+
+    def save_agent_state(self, mode: str, instance_id: str, state: dict[str, Any]) -> None:
+        self.sb.table("agent_state").upsert(
+            {
+                "mode": mode,
+                "instance_id": instance_id,
+                "state": state,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            on_conflict="mode,instance_id",
+        ).execute()
+
+    def load_agent_state(self, mode: str, instance_id: str) -> dict[str, Any] | None:
+        resp = (
+            self.sb.table("agent_state")
+            .select("state")
+            .eq("mode", mode)
+            .eq("instance_id", instance_id)
+            .maybe_single()
+            .execute()
+        )
+        if resp and resp.data:
+            return resp.data.get("state")
+        return None
+
+    def insert_boot_audit(self, record: dict[str, Any]) -> None:
+        self.sb.table("boot_audit").insert(record).execute()
+
+    def update_boot_audit(self, run_id: str, updates: dict[str, Any]) -> None:
+        self.sb.table("boot_audit").update(updates).eq("run_id", run_id).execute()
+
+    # ── Boot context (recent history) ──
+
+    def recent_fills(self, mode: str, limit: int = 10) -> list[dict[str, Any]]:
+        try:
+            resp = (
+                self.sb.table("crypto_fills")
+                .select("*")
+                .eq("mode", mode)
+                .order("executed_at", desc=True)
+                .limit(limit)
+                .execute()
+            )
+            return resp.data or []
+        except Exception:
+            return []
+
+    def recent_thoughts(self, mode: str, limit: int = 10, thought_type: str | None = None) -> list[dict[str, Any]]:
+        try:
+            query = (
+                self.sb.table("thoughts")
+                .select("*")
+                .eq("mode", mode)
+            )
+            if thought_type:
+                query = query.eq("type", thought_type)
+            resp = query.order("created_at", desc=True).limit(limit).execute()
+            return resp.data or []
+        except Exception:
+            return []
+
+    def latest_candidate_scans(self, mode: str) -> list[dict[str, Any]]:
+        """Fetch the most recent batch of candidate scans."""
+        try:
+            # Step 1: get the latest timestamp
+            latest_resp = (
+                self.sb.table("candidate_scans")
+                .select("created_at")
+                .eq("mode", mode)
+                .order("created_at", desc=True)
+                .limit(1)
+                .maybe_single()
+                .execute()
+            )
+            if not latest_resp or not latest_resp.data:
                 return []
-        # Convert to Candle objects in MarketData provider, here just return dicts
-        return await self._run(_op)
+            latest_ts = latest_resp.data["created_at"]
 
-    async def latest_cash_snapshot(self) -> dict[str, Any] | None:
-        def _op():
-            try:
-                res = self.db.table("crypto_cash_snapshots").select("*").order("taken_at", desc=True).limit(1).maybe_single().execute()
-                return res.data
-            except Exception as e:
-                print(f"❌ Failed to get latest cash snapshot: {e}")
-                return None
-        return await self._run(_op)
-    
-    async def insert_reconciliation_event(self, event: dict[str, Any]) -> None:
-        def _op():
-            try:
-                self.db.table("crypto_reconciliation_events").insert(event).execute()
-            except Exception as e:
-                print(f"❌ Failed to insert reconciliation event: {e}")
-        await self._run(_op)
+            # Step 2: fetch all scans from that batch
+            resp = (
+                self.sb.table("candidate_scans")
+                .select("*")
+                .eq("mode", mode)
+                .eq("created_at", latest_ts)
+                .order("score", desc=True)
+                .execute()
+            )
+            return resp.data or []
+        except Exception:
+            return []
 
-    async def upsert_ticker(self, symbol: str, price: float) -> None:
-        def _op():
-            try:
-                self.db.table("crypto_tickers").upsert({
-                    "symbol": symbol,
-                    "price": price,
-                    "last_updated": datetime.now(timezone.utc).isoformat()
-                }).execute()
-            except Exception as e:
-                print(f"❌ Failed to upsert ticker {symbol}: {e}")
-        await self._run(_op)
+    def recent_orders(self, mode: str, limit: int = 10) -> list[dict[str, Any]]:
+        try:
+            resp = (
+                self.sb.table("crypto_orders")
+                .select("*")
+                .eq("mode", mode)
+                .order("created_at", desc=True)
+                .limit(limit)
+                .execute()
+            )
+            return resp.data or []
+        except Exception:
+            return []
