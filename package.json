@@ -100,7 +100,14 @@
     "tui:dev": "OPENCLAW_PROFILE=dev CLAWDBOT_PROFILE=dev node scripts/run-node.mjs --dev tui",
     "ui:build": "node scripts/ui.js build",
     "ui:dev": "node scripts/ui.js dev",
-    "ui:install": "node scripts/ui.js install"
+    "ui:install": "node scripts/ui.js install",
+    "v4:build": "pnpm --filter @zoe/shared build && pnpm --filter '@zoe/*' --parallel build",
+    "v4:build:shared": "pnpm --filter @zoe/shared build",
+    "v4:test": "vitest run --config vitest.v4.config.ts",
+    "v4:test:watch": "vitest --config vitest.v4.config.ts",
+    "v4:typecheck": "pnpm --filter '@zoe/*' --parallel typecheck",
+    "v4:dev": "pnpm --filter @zoe/shared build && pnpm --filter '@zoe/*' --parallel dev",
+    "v4:dashboard": "pnpm --filter dashboard dev"
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "0.14.1",

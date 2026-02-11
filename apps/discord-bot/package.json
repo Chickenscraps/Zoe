@@ -1,0 +1,24 @@
+{
+  "name": "@zoe/discord-bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@zoe/shared": "workspace:*",
+    "@zoe/paper-broker": "workspace:*",
+    "@zoe/trader": "workspace:*",
+    "discord.js": "^14.17.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.0"
+  }
+}
