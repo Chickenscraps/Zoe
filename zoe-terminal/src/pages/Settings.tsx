@@ -1,30 +1,38 @@
 import { useState, useEffect } from 'react';
 import type { Database } from '../lib/types';
 import { Download } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 
 type Config = Database['public']['Tables']['config']['Row'];
 
 export default function Settings() {
   const [config, setConfig] = useState<Config[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-      // Mock config
-      setConfig([
-          { key: 'risk_limit_per_trade_pct', instance_id: 'primary', value: 2.0 },
-          { key: 'max_open_positions', instance_id: 'primary', value: 5 },
-          { key: 'kill_switch_enabled', instance_id: 'primary', value: false },
-          { key: 'scan_interval_minutes', instance_id: 'primary', value: 15 },
-          { key: 'data_provider', instance_id: 'primary', value: 'polygon' },
-          { key: 'slippage_model', instance_id: 'primary', value: { type: 'fixed', amount: 0.01 } },
-      ]);
+      async function fetchConfig() {
+        try {
+          const { data, error } = await supabase
+            .from('config')
+            .select('*')
+            .order('key');
+          if (error) throw error;
+          if (data) setConfig(data);
+        } catch (err) {
+          console.error('Error fetching config:', err);
+        } finally {
+          setLoading(false);
+        }
+      }
+      fetchConfig();
   }, []);
 
   return (
     <div className="space-y-8 max-w-4xl">
        <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-bold text-white">Settings</h2>
-            <p className="text-sm text-text-secondary">Configuration for instance: <span className="text-white font-mono">primary-v4-live</span></p>
+            <h2 className="text-xl font-semibold text-white">Settings</h2>
+            <p className="text-sm text-text-secondary">System configuration (read only)</p>
           </div>
           <div className="flex gap-2">
               <button className="flex items-center gap-2 px-3 py-2 bg-surface text-text-primary border border-border rounded hover:bg-surface-highlight transition-colors text-sm">
@@ -35,9 +43,12 @@ export default function Settings() {
 
        <div className="bg-surface border border-border rounded-lg overflow-hidden">
            <div className="px-6 py-4 border-b border-border bg-surface-highlight/20">
-               <h3 className="font-medium text-sm">System Configuration (Read Only)</h3>
+               <h3 className="font-medium text-sm">System Configuration</h3>
            </div>
-           
+
+           {loading ? (
+             <div className="p-6 text-text-muted animate-pulse">Loading configuration...</div>
+           ) : config.length > 0 ? (
            <div className="divide-y divide-border">
                {config.map(item => (
                    <div key={item.key} className="grid grid-cols-1 md:grid-cols-3 px-6 py-4 hover:bg-surface-highlight/30 transition-colors">
@@ -48,6 +59,9 @@ export default function Settings() {
                    </div>
                ))}
            </div>
+           ) : (
+             <div className="p-6 text-text-muted text-sm">No configuration found.</div>
+           )}
        </div>
 
        <div className="bg-surface border border-border rounded-lg p-6">

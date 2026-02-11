@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(npx vite build)",
+      "Bash(npx netlify:*)",
+      "Bash(npx netlify-cli:*)",
+      "WebFetch(domain:clawdbot-zoe-dash.netlify.app)"
+    ]
+  }
+}

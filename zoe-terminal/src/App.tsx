@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { initAuditMode } from './utils/ui_audit';
 import { AppShell } from './components/AppShell';
 import Overview from './pages/Overview';
 import Positions from './pages/Positions';
@@ -16,6 +18,11 @@ import SharePosition from './pages/share/SharePosition';
 import SharePlan from './pages/share/SharePlan';
 
 function App() {
+  useEffect(() => {
+    const cleanup = initAuditMode();
+    return () => { cleanup?.(); };
+  }, []);
+
   return (
     <Router>
       <Routes>

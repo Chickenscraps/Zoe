@@ -12,25 +12,13 @@ export default function Trades() {
   const { trades, loading } = useTrades();
   const navigate = useNavigate();
 
-  // Mock data if empty
-  const displayTrades = trades.length > 0 ? trades : [
-    { 
-      trade_id: 't1', instance_id: 'demo', symbol: 'NVDA', strategy: 'Short Put',
-      opened_at: '2023-09-15T10:00:00Z', closed_at: '2023-09-20T14:30:00Z',
-      realized_pnl: 150, r_multiple: 0.5, outcome: 'win', rationale: 'Support hold'
-    },
-    { 
-      trade_id: 't2', instance_id: 'demo', symbol: 'TSLA', strategy: 'Call Deploy',
-      opened_at: '2023-09-18T10:00:00Z', closed_at: '2023-09-19T09:45:00Z',
-      realized_pnl: -200, r_multiple: -1.0, outcome: 'loss', rationale: 'News fakeout'
-    }
-  ] as Trade[];
+  const displayTrades = trades;
 
   const columns = useMemo<ColumnDef<Trade>[]>(() => [
     {
       header: 'Symbol',
       accessorKey: 'symbol',
-      cell: info => <span className="font-bold text-white">{info.getValue() as string}</span>
+      cell: info => <span className="font-semibold text-white">{info.getValue() as string}</span>
     },
     {
       header: 'Strategy',
@@ -83,7 +71,7 @@ export default function Trades() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-         <h2 className="text-xl font-bold text-white">Trade History</h2>
+         <h2 className="text-xl font-semibold text-white">Trade History</h2>
          <div className="text-sm text-text-secondary">
             {displayTrades.length} closed trades
          </div>

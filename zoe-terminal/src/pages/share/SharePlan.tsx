@@ -62,12 +62,12 @@ const SharePlan: React.FC = () => {
         {/* Header */}
         <div className="flex justify-between items-end pb-8 border-b border-border/50 relative z-10">
           <div>
-             <div className="text-profit font-black text-[10px] uppercase tracking-[0.3em] mb-3">Market Logic Layer</div>
-             <h1 className="text-5xl font-black text-white tracking-tighter uppercase">Protocol Status: <span className="text-profit">Active</span></h1>
+             <div className="text-profit font-semibold text-[10px] uppercase tracking-[0.3em] mb-3">Market Logic Layer</div>
+             <h1 className="text-5xl font-semibold text-white tracking-tighter uppercase">Protocol Status: <span className="text-profit">Active</span></h1>
           </div>
           <div className="text-right">
-             <div className="text-text-muted font-black text-[10px] uppercase tracking-[0.3em] mb-3">Release Timestamp</div>
-             <div className="text-2xl text-white font-black tracking-tight tabular-nums">{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}</div>
+             <div className="text-text-muted font-semibold text-[10px] uppercase tracking-[0.3em] mb-3">Release Timestamp</div>
+             <div className="text-2xl text-white font-semibold tracking-tight tabular-nums">{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}</div>
           </div>
         </div>
 
@@ -76,28 +76,28 @@ const SharePlan: React.FC = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-border">
-                <th className="py-4 px-4 font-black text-[10px] text-text-muted uppercase tracking-[0.2em]">Asset Symbol</th>
-                <th className="py-4 px-4 font-black text-[10px] text-text-muted uppercase tracking-[0.2em]">Execution Strategy</th>
-                <th className="py-4 px-4 font-black text-[10px] text-text-muted uppercase tracking-[0.2em]">Market Regime</th>
-                <th className="py-4 px-4 font-black text-[10px] text-text-muted uppercase tracking-[0.2em] text-right">Risk Tier</th>
+                <th className="py-4 px-4 font-semibold text-[10px] text-text-muted uppercase tracking-[0.2em]">Asset Symbol</th>
+                <th className="py-4 px-4 font-semibold text-[10px] text-text-muted uppercase tracking-[0.2em]">Execution Strategy</th>
+                <th className="py-4 px-4 font-semibold text-[10px] text-text-muted uppercase tracking-[0.2em]">Market Regime</th>
+                <th className="py-4 px-4 font-semibold text-[10px] text-text-muted uppercase tracking-[0.2em] text-right">Risk Tier</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
               {items.slice(0, 6).map((item) => (
                 <tr key={item.id} className="group hover:bg-white/[0.02] transition-colors">
                   <td className="py-6 px-4">
-                    <span className="text-2xl font-black text-white tracking-tighter tabular-nums">{item.symbol}</span>
+                    <span className="text-2xl font-semibold text-white tracking-tighter tabular-nums">{item.symbol}</span>
                     <div className="text-[11px] text-text-muted font-medium italic mt-1 max-w-xs truncate opacity-70 group-hover:opacity-100 transition-opacity">{item.catalyst_summary}</div>
                   </td>
-                  <td className="py-6 px-4 font-black text-xs text-white uppercase tracking-tight">{item.preferred_strategy}</td>
+                  <td className="py-6 px-4 font-semibold text-xs text-white uppercase tracking-tight">{item.preferred_strategy}</td>
                   <td className="py-6 px-4">
-                    <span className="text-[10px] px-3 py-1 rounded-full bg-white/5 text-white border border-white/10 font-black uppercase tracking-widest">
+                    <span className="text-[10px] px-3 py-1 rounded-full bg-white/5 text-white border border-white/10 font-semibold uppercase tracking-widest">
                       {item.regime}
                     </span>
                   </td>
                   <td className="py-6 px-4 text-right">
                     <span className={cn(
-                      "text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-[0.15em]",
+                      "text-[10px] px-3 py-1 rounded-full font-semibold uppercase tracking-[0.15em]",
                       item.risk_tier === 'Tier 1' ? 'bg-profit/10 text-profit border border-profit/20' : 'bg-warning/10 text-warning border border-warning/20'
                     )}>
                       {item.risk_tier.toUpperCase()}
@@ -109,20 +109,20 @@ const SharePlan: React.FC = () => {
           </table>
           
           {items.length > 6 && (
-            <div className="mt-8 text-center text-text-dim font-black text-[10px] uppercase tracking-[0.4em] italic opacity-50">
+            <div className="mt-8 text-center text-text-dim font-semibold text-[10px] uppercase tracking-[0.4em] italic opacity-50">
               + {items.length - 6} Additional Nodes Encapsulated in Full Report
             </div>
           )}
         </div>
 
         {/* Brand Footer */}
-        <div className="flex justify-between items-center text-[10px] font-black tracking-[0.3em] text-text-dim uppercase mt-4 relative z-10">
+        <div className="flex justify-between items-center text-[10px] font-semibold tracking-[0.3em] text-text-dim uppercase mt-4 relative z-10">
           <div className="flex items-center gap-4">
             <span className="text-white opacity-40">System Core</span>
             <div className="w-1 h-1 rounded-full bg-border" />
             <span className="text-white">Autonomous Research Layer</span>
           </div>
-          <div className="bg-white text-black px-4 py-1.5 font-black flex items-center gap-3">
+          <div className="bg-white text-black px-4 py-1.5 font-semibold flex items-center gap-3">
             <Lock className="w-3 h-3" /> SESSION_LOCKED
           </div>
         </div>

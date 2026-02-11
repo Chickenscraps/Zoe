@@ -56,7 +56,7 @@ export default function Plan() {
   }, []);
 
   const columns: ColumnDef<PlanItem>[] = [
-      { header: 'Symbol', accessorKey: 'symbol', cell: i => <span className="font-black text-white tracking-widest">{i.getValue() as string}</span> },
+      { header: 'Symbol', accessorKey: 'symbol', cell: i => <span className="font-semibold text-white tracking-widest">{i.getValue() as string}</span> },
       { header: 'Regime', accessorKey: 'regime' },
       { header: 'Preferred Action', accessorKey: 'preferred_strategy' },
       { header: 'Catalyst Signal', accessorKey: 'catalyst_summary' },
@@ -64,7 +64,7 @@ export default function Plan() {
           header: 'Risk Profile', 
           accessorKey: 'risk_tier',
           cell: i => <span className={cn(
-              "text-[10px] px-3 py-1 rounded-full border font-black uppercase tracking-widest",
+              "text-[10px] px-3 py-1 rounded-full border font-semibold uppercase tracking-widest",
               i.getValue() === 'Tier 1' ? "bg-profit/10 text-profit border-profit/20" : "bg-warning/10 text-warning border-warning/20"
           )}>{i.getValue() as string}</span>
       },
@@ -75,10 +75,10 @@ export default function Plan() {
     <div className="space-y-10">
        <div className="flex justify-between items-end border-b border-border pb-8">
           <div>
-            <h2 className="text-3xl font-black text-white tracking-tighter">Autonomous Gameplan</h2>
+            <h2 className="text-3xl font-semibold text-white tracking-tighter">Autonomous Gameplan</h2>
             <p className="text-sm text-text-muted mt-2 font-medium tracking-tight">System-generated strategy for the current session.</p>
           </div>
-          <div className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">
+          <div className="text-[10px] font-semibold text-text-muted uppercase tracking-[0.2em]">
              Snapshot as of {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </div>
        </div>
@@ -93,8 +93,8 @@ export default function Plan() {
              <button 
                key={tab.id}
                className={cn(
-                   "pb-4 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 border-b-2 transition-all duration-300",
-                   activeTab === tab.id ? "border-profit text-white" : "border-transparent text-text-muted hover:text-text-secondary"
+                   "pb-4 text-[10px] font-semibold uppercase tracking-[0.2em] flex items-center gap-2 border-b-2 transition-all duration-300",
+                   activeTab === tab.id ? "border-profit text-white bg-white/[0.03]" : "border-transparent text-text-muted hover:text-text-secondary hover:bg-white/[0.02]"
                )}
              >
                  <tab.icon className={cn("w-3.5 h-3.5", activeTab === tab.id ? "text-profit" : "")} /> {tab.label}
@@ -106,7 +106,7 @@ export default function Plan() {
            {loading ? (
                 <div className="flex flex-col items-center justify-center h-64 text-text-muted animate-pulse gap-4">
                     <div className="w-12 h-12 border-2 border-border border-t-profit rounded-full animate-spin" />
-                    <span className="text-[10px] font-black uppercase tracking-widest italic">Interpreting market signals...</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-widest italic">Interpreting market signals...</span>
                 </div>
            ) : planItems.length > 0 ? (
                 <DataTable columns={columns} data={planItems} />
@@ -114,7 +114,7 @@ export default function Plan() {
                 <div className="flex flex-col items-center justify-center h-64 text-text-muted card-premium space-y-4 bg-surface/30">
                     <Lock className="w-8 h-8 opacity-20" />
                     <div className="text-center">
-                      <p className="font-black text-white uppercase tracking-widest">No Intelligence Record Found</p>
+                      <p className="font-semibold text-white uppercase tracking-widest">No Intelligence Record Found</p>
                       <p className="text-[11px] font-medium text-text-muted mt-1 uppercase tracking-tighter italic">Zoe has not finalized the session strategy yet.</p>
                     </div>
                 </div>
