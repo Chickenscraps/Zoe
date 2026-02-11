@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command:*)",
+      "Bash(python -m services.edge_factory.test_features:*)",
+      "Bash(python -m services.edge_factory.test_regime:*)",
+      "Bash(python -m services.edge_factory.test_signals:*)",
+      "Bash(python -m services.edge_factory.test_executor:*)",
+      "Bash(python -c:*)",
+      "Bash(pip install:*)",
+      "Bash(test:*)",
+      "Bash(python -m services.edge_factory.test_integration:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vite build:*)",
+      "Bash(npm install)",
+      "Bash(python -m pytest:*)",
+      "Bash(python:*)",
+      "Bash(EDGE_FACTORY_MODE=paper python:*)",
+      "Bash(where:*)",
+      "Bash(start \"\" pythonw launcher.pyw)",
+      "Bash(tasklist:*)",
+      "Bash(wmic process where \"name=''pythonw.exe''\" get ProcessId,CommandLine)",
+      "Bash(taskkill:*)"
+    ]
+  }
+}

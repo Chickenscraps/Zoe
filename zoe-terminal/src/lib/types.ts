@@ -196,6 +196,65 @@ export interface Database {
           notional_used: number;
         };
       };
+      ef_features: {
+        Row: {
+          id: string;
+          symbol: string;
+          feature_name: string;
+          value: number;
+          computed_at: string;
+          source: string;
+          metadata: Json;
+        };
+      };
+      ef_regimes: {
+        Row: {
+          id: string;
+          regime: string;
+          confidence: number;
+          detected_at: string;
+          features_used: Json;
+        };
+      };
+      ef_signals: {
+        Row: {
+          id: string;
+          symbol: string;
+          direction: string;
+          strength: number;
+          regime_id: string | null;
+          features: Json;
+          generated_at: string;
+          strategy_name: string;
+          acted_on: boolean;
+        };
+      };
+      ef_positions: {
+        Row: {
+          id: string;
+          symbol: string;
+          side: string;
+          entry_price: number | null;
+          entry_time: string | null;
+          size_usd: number | null;
+          tp_price: number | null;
+          sl_price: number | null;
+          status: string;
+          exit_price: number | null;
+          exit_time: string | null;
+          pnl_usd: number | null;
+          signal_id: string | null;
+          order_id: string | null;
+          created_at: string;
+        };
+      };
+      ef_state: {
+        Row: {
+          key: string;
+          value: Json;
+          updated_at: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;

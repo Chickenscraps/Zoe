@@ -8,11 +8,11 @@ class MarketData:
     def __init__(self):
         self.api_key = os.getenv("POLYGON_API_KEY")
         if not self.api_key:
-            print("⚠️ MarketData: POLYGON_API_KEY missing. Data validation will fail.")
+            print("[WARN] MarketData: POLYGON_API_KEY missing. Data validation will fail.")
             self.client = None
         else:
             self.client = RESTClient(self.api_key)
-            print("✅ MarketData: Polygon client initialized.")
+            print("[OK] MarketData: Polygon client initialized.")
         
         # Simple in-memory cache for quotes (ttl=10s)
         self.quote_cache = {}
@@ -39,7 +39,7 @@ class MarketData:
             }
             return price
         except Exception as e:
-            print(f"❌ MarketData Error ({symbol}): {e}")
+            print(f"[ERR] MarketData Error ({symbol}): {e}")
             return 0.0
 
     def get_history(self, symbol: str, timespan: str = 'day', multiplier: int = 1, limit: int = 100) -> List[Dict]:
@@ -68,7 +68,7 @@ class MarketData:
             # Reverse to be chronological (oldest first) for TA lib
             return aggs[::-1]
         except Exception as e:
-            print(f"❌ History Fetch Error ({symbol}): {e}")
+            print(f"[ERR] History Fetch Error ({symbol}): {e}")
             return []
 
     def get_option_chain_snapshot(self, symbol: str) -> List[Dict]:
@@ -112,7 +112,10 @@ class MarketData:
             return chain
 
         except Exception as e:
-            print(f"❌ Option Chain Error ({symbol}): {e}")
+            print(f"[ERR] Option Chain Error ({symbol}): {e}")
             return []
 
-market_data = MarketData()
+try:
+    market_data = MarketData()
+except Exception:
+    market_data = None

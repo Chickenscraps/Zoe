@@ -1,10 +1,103 @@
-import { Activity, DollarSign, TrendingUp, ShieldCheck } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Activity, DollarSign, TrendingUp, ShieldCheck, Zap } from "lucide-react";
 import { EquityChart } from "../components/EquityChart";
 import { KPICard } from "../components/KPICard";
 import { Skeleton } from "../components/Skeleton";
 import { StatusChip } from "../components/StatusChip";
 import { useDashboardData } from "../hooks/useDashboardData";
 import { formatCurrency, formatPercentage, cn } from "../lib/utils";
+import { supabase } from "../lib/supabaseClient";
+
+interface EfPosition {
+  id: string;
+  symbol: string;
+  side: string;
+  entry_price: number;
+  size_usd: number;
+  status: string;
+  pnl_usd: number | null;
+  exit_time: string | null;
+  created_at: string;
+}
+
+interface EfRegime {
+  regime: string;
+  confidence: number;
+  detected_at: string;
+}
+
+function useEdgeFactoryData() {
+  const [positions, setPositions] = useState<EfPosition[]>([]);
+  const [regime, setRegime] = useState<EfRegime | null>(null);
+  const [pnlData, setPnlData] = useState<{ date: string; equity: number; daily_pnl: number }[]>([]);
+
+  useEffect(() => {
+    async function fetchEf() {
+      // Latest regime
+      const regimeRes = await supabase
+        .from("ef_regimes")
+        .select("regime, confidence, detected_at")
+        .order("detected_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (regimeRes.data) setRegime(regimeRes.data as EfRegime);
+
+      // Recent positions (open + closed)
+      const posRes = await supabase
+        .from("ef_positions")
+        .select("id, symbol, side, entry_price, size_usd, status, pnl_usd, exit_time, created_at")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (posRes.data) setPositions(posRes.data as EfPosition[]);
+
+      // Build equity curve from closed positions
+      const closedRes = await supabase
+        .from("ef_positions")
+        .select("pnl_usd, exit_time")
+        .not("pnl_usd", "is", null)
+        .not("exit_time", "is", null)
+        .order("exit_time", { ascending: true });
+
+      if (closedRes.data && closedRes.data.length > 0) {
+        const BASE_EQUITY = 150.0;
+        let runningEquity = BASE_EQUITY;
+        const dailyMap = new Map<string, { equity: number; daily_pnl: number }>();
+
+        for (const pos of closedRes.data) {
+          const day = (pos.exit_time as string).slice(0, 10);
+          const pnl = pos.pnl_usd as number;
+          runningEquity += pnl;
+
+          const existing = dailyMap.get(day);
+          if (existing) {
+            existing.equity = runningEquity;
+            existing.daily_pnl += pnl;
+          } else {
+            dailyMap.set(day, { equity: runningEquity, daily_pnl: pnl });
+          }
+        }
+
+        const curve = Array.from(dailyMap.entries()).map(([date, vals]) => ({
+          date,
+          equity: parseFloat(vals.equity.toFixed(2)),
+          daily_pnl: parseFloat(vals.daily_pnl.toFixed(4)),
+        }));
+
+        setPnlData(curve);
+      }
+    }
+
+    fetchEf();
+  }, []);
+
+  const openPositions = positions.filter(p => p.status === "open" || p.status === "pending");
+  const closedPositions = positions.filter(p => p.status !== "open" && p.status !== "pending");
+  const totalPnl = closedPositions.reduce((sum, p) => sum + (p.pnl_usd ?? 0), 0);
+  const wins = closedPositions.filter(p => (p.pnl_usd ?? 0) > 0).length;
+  const losses = closedPositions.filter(p => (p.pnl_usd ?? 0) <= 0).length;
+
+  return { positions, openPositions, closedPositions, regime, pnlData, totalPnl, wins, losses };
+}
 
 export default function Overview() {
   const {
@@ -20,17 +113,11 @@ export default function Overview() {
     loading,
   } = useDashboardData();
 
+  const ef = useEdgeFactoryData();
+
   const equity = accountOverview?.equity ?? 0;
   const todayPnl = accountOverview?.day_pnl ?? 0;
   const dailyNotionalUsed = dailyNotional?.notional_used ?? 0;
-
-  const displayPnl = [
-    { date: "2023-10-01", equity: 10000 },
-    { date: "2023-10-02", equity: 10200 },
-    { date: "2023-10-03", equity: 10150 },
-    { date: "2023-10-04", equity: 10400 },
-    { date: "2023-10-05", equity: 10800 },
-  ].map((d) => ({ ...d, daily_pnl: 0 }));
 
   if (loading) {
     return (
@@ -82,7 +169,7 @@ export default function Overview() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          <EquityChart data={displayPnl} height={340} />
+          <EquityChart data={ef.pnlData} height={340} />
 
           <div className="card-premium p-8">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-6">
@@ -186,6 +273,65 @@ export default function Overview() {
               ) : (
                 <div className="text-text-dim text-xs italic py-2">
                   Establishing heartbeat sensor...
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="card-premium p-6">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-6 flex items-center gap-2">
+              <Zap className="w-3 h-3 text-warning" /> Edge Factory
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Regime</span>
+                <span className={cn(
+                  "text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider",
+                  ef.regime?.regime === "low_vol_bull" && "bg-profit/10 text-profit border border-profit/20",
+                  ef.regime?.regime === "high_vol_crash" && "bg-loss/10 text-loss border border-loss/20",
+                  ef.regime?.regime === "transition" && "bg-warning/10 text-warning border border-warning/20",
+                  !ef.regime && "bg-white/5 text-text-muted border border-white/10"
+                )}>
+                  {ef.regime?.regime?.replace(/_/g, ' ') ?? 'Awaiting data'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Open Positions</span>
+                <span className="text-xs font-bold text-white">{ef.openPositions.length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Total P&L</span>
+                <span className={cn(
+                  "text-xs font-bold tabular-nums",
+                  ef.totalPnl > 0 ? "text-profit" : ef.totalPnl < 0 ? "text-loss" : "text-text-muted"
+                )}>
+                  {ef.totalPnl >= 0 ? '+' : ''}{formatCurrency(ef.totalPnl)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">W / L</span>
+                <span className="text-xs font-bold text-text-muted">
+                  <span className="text-profit">{ef.wins}</span>
+                  {' / '}
+                  <span className="text-loss">{ef.losses}</span>
+                </span>
+              </div>
+              {ef.closedPositions.length > 0 && (
+                <div className="pt-3 mt-3 border-t border-border/50">
+                  <div className="text-[10px] font-bold text-text-dim uppercase tracking-widest mb-2">Recent Trades</div>
+                  <div className="space-y-1.5 max-h-[120px] overflow-y-auto">
+                    {ef.closedPositions.slice(0, 5).map(pos => (
+                      <div key={pos.id} className="flex items-center justify-between text-[10px]">
+                        <span className="font-bold text-white">{pos.symbol}</span>
+                        <span className={cn(
+                          "font-bold tabular-nums",
+                          (pos.pnl_usd ?? 0) >= 0 ? "text-profit" : "text-loss"
+                        )}>
+                          {(pos.pnl_usd ?? 0) >= 0 ? '+' : ''}{formatCurrency(pos.pnl_usd ?? 0)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
