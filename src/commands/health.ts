@@ -43,6 +43,14 @@ export type AgentHealthSummary = {
   sessions: HealthSummary["sessions"];
 };
 
+export type IntegrationHealthSummary = {
+  name: string;
+  configured: boolean;
+  ok?: boolean;
+  latencyMs?: number;
+  error?: string;
+};
+
 export type HealthSummary = {
   /**
    * Convenience top-level flag for UIs (e.g. WebChat) that only need a binary
@@ -68,9 +76,13 @@ export type HealthSummary = {
       age: number | null;
     }>;
   };
+  /** Optional third-party integration health probes (e.g. Robinhood Crypto). */
+  integrations?: IntegrationHealthSummary[];
 };
 
 const DEFAULT_TIMEOUT_MS = 10_000;
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 const debugHealth = (...args: unknown[]) => {
   if (isTruthyEnvValue(process.env.OPENCLAW_DEBUG_HEALTH)) {
@@ -379,6 +391,23 @@ export const formatHealthChannelLines = (
     }
     lines.push(`${label}: unknown`);
   }
+
+  // Append integration status lines (e.g. Robinhood Crypto Connector)
+  if (summary.integrations) {
+    for (const integration of summary.integrations) {
+      if (!integration.configured) continue;
+      if (integration.ok === true) {
+        const latency = integration.latencyMs != null ? ` (${integration.latencyMs}ms)` : "";
+        lines.push(`${integration.name}: ok${latency}`);
+      } else if (integration.ok === false) {
+        const errMsg = integration.error ? ` - ${integration.error}` : "";
+        lines.push(`${integration.name}: failed${errMsg}`);
+      } else {
+        lines.push(`${integration.name}: configured`);
+      }
+    }
+  }
+
   return lines;
 };
 
@@ -539,6 +568,46 @@ export async function getHealthSnapshot(params?: {
     }
   }
 
+  // --- Optional integrations (non-blocking, never fatal) ---
+  const integrations: IntegrationHealthSummary[] = [];
+  try {
+    const rhConfigured = Boolean(
+      process.env.RH_CRYPTO_API_KEY && process.env.RH_CRYPTO_PRIVATE_KEY_SEED,
+    );
+    if (rhConfigured && doProbe) {
+      // Dynamic import so this file doesn't hard-depend on the integration module
+      const rh = await import("../integrations/robinhood_crypto_client.js").catch(() => null);
+      if (rh?.probeHealth) {
+        const probe = await Promise.race([
+          rh.probeHealth(),
+          sleep(cappedTimeout).then(() => ({
+            ok: false as const,
+            status: 0,
+            latencyMs: cappedTimeout,
+            error: "probe timeout",
+          })),
+        ]);
+        integrations.push({
+          name: "Robinhood Crypto",
+          configured: true,
+          ok: probe.ok,
+          latencyMs: probe.latencyMs,
+          error: probe.error,
+        });
+      }
+    } else if (rhConfigured) {
+      integrations.push({ name: "Robinhood Crypto", configured: true });
+    }
+  } catch {
+    // Integration probe must never block the health snapshot
+    integrations.push({
+      name: "Robinhood Crypto",
+      configured: true,
+      ok: false,
+      error: "probe threw unexpectedly",
+    });
+  }
+
   const summary: HealthSummary = {
     ok: true,
     ts: Date.now(),
@@ -554,6 +623,7 @@ export async function getHealthSnapshot(params?: {
       count: sessions.count,
       recent: sessions.recent,
     },
+    ...(integrations.length > 0 ? { integrations } : {}),
   };
 
   return summary;
