@@ -149,6 +149,14 @@ export interface Database {
           mode: "paper" | "live";
         };
       };
+      crypto_tickers: {
+        Row: {
+          symbol: string;
+          price: number;
+          change_24h: number | null;
+          last_updated: string;
+        };
+      };
       crypto_fills: {
         Row: {
           id: string;

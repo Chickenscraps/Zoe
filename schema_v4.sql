@@ -12,6 +12,11 @@ create table if not exists public.users (
     created_at timestamptz default now(),
     last_seen timestamptz default now()
 );
+-- Enum for Account Mode
+DO $$ BEGIN CREATE TYPE account_mode AS ENUM ('PAPER', 'LIVE');
+EXCEPTION
+WHEN duplicate_object THEN null;
+END $$;
 -- ============================================================
 -- 2. ACCOUNTS (Paper State)
 -- ============================================================
@@ -19,6 +24,9 @@ create table if not exists public.accounts (
     id uuid primary key default uuid_generate_v4(),
     user_id uuid references public.users(id),
     instance_id text default 'default',
+    mode text default 'PAPER',
+    -- 'PAPER' or 'LIVE' (using text for broad compatibility if enum issues arise, but migration uses Enum)
+    is_active boolean default true,
     equity numeric(12, 2) default 2000.00,
     cash numeric(12, 2) default 2000.00,
     buying_power numeric(12, 2) default 2000.00,

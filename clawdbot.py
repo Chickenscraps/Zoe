@@ -46,6 +46,7 @@ vision_module = None
 voice_module = None
 memory_store = None
 poly_trader = None # Polymarket Trader
+crypto_trader = None # Robinhood Crypto Trader
 
 # Creative Pipeline Removed
 creative_pipeline_started = False
@@ -81,6 +82,9 @@ bot_config = BotConfig(ZOECONFIG)
 
 # Initialize Cadence Engine with idle config from config.yaml
 cadence_engine = CadenceEngine(idle_config=ZOECONFIG.get("idle", {}))
+
+# Initialize Scheduler
+scheduler = AsyncIOScheduler()
 
 # --- BOT INITIALIZATION ---
 def get_token():
@@ -228,6 +232,39 @@ async def on_ready():
         import traceback
         traceback.print_exc()
 
+    # Inject DB Client into PaperBroker (for Demo Persistence)
+    try:
+        from supabase_memory import supabase_memory
+        if supabase_memory.initialized and hasattr(TRADING_ENGINE.broker, 'set_db_client'):
+            TRADING_ENGINE.broker.set_db_client(supabase_memory.client)
+            print("   💾 PaperBroker: Linked to Supabase for persistence.")
+    except Exception as e:
+        print(f"   ⚠️ Failed to link PaperBroker to DB: {e}")
+
+    # Initialize Crypto Trader (Robinhood)
+    global crypto_trader
+    try:
+        from integrations.robinhood_crypto_client import RobinhoodCryptoClient, RobinhoodCryptoConfig
+        from services.crypto_trader import CryptoTraderService, SupabaseCryptoRepository
+        from services.crypto_trader.config import CryptoTraderConfig
+        from supabase_memory import supabase_memory
+
+        if supabase_memory.initialized:
+            # New Async Trader Logic
+            trader_config = CryptoTraderConfig() # Loads defaults + envs
+            rh_repo = SupabaseCryptoRepository(supabase_memory.client)
+
+            crypto_trader = CryptoTraderService(trader_config, rh_repo)
+
+            # Start the async loop
+            await crypto_trader.start()
+
+            print("   🪙 Crypto Trader active (Async + Supabase)")
+        else:
+            print("   ⚠️ Crypto Trader skipped: Supabase not ready")
+    except Exception as e:
+        print(f"   ⚠️ Crypto Trader init failed: {e}")
+
     # Sync slash commands
     try:
         synced = await tree.sync()
@@ -235,16 +272,19 @@ async def on_ready():
     except Exception as e:
         print(f"❌ Failed to sync commands: {e}")
     
-    # Scheduler Jobs (Legacy Removed)
+    # Scheduler Jobs
+    from project_worker import run_project_cycle
     # scheduler.add_job(morning_brief, ...)
     # scheduler.add_job(night_shift, ...)
     # scheduler.add_job(novelty_check, ...)
     # scheduler.add_job(boredom_check, ...)
-    # scheduler.add_job(run_project_cycle, ...)
     
-    # Only keep critical maintenance if needed (None for now)
-    # scheduler.start() 
-    print(f"   ⏰ APScheduler: No active jobs (Clean Reset)")
+    # Run Project Cycle every 15 minutes
+    bot.scheduler = AsyncIOScheduler()
+    bot.scheduler.add_job(run_project_cycle, CronTrigger(minute='*/15'), args=[bot, 1467290385507291350]) 
+    
+    bot.scheduler.start()
+    print(f"   ⏰ APScheduler: Active (Project Cycle: 15m)")
     
     # Watchdog active
 
@@ -274,6 +314,24 @@ async def on_ready():
         print("   👁️ Nosey Welcome Protocol active")
     except Exception as e:
         print(f"   ⚠️ Welcome Protocol failed: {e}")
+
+    # Start Trading Loop
+    if not trading_loop.is_running():
+        trading_loop.start()
+        print("   📈 Trading Loop: STARTED")
+
+@tasks.loop(seconds=5)
+async def trading_loop():
+    """Heartbeat for the Trading Engine."""
+    try:
+        # Run synchronous tick
+        TRADING_ENGINE.run_tick()
+    except Exception as e:
+        print(f"⚠️ Trading Loop Error: {e}")
+
+@trading_loop.before_loop
+async def before_trading_loop():
+    await bot.wait_until_ready()
 
 
 @bot.event
@@ -335,6 +393,22 @@ async def on_message(message: discord.Message):
         
         # Execute via Admin Tools
         result = admin_tools.execute_admin_command(bot, cmd, args, int(user_id), channel_id, is_admin_context)
+        await message.channel.send(result)
+        return
+
+    # --- 1.5 CRYPTO COMMANDS ---
+    if content_lower.startswith("/crypto_"):
+        if not crypto_trader:
+            await message.channel.send("⚠️ Crypto trader not active.")
+            return
+
+        from services.crypto_trader import handle_crypto_command
+        # Parse: /crypto_buy ETH 100 -> command="/crypto_buy", args=["ETH", "100"]
+        parts = content.strip().split()
+        cmd = parts[0].lower()
+        args = parts[1:]
+        
+        result = handle_crypto_command(crypto_trader, user_id, cmd, args)
         await message.channel.send(result)
         return
 
