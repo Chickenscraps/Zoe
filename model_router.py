@@ -117,30 +117,40 @@ class PromptCache:
 
 class ModelRouter:
     """Routes chat completion requests with smart escalation (Gemini Only)."""
-    
+
+    # STRICT: Only these model prefixes are allowed. No LLaMA, no Ollama, no local.
+    ALLOWED_MODEL_PREFIXES = ("gemini-",)
+
     def __init__(self):
         self.flash_lite_model = "gemini-2.5-flash-lite"
         self.pro_model = "gemini-2.5-pro"
         self.current_model = self.flash_lite_model
         self.escalation_tracker = EscalationTracker()
         self.cache = PromptCache(ttl_minutes=10)
-        
+
         # Pro budget
         self.pro_calls_count = 0
         self.pro_daily_budget = 50
         self.last_budget_reset = datetime.now().date()
-        
+
         # Try to initialize Gemini backend
         try:
             from llm_backends import get_backend
             self.gemini_backend = get_backend()
             self.gemini_available = True
-            logger.info("✅ Gemini backend ready")
+            logger.info("Gemini backend ready")
         except Exception as e:
-            logger.error(f"❌ Gemini backend failed to initialize: {e}")
+            logger.error(f"Gemini backend failed to initialize: {e}")
             self.gemini_backend = None
             self.gemini_available = False
-            # In Strict Mode, we do NOT fallback. System is effectively down for LLM.
+            # STRICT: No fallback. System is down for LLM if Gemini fails.
+
+    def _validate_model(self, model: str) -> str:
+        """Enforce Gemini-only policy. Reject non-Gemini model names."""
+        if any(model.startswith(prefix) for prefix in self.ALLOWED_MODEL_PREFIXES):
+            return model
+        logger.warning(f"Rejected non-Gemini model '{model}'. Using {self.flash_lite_model}")
+        return self.flash_lite_model
 
     def _check_budget(self):
         """Reset budget daily and check if Pro is allowed."""
@@ -206,7 +216,7 @@ class ModelRouter:
         correlation_id = str(uuid.uuid4())
         
         if model:
-            target_model = model
+            target_model = self._validate_model(model)
             logger.info(f"Targeting explicit model: {target_model}")
         else:
             should_esc, reason = self.escalation_tracker.should_escalate(task_hash, task_content, self.current_model)

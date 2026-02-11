@@ -1,27 +1,51 @@
 # Zoe / Clawdbot Configuration
+# Edit this file to change runtime behavior without code changes.
 
+# ─── Discord Channels ───
 discord:
-  allowed_chat_channel_ids: [1462568916692762687, 1462568915195527273] # Your general/zoe-chat IDs
-  thoughts_channel_id: 1462568916692762687 # Same as allowed for now, or separate if desired
-  admin_channel_ids: [1462568916692762687] # Same as allowed for now, or separate if desired
+  allowed_chat_channel_ids: [1462568916692762687, 1462568915195527273]
+  thoughts_channel_id: 1462568916692762687        # Idle self-talk channel
+  admin_channel_ids: [1462568916692762687]
+  trades_channel_id: 1462568915195527273           # Trade announcements
   respond_without_tag: true
   cooldown_seconds: 10
-  cooldown_jitter_seconds: 6 # 0-6s random jitter
+  cooldown_jitter_seconds: 6
 
+# ─── Admin ───
 admin:
-  admin_user_ids: ["292890243852664855"] # Josh
+  admin_user_ids: ["292890243852664855"]            # Josh
   require_admin_channel_for_tools: true
   destructive_confirm: true
   confirm_ttl_seconds: 120
 
+# ─── Persona ───
 persona:
   flirt_mode: true
   flirt_intensity: 0.6
   adult_humor: true
   boundary_words: ["stop", "too far", "no", "chill", "gross"]
   mention_allowlist: ["Josh", "ChickenScraps", "Steve", "Zoe"]
-  # Optional: specific IDs to map if needed later
-  # steve_id: "..." 
 
+# ─── Model Selection (Gemini Only) ───
 model:
-  runtime_default: "Gemini 2.0 Flash-Lite"
+  runtime_default: "gemini-2.5-flash-lite"         # Cost-effective default
+  escalation_model: "gemini-2.5-pro"               # Complex/safety tasks
+  pro_daily_budget: 50                             # Max pro calls per day
+  allowed_providers: ["gemini"]                    # STRICT: no fallback
+
+# ─── Idle Mode ───
+idle:
+  enabled: true
+  min_silence_minutes: 10                          # Wait this long before idle post
+  cooldown_minutes: 30                             # Max 1 idle post per this interval
+  quiet_hours_start: "23:00"                       # No idle posts after this
+  quiet_hours_end: "07:00"                         # No idle posts before this
+
+# ─── Paper Trading ───
+trading:
+  paper_only: true
+  starting_equity: 2000
+  max_risk_per_trade: 100
+  pdt_simulation: true
+  pdt_max_day_trades: 3
+  pdt_rolling_days: 5

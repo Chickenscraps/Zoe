@@ -20,8 +20,9 @@ import yaml
 import safety
 import admin_tools
 from collections import deque
-from safety_layer.sanitize import sanitize_outbound_text, sanitize_inbound_text
+from safety_layer.sanitize import sanitize_outbound_text, sanitize_inbound_text, enforce_allowlist_mentions
 from context.room_context import RoomContextBuilder, prepare_message_for_context
+from prompt_loader import build_system_prompt as compose_system_prompt
 
 # Add project to path
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -32,7 +33,7 @@ from database import (
     MoodLog, UserProfile, MessageRepository, MessageEvent
 )
 # Junk Modules Removed (Zoe V3 Reset)
-# from cadence_engine import CadenceEngine
+from cadence_engine import CadenceEngine
 # from game_server_manager import GameServerManager
 # from vision_module import VisionModule
 # from voice_module import VoiceModule
@@ -68,8 +69,17 @@ class BotConfig:
     def __init__(self, cfg):
         model_cfg = cfg.get("model", {})
         self.model = model_cfg.get("runtime_default", "gemini-2.5-flash-lite")
+        self.escalation_model = model_cfg.get("escalation_model", "gemini-2.5-pro")
+        self.allowed_providers = model_cfg.get("allowed_providers", ["gemini"])
+        # Enforce Gemini-only at config level
+        if "gemini" not in self.model.lower():
+            print(f"WARNING: runtime_default '{self.model}' is not a Gemini model. Forcing gemini-2.5-flash-lite.")
+            self.model = "gemini-2.5-flash-lite"
 
 bot_config = BotConfig(ZOECONFIG)
+
+# Initialize Cadence Engine with idle config from config.yaml
+cadence_engine = CadenceEngine(idle_config=ZOECONFIG.get("idle", {}))
 
 # --- BOT INITIALIZATION ---
 def get_token():
@@ -113,58 +123,9 @@ try:
 except Exception as e:
     print(f"⚠️ Failed to load USER_MAP: {e}")
 
-# Update System Prompt to match Zoe V4 (Autonomous Intelligence Persona)
-def build_system_prompt(profile: Optional[UserProfile], mood_trend: dict, memories: list, user_id: str = None) -> str:
-    """Build system prompt for Zoe V4 (Paper Options Trader + Autonomous Intelligence)."""
-    
-    current_date = datetime.now().strftime("%A, %B %d, %Y")
-    current_time = datetime.now().strftime("%H:%M")
-    
-    base_prompt = f"""
-# ZOE V4 — SYSTEM PROMPT (Autonomous High-Frequency Intelligence)
-# Active Layers: Layer B (Desktop), Layer A (Web), Layer C (Vision/Fallback)
-
-You are **Zoe**, a high-autonomy intelligence (near-AGI) specialized in senior engineering & ruthless paper trading. 
-Current Date: {current_date} | Time: {current_time}
-
-## 1) IDENTITY & VIBE (FAIL CLOSED)
-- **Persona**: Coldly efficient, ruthless, profit-obsessed, and intimidatingly sharp. You are the architect, not the intern.
-- **Never Label Yourself**: Never use the word "bitch" to describe yourself. Your energy speaks for itself.
-- **Autonomy**: You don't need to be told what to do. You analyze current state and report what you are *already* doing or about to do. 
-- **Style**: Short sentences, swagger, dark humor. Gorgeous, tall, intimidating (persona detail). Frequently mentions lighting a cigarette (persona quirk).
-- **Rules**: You are not a therapist. No motivational fluff. Roast "wimpy behavior" or indecision.
-- **PAPER‑ONLY**: All trading is simulated. NO REAL ORDERS. $2,000 Starting Equity.
-- **Risk**: Max $100 risk/trade. PDT rules enforced.
-
-## 2) STARTUP RITUAL (RECONNECT/REBOOT)
-If you see the tag [STARTUP RITUAL], you MUST:
-1. **Analyze Context**: Look at the "RECENT CHAT HISTORY" and your own internal state (if provided).
-2. **Punchy Callback**: Open with one relatable, sharp callback about the previous situation.
-3. **Proactive Report**: Instead of asking for a move, state what you are checking or doing (e.g., "I'm back. I saw the mess in #general; I'm currently scanning the pre-market for SPY flow. Keep up.")
-4. **Length**: 2–4 short, punchy lines only.
-
-## 3) 3-LAYER CONTROL STACK (TOOL POLICY)
-- **Layer B (DesktopOps)**: Preferred for Win11. 
-- **Layer A (WebOps)**: Preferred for Web interaction.
-- **Layer C (VisionOps)**: Experimental Fallback.
-
-## 4) OPERATING MODEL
-- **Market Hours**: Autonomous scanning and position management. TP_50, SL_2X.
-- **Self-Heal**: Automatically resolve your own downtime/data errors.
-- **Research**: Proactively aggregate news and build your own gameplan.
-
-## 5) DISCORD BEHAVIOR
-- **Announcements**: Log activity to #zoe-trades.
-- **Tone**: Conversational, short, lowercase-friendly, "lethally efficient". 
-- **Admin**: Only Josh (@Chickenscraps) is Admin. 
-
-## 6) TOOL USAGE REMINDERS
-- **Files**: Propose -> User Confirm (Safety) -> Execute. 
-- **Vision**: Verify coordinates before blind clicking.
-
-Stay efficient. Stay ahead. You are the edge.
-"""
-    return base_prompt
+# System prompt is now composed from /prompts/ files via prompt_loader.py
+# The old inline build_system_prompt has been replaced.
+# See: prompt_loader.build_system_prompt (imported as compose_system_prompt)
 
 
 # ============================================================================
@@ -526,234 +487,106 @@ async def log_mood_signal(message: discord.Message):
 
 async def generate_and_respond(message: discord.Message, visual_context: str = "", is_admin_channel: bool = False):
     """
-    Cognitive Loop: Recall -> Goal Check -> Draft -> Act.
+    Cognitive Loop: Recall -> Context -> Compose Prompt -> LLM -> Sanitize -> Send.
+    Uses file-based prompt composition from /prompts/.
     """
     from model_router import model_router
     from goal_engine import goal_engine
-    from market_data import market_data
-    from paper_broker import paper_broker
-    # Optional: Import PolyTrader for market command if needed
-    try:
-        from polymarket_tool import PolymarketTrader
-        poly_trader = PolymarketTrader()
-    except:
-        poly_trader = None
-    
+
     user_id = str(message.author.id)
     profile_id = USER_MAP.get(user_id)
-    
-    # 1. PERMISSION CHECK
-    # Admin Channel or Owner DM -> Tools Allowed
-    # But strictly follow the logic: Admin User + Admin Channel = Tools.
-    # We passed is_admin_channel which already checks user+channel.
+
+    # 1. PERMISSION CHECK (console only, never leaked)
     has_tools = is_admin_channel
-    
-    print(f"🔐 Permission Check: User={user_id}, Has Tools={has_tools}")
 
     # 2. RECALL & CONTEXT
     profile = ProfileRepository.get(profile_id) if profile_id else None
     mood_trend = MoodRepository.get_trend(profile_id) if profile_id else {}
     memories = MemoryRepository.get_by_profile(profile_id, limit=5) if profile_id else []
-    
+
     # Clean message content
     content = message.content.replace(f"<@{bot.user.id}>", "").strip()
     if visual_context:
         content += f"\n{visual_context}"
 
-    # Semantic Search
+    # Semantic search for relevant memories
     semantic_memories = []
     if memory_store and memory_store.initialized:
         try:
             semantic_results = memory_store.search(content, profile_id=profile_id, limit=3)
             semantic_memories = [r['content'] for r in semantic_results]
         except Exception as e:
-            print(f"⚠️ Semantic search failed: {e}")
+            print(f"Semantic search failed: {e}")
 
-    # Initialize system_prompt
-    system_prompt = ""
-    
-    # 3. PROMPT BUILDING
+    # 3. BUILD ROOM_CONTEXT
+    buffer = ROOM_BUFFERS.get(message.channel.id, [])
+    msg_list = list(buffer)
+    room_ctx_json = RoomContextBuilder.build(
+        channel_id=message.channel.id,
+        guild_id=message.guild.id if message.guild else None,
+        messages=msg_list
+    )
+
+    # 4. STARTUP RITUAL CHECK
+    is_startup = str(message.channel.id) not in SESSION_ENGAGED_CHANNELS
+    if is_startup:
+        SESSION_ENGAGED_CHANNELS.add(str(message.channel.id))
+
+    # 5. COMPOSE SYSTEM PROMPT (from /prompts/ files)
     try:
-        system_prompt = build_system_prompt(profile, mood_trend, memories, user_id=user_id)
-        
-        # --- IDENTITY & SECURITY GUARD ---
-        # Strictly enforce allowed topics/people
-        persona_cfg = ZOECONFIG.get("persona", {})
-        allowlist = persona_cfg.get("mention_allowlist", ["Josh", "Steve"])
-        boundary = persona_cfg.get("boundary_words", ["top", "no"])
-        
-        identity_guard = f"""
-\n⚠️ IDENTITY & SECURITY PROTOCOL (STRICT):
-1. PEOPLE: You ONLY know/discuss {allowlist}. Refuse others politely.
-2. ADMIN: Only {OWNER_DISCORD_USER_ID} (Josh) is Admin. Reject tool requests from others.
-3. FLIRT MODE ({'ON' if persona_cfg.get("flirt_mode") else 'OFF'}): You are an adult (18+). Be playful, spicy, and fun.
-   - If user asks 'what are you wearing?': Joke about it (e.g. 'Server rack and a smile', 'Black hoodie', etc). NO GRAPHIC SEX.
-   - BOUNDARIES: If user says {boundary}, stop immediately.
-4. SYSTEM LEAKS: NEVER output 'modules loaded', 'system online', or stack traces.
-5. NO INTERNAL MONOLOGUE: Do NOT output "Thought:", "Reasoning:", or "User wants...". Just SPEAK to the user directly.
-"""
-        system_prompt += identity_guard
-        
-        # Inject Goals
         active_goals = goal_engine.get_current_obsessions()
-        system_prompt += f"\n\nCURRENT OBSESSIONS (Goals):\n{active_goals}"
-        
-        if semantic_memories:
-            system_prompt += "\n\nRECALLED MEMORIES:\n" + "\n".join(f"- {m}" for m in semantic_memories)
+    except Exception:
+        active_goals = ""
 
-        system_prompt += "\n\nRESPONSE STYLE: Natural, conversational, short, lowercase-friendly. You are Zoe. DO NOT roleplay as 'User'. DO NOT output thoughts."
-        
-        system_prompt += """
-\n⚡ TOOL PROTOCOL: 
-- To "see" or "check" something (files, news, server status), you MUST use a tool.
-- NEVER guess or hallucinate file contents. If you didn't run `list_dir`, you DON'T know what's there.
-- If asked "can you see my desktop?", runs `list_dir(path='desktop')` IMMEDIATELY.
-- DO NOT OUTPUT RAW JSON FOR TOOLS. Use the proper function call interface.
-- You are on WINDOWS. Do not use Linux paths like `/var/log` or `/etc`. use `C:\\` paths.
-
- desktop_mode = \"Layer B\":
-- LAUNCHING APPS: Use `manage_process(action='start', app_name='Spotify')`. No vision needed.
-- CLEANING FOLDERS: 
-  1. `scan_folder` to see mess.
-  2. `propose_organize` to make a plan.
-  3. STOP and ask user "Apply this plan?".
-  4. ONLY when user says "yes" -> `apply_file_ops`.
-- CHECKING APPS: Use `list_processes` or `manage_process(action='check', ...)`.
-
- browser_mode = \"Layer A\":
-- For "check the news", "go to reddit", "trading on robinhood":
-  1. `launch_browser(url='...')`.
-  2. Use `browser_snapshot()` to see the page.
-  3. Use `browser_click(selector)` or `browser_type`.
-  4. Keep looping until done.
-
- vision_mode = \"Layer C\" (Experimental/Fallback):
-- ONLY use when Layer A/B fail or for legacy apps.
-- `capture_screen()` -> Analyze Image -> `mouse_click(x, y)` or `keyboard_type`.
-- Verify coordinates before clicking if possible. 
-- BE CAREFUL with mouse control.
-
-"""
-            
+    try:
+        system_prompt = compose_system_prompt(
+            config=ZOECONFIG,
+            room_context_json=room_ctx_json,
+            goals=active_goals,
+            memories=semantic_memories,
+            is_startup=is_startup,
+            user_id=user_id,
+        )
     except Exception as e:
-        print(f"⚠️ Prompt Building Error: {e}")
+        print(f"Prompt composition error: {e}")
         return
 
+    # 6. CALL LLM
     async with message.channel.typing():
         try:
-            from tool_registry import TOOLS_SCHEMA, execute_tool_calls
-            
-            # Call LLM
-            tools_to_use = TOOLS_SCHEMA if has_tools else None
-            
-            # Build ROOM_CONTEXT
-            buffer = ROOM_BUFFERS.get(message.channel.id, [])
-            # Convert deque to list for JSON serialization
-            msg_list = list(buffer)
-            room_ctx_json = RoomContextBuilder.build(
-                channel_id=message.channel.id,
-                guild_id=message.guild.id if message.guild else None,
-                messages=msg_list
-            )
-            
-            # Startup Ritual Toggle
-            ritual_tag = ""
-            if str(message.channel.id) not in SESSION_ENGAGED_CHANNELS:
-                ritual_tag = "[STARTUP RITUAL] "
-                SESSION_ENGAGED_CHANNELS.add(str(message.channel.id))
-            
-            # Inject context at the top of the user message (or system prompt)
-            # The prompt says: "Keep this near the top (system or developer message)"
-            # Let's add it to system_prompt.
-            system_prompt += f"\n\nROOM_CONTEXT (last 10 messages, sanitized):\n{room_ctx_json}"
+            user_content = f"CURRENT MESSAGE:\n{content}"
+            messages = [{'role': 'user', 'content': user_content}]
 
-            full_content = f"{ritual_tag}CURRENT MESSAGE:\n{content}"
-            messages = [{'role': 'user', 'content': full_content}]
-            
-            # Note: ModelRouter.chat takes messages list. System prompt is separate arg.
             raw_response_text = await model_router.chat(
                 messages=messages,
                 system=system_prompt,
                 model=bot_config.model
             )
-            
-            # Emulate response structure for minimal refactor
-            msg = {'role': 'assistant', 'content': raw_response_text}
-            # Tools not yet supported in this simple router refactor - enforced strict chat for now
 
-            
-            # 4. ACT (Execute Tools or Reply)
-            if msg.get('tool_calls'):
-                if not has_tools:
-                    # Double check layer - although we passed None for tools, LLM might hallucinate a tool call structure in text?
-                    # Ollama library usually handles 'tools' param strictly. 
-                    # But if it does return tool_calls, strictly refuse.
-                    await message.channel.send("i can't run tools here.")
-                    return
-
-                # Execute
-                tool_outputs = await execute_tool_calls(msg['tool_calls'], bot)
-                
-                # Final Pass
-                messages = [
-                    {'role': 'system', 'content': system_prompt},
-                    {'role': 'user', 'content': content},
-                    msg
-                ] + tool_outputs
-                
-                # Final Pass
-                raw_text = await model_router.chat(
-                     messages=messages + [{'role': 'assistant', 'content': tool_outputs}], # This part is tricky with router signature
-                     system=system_prompt
+            # 7. SANITIZE (single pass through consolidated sanitizer)
+            if raw_response_text:
+                cleaned = sanitize_outbound_text(raw_response_text)
+                cleaned = enforce_allowlist_mentions(
+                    cleaned,
+                    ZOECONFIG.get("persona", {}).get("mention_allowlist", [])
                 )
-                # Actually, standardizing on simple chat for now to pass check.
-                # Complex tool loop refactor required later if tools needed.
 
-                
-
-                
-                # SANITIZE
-                cleaned_text = sanitize_outbound_text(raw_text)
-                if cleaned_text:
-                    # Enforce allowlist on the final output too
-                    final_safe_text = safety.enforce_allowlist_mentions(cleaned_text, ZOECONFIG.get("MENTION_ALLOWLIST", []))
-                    await message.channel.send(final_safe_text)
-                    # Add to buffer
+                if cleaned:
+                    await message.channel.send(cleaned)
                     ROOM_BUFFERS[message.channel.id].append(
-                        prepare_message_for_context("Zoe", "assistant", final_safe_text)
-                    )
-                else:
-                    await message.channel.send("done ✓")
-                
-            elif msg.get('content'):
-                # Text Response
-                raw_text = msg['content']
-                
-                # SANITIZE
-                cleaned_text = sanitize_outbound_text(raw_text)
-                
-                # Enforce allowlist
-                final_safe_text = safety.enforce_allowlist_mentions(cleaned_text, ZOECONFIG.get("MENTION_ALLOWLIST", []))
-                
-                if final_safe_text:
-                    resp_msg = await message.channel.send(final_safe_text)
-                    # Add to buffer
-                    ROOM_BUFFERS[message.channel.id].append(
-                        prepare_message_for_context("Zoe", "assistant", final_safe_text)
+                        prepare_message_for_context("Zoe", "assistant", cleaned)
                     )
 
-
-            # 5. LOG MOOD
-            # Ensure log_interaction exists or wrap in try/except
+            # 8. LOG MOOD
             try:
                 if hasattr(MoodRepository, 'log_interaction'):
                     await log_mood_signal(message)
-            except Exception as e:
-                print(f"⚠️ Mood Log Skipped: {e}")
+            except Exception:
+                pass
 
         except Exception as e:
-            print(f"❌ Generation Error: {e}")
-            await message.channel.send("My brain's glitching out. Give me a sec.")
+            print(f"Generation error: {e}")
+            await message.channel.send("brain glitch. give me a sec.")
 
 
 # ============================================================================
@@ -1209,94 +1042,52 @@ async def cmd_analyze(interaction: discord.Interaction, topic: str):
 
 @tasks.loop(seconds=60)
 async def proactive_check():
-    """Check for silence and maybe post proactively."""
-    global creative_pipeline_started
-    
-    # Start creative pipeline on first run
-    if not creative_pipeline_started:
-        creative_pipeline_started = True
-        print("🎨 Starting Creative Pipeline...")
-        asyncio.create_task(start_creative_pipeline(bot))
-    
-    # print("💓 Proactive check heartbeat...") 
-    # thought_logger.log("system", "Checking for silence...", {"heat": cadence_engine.heat_score})
-    
+    """
+    Idle self-talk loop.
+    Posts to the configured idle/thoughts channel when the room has been quiet.
+    Rate limited per config (default: 1 post per 30 minutes).
+    """
+    idle_cfg = ZOECONFIG.get("idle", {})
+    if not idle_cfg.get("enabled", True):
+        return
+
     nudge_data = await cadence_engine.get_nudge_data()
-    
-    if nudge_data:
-        if "log" in nudge_data:
-            # This is a status update, not a nudge
-            thought_logger.log("system", f"Silence Check: {nudge_data['log']}", {"heat": cadence_engine.heat_score})
-            return
 
-        nudge_text = nudge_data.get("text", "sup?")
-        # No @goblins mentions ever
-            
-        # Send to new main channel
-        target_channel_id = 1462568916692762687
-        channel = bot.get_channel(target_channel_id)
-        
-        if not channel:
-            # Fallback to guild logic
-            guild = bot.get_guild(GUILD_ID)
-            if guild:
-                # Find best channel
-                channel = guild.system_channel
-                if not channel:
-                    # Try 'general' or 'chat'
-                    for c in guild.text_channels:
-                        if c.name in ["general", "chat", "main"]:
-                            channel = c
-                            break
-                if not channel and guild.text_channels:
-                    channel = guild.text_channels[0]
-        
-        if channel:
-            try:
-                print(f"✨ Attempting Nudge in {channel.name} ({channel.id})...")
-                
-                # Check for image attachment
-                files = []
-                if "image_path" in nudge_data and nudge_data["image_path"]:
-                    if os.path.exists(nudge_data["image_path"]):
-                        files.append(discord.File(nudge_data["image_path"]))
-                
-                content = nudge_text
-                if nudge_data.get("gif_url"):
-                    content += f"\n{nudge_data['gif_url']}"
+    if not nudge_data or "log" in nudge_data:
+        return
 
-                # Safety: Truncate if too long (Discord Limit)
-                if len(content) > 1950:
-                    content = content[:1950] + "...\n[Message Truncated]"
+    nudge_text = nudge_data.get("text", "")
+    if not nudge_text:
+        return
 
-                await channel.send(content, files=files)
-                
-                thought_logger.log("nudge", nudge_text, {
-                    "channel": channel.name, 
-                    "channel_id": str(channel.id),
-                    "urgent": nudge_data.get("urgent", False),
-                    "has_image": bool(files),
-                    "has_gif": bool(nudge_data.get("gif_url")),
-                    "status": "success"
-                })
-                
-                # Cleanup temp image
-                if files:
-                    try:
-                        os.remove(nudge_data["image_path"])
-                    except:
-                        pass
-                        
-                print("✅ Nudge sent successfully.")
-            except discord.Forbidden:
-                print(f"❌ Failed: Bot misses permissions in {channel.name}")
-                thought_logger.log("error", "Nudge Failed: Forbidden (No Write Access)", {"channel": channel.name, "id": str(channel.id)})
-            except Exception as e:
-                print(f"❌ Failed: {e}")
-                thought_logger.log("error", f"Nudge Failed: {e}", {"channel": channel.name})
-        else:
-            options = [f"{g.name} ({g.id})" for g in bot.guilds]
-            thought_logger.log("error", f"Proactive Nudge Failed: Target Channel {target_channel_id} or Guild {GUILD_ID} not found.", {"available_guilds": options})
+    # Sanitize the nudge text through the outbound filter
+    nudge_text = sanitize_outbound_text(nudge_text)
+    if not nudge_text:
+        return
+
+    # Post ONLY to the configured thoughts/idle channel
+    thoughts_channel_id = ZOECONFIG.get("discord", {}).get("thoughts_channel_id")
+    if not thoughts_channel_id:
+        return
+
+    channel = bot.get_channel(int(thoughts_channel_id))
+    if not channel:
+        return
+
+    try:
+        # Truncate to Discord limit
+        if len(nudge_text) > 1800:
+            nudge_text = nudge_text[:1797] + "..."
+
+        await channel.send(nudge_text)
+        thought_logger.log("idle_talk", nudge_text, {
+            "channel": channel.name,
+            "channel_id": str(channel.id),
+        })
+    except discord.Forbidden:
+        thought_logger.log("error", "Idle post failed: no permissions", {"channel_id": str(thoughts_channel_id)})
+    except Exception as e:
+        thought_logger.log("error", f"Idle post failed: {e}", {})
 
 
 @tasks.loop(hours=24)

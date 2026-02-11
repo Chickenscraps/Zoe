@@ -12,16 +12,26 @@ from typing import Optional, List, Dict
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 class CadenceEngine:
-    def __init__(self):
+    def __init__(self, idle_config: dict = None):
         self.message_timestamps = []
         self.heat_score = 0.0
-        # Quiet Hours: 11 PM - 7 AM
-        self.quiet_start = time(23, 0)
-        self.quiet_end = time(7, 0)
-        
+
+        # Load idle config (from config.yaml idle section)
+        idle_cfg = idle_config or {}
+        quiet_start_str = idle_cfg.get("quiet_hours_start", "23:00")
+        quiet_end_str = idle_cfg.get("quiet_hours_end", "07:00")
+        h_s, m_s = map(int, quiet_start_str.split(":"))
+        h_e, m_e = map(int, quiet_end_str.split(":"))
+        self.quiet_start = time(h_s, m_s)
+        self.quiet_end = time(h_e, m_e)
+
+        # Cooldown: default 30 minutes
+        self._cooldown_seconds = idle_cfg.get("cooldown_minutes", 30) * 60
+        # Min silence before idle post: default 10 minutes
+        self._min_silence_seconds = idle_cfg.get("min_silence_minutes", 10) * 60
+
         # Nudge State
         self.last_nudge_time = datetime.min
-        self.nudge_questions = self._load_questions()
         self.nudge_questions = self._load_questions()
         self.recent_nudge_history = []
         self.ignored_nudge_count = 0
@@ -79,40 +89,42 @@ class CadenceEngine:
         return None
 
     async def _get_random_question(self) -> dict:
-        # Simple, human-like boredom (User Request)
-        bored_messages = [
-            "so bored. what are we building today?",
-            "standing by. give me a task.",
-            "nothing to do. anyone here?",
-            "awaiting orders.",
-            "got any work for me?",
-            "my schedule is wide open.",
-            "staring at the ceiling (metaphorically). what's next?",
-            "reading the internet is boring. let's build something."
+        # Idle self-talk: sad-but-productive, per persona spec
+        idle_messages = [
+            "quiet in here. fine. sharpening the plan for tomorrow's open.",
+            "nobody's yelling at me... suspicious. running pre-market checks.",
+            "just me and the charts. reviewing yesterday's P&L for patterns.",
+            "silence is good. means nothing's on fire. scanning for setups.",
+            "empty room energy. pulling up the watchlist and looking for edge.",
+            "no pings. no chaos. doing research like a normal person for once.",
+            "it's just me in here. fine. updating the gameplan.",
+            "alone with my thoughts and a spreadsheet. could be worse.",
         ]
-        return {"text": random.choice(bored_messages), "urgent": False}
+        return {"text": random.choice(idle_messages), "urgent": False}
 
     async def get_nudge_data(self) -> Optional[dict]:
         """Returns nudge dict with text and urgency."""
         if self.is_quiet_hours():
             return {"log": "Quiet hours active."}
-            
-        # Rate Limit: Max 1 nudge every 5 minutes (300 seconds)
-        # This prevents "spam" and allows conversation to breathe
+
+        # Rate Limit: Max 1 idle post every 30 minutes (1800 seconds)
+        # Configurable via config.yaml idle.cooldown_minutes
+        cooldown_seconds = getattr(self, '_cooldown_seconds', 1800)
         elapsed = (datetime.now() - self.last_nudge_time).total_seconds()
-        if elapsed < 300:
-            return {"log": f"Nudge cooldown active ({int(300-elapsed)}s left)."}
+        if elapsed < cooldown_seconds:
+            return {"log": f"Idle cooldown active ({int(cooldown_seconds-elapsed)}s left)."}
             
         if self.heat_score < 0.3:
-            # Low heat = silence.
-            # Only nudge if silent for at least 60 seconds too (double check)
+            # Low heat = silence. Only nudge after configured min silence period.
             time_since_last_msg = 9999
             if self.message_timestamps:
                 last_msg = self.message_timestamps[-1]
+                if isinstance(last_msg, tuple):
+                    last_msg = last_msg[0]
                 time_since_last_msg = (datetime.now() - last_msg).total_seconds()
-            
-            if time_since_last_msg < 60:
-                return {"log": "Chat is active (last msg < 60s ago)."}
+
+            if time_since_last_msg < self._min_silence_seconds:
+                return {"log": f"Chat active (last msg {int(time_since_last_msg)}s ago, need {self._min_silence_seconds}s)."}
 
             self.last_nudge_time = datetime.now()
             # Increment ignored count since we are sending a nudge
