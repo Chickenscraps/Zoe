@@ -49,3 +49,96 @@ trading:
   pdt_simulation: true
   pdt_max_day_trades: 3
   pdt_rolling_days: 5
+
+# ─── Trendlines + Key Levels ───
+trendlines:
+  enabled: true
+  universe: ["BTC-USD", "ETH-USD"]
+  timeframes: ["15m", "1h", "4h", "1d"]
+  pivots:
+    method: "FRACTAL"
+    k: 3                             # half-window for rolling fractal
+    atr_len: 14
+    atr_pivot_mult: 0.75             # min excursion in ATR units
+    max_pivots: 300                  # bound RANSAC/DBSCAN input size
+    sources: ["wick", "body"]
+  fitting:
+    method: "RANSAC"
+    min_pivots: 3                    # min inlier touches for a valid line
+    max_lines_per_side: 2            # sequential-peel limit per side
+    max_trials: 500                  # RANSAC iterations (>99% find prob)
+    random_state: 42                 # determinism seed
+  tolerance:
+    atr_tol_mult: 0.35              # RANSAC residual_threshold = ATR × this
+    pct_tol: 0.002                   # fallback %-based tolerance
+  horizontals:
+    cluster_method: "DBSCAN"
+    eps_atr_mult: 0.25               # DBSCAN eps = ATR × this
+    min_samples: 3                   # DBSCAN density threshold
+    min_cluster_touches: 3           # clusters < this are discarded
+  scoring:
+    min_score_to_keep: 60            # levels below this score are dropped
+    weights:
+      touches: 0.40
+      recency: 0.35
+      confluence: 0.15
+      stability: 0.10
+  events:
+    confirm_closes_15m: 2
+    confirm_closes_1h: 2
+    confirm_closes_4h: 1
+    breakout_epsilon_pct: 0.001
+
+# ─── Bounce Catcher ───
+bounce:
+  enabled: false                     # START IN SHADOW MODE
+  universe: ["BTC-USD", "ETH-USD"]
+  atr_len: 14
+  vol_ma_len: 20
+  vol_halt_24h_range: 0.05           # 24h range/open > 5% → halt
+  weekend_dampener: false
+  capitulation:
+    atr_mult: 2.5                    # true_range >= 2.5 × ATR
+    vol_mult: 2.0                    # volume >= 2.0 × vol_ma
+    lower_wick_min: 0.45             # 45% lower wick recovery
+  stabilization:
+    confirmations_required: 2        # 2-of-4 must fire
+    higher_lows_k: 4                 # last 4 candle lows ascending
+    rsi_reclaim: 30                  # RSI crosses above 30
+    funding_support_max_8h: 0.001    # neutral/negative funding
+    allow_missing_altdata: true      # don't block if funding unavailable
+  execution:
+    tp_pct: 0.045                    # +4.5% take profit
+    time_stop_hours: 12              # max trade duration
+    sl_atr_mult: 1.5                 # stop = entry - 1.5 × ATR
+    sl_hard_pct: 0.03               # hard -3% for tiny accounts
+    max_spread_pct_to_trade: 0.003   # spread > 0.3% → halt
+    entry_style: "retest"            # 'retest' or 'breakout'
+  scoring:
+    min_score: 70                    # only emit intent if score >= 70
+  alerts:
+    throttle_minutes: 30             # max 1 discord alert per 30m/symbol
+
+# ─── Position Sizing ───
+position_sizing:
+  risk_fraction: 0.02             # risk 2% of equity per trade
+  max_notional_per_trade: 500     # hard cap: never buy more than $500 notional
+  max_equity_pct: 0.25            # never put more than 25% of equity in one trade
+  min_notional: 10                # skip trades smaller than $10
+  score_scaling: true             # reduce size for lower bounce scores
+
+# ─── Crypto Data Pipeline ───
+crypto_data:
+  provider: "polygon"                  # Polygon.io (same API key as equities)
+  symbols:                             # Zoe name → Polygon crypto ticker
+    BTC-USD: "X:BTCUSD"
+    ETH-USD: "X:ETHUSD"
+  candle_cache_ttl_seconds: 60         # in-memory cache TTL for bars
+  scheduler:
+    check_interval_seconds: 60         # how often the candle loop ticks
+    active_timeframes: ["15m", "1h"]   # which candle closes to process
+  external:
+    coinalyze_enabled: true            # funding rate + OI (free, no auth)
+    fear_greed_enabled: true           # Alternative.me F&G index (free)
+    funding_cache_ttl_hours: 8
+    fear_greed_cache_ttl_hours: 24

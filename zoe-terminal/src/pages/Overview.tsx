@@ -17,20 +17,13 @@ export default function Overview() {
     dailyNotional,
     realizedPnl,
     cryptoOrders,
+    equityHistory,
     loading,
   } = useDashboardData();
 
   const equity = accountOverview?.equity ?? 0;
   const todayPnl = accountOverview?.day_pnl ?? 0;
   const dailyNotionalUsed = dailyNotional?.notional_used ?? 0;
-
-  const displayPnl = [
-    { date: "2023-10-01", equity: 10000 },
-    { date: "2023-10-02", equity: 10200 },
-    { date: "2023-10-03", equity: 10150 },
-    { date: "2023-10-04", equity: 10400 },
-    { date: "2023-10-05", equity: 10800 },
-  ].map((d) => ({ ...d, daily_pnl: 0 }));
 
   if (loading) {
     return (
@@ -82,7 +75,7 @@ export default function Overview() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          <EquityChart data={displayPnl} height={340} />
+          <EquityChart data={equityHistory} height={340} />
 
           <div className="card-premium p-8">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-6">

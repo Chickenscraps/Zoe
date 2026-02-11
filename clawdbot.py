@@ -7,8 +7,9 @@ import sys
 import json
 import asyncio
 import uuid
-from datetime import datetime
-from typing import Optional, List, Dict, Any, Dict, Any, List, Set, Union
+from datetime import datetime, timezone
+from typing import Optional, List, Dict, Any, Set, Union
+import logging
 
 import discord
 from discord import app_commands
@@ -113,6 +114,20 @@ from model_router import model_router
 from approval_gate import ApprovalGate
 from game_server_manager import GameServerManager
 
+# ── Crypto Structure Pipeline ─────────────────────────────────────────
+from services.crypto_data import CryptoDataService
+from services.external_data import ExternalDataService
+from services.structure_context import StructureContextService
+from services.position_sizer import position_sizer
+from trendlines.config import TrendlinesConfig
+from bounce.config import BounceConfig
+
+crypto_data_svc: Optional[CryptoDataService] = None
+external_data_svc: Optional[ExternalDataService] = None
+structure_context_svc: Optional[StructureContextService] = None
+
+_crypto_logger = logging.getLogger("zoe.crypto_pipeline")
+
 
 # Load User Map
 try:
@@ -191,8 +206,28 @@ async def on_ready():
     
     # Start Trading Engine
     TRADING_ENGINE.start()
-    
-    
+
+    # ── Initialize Crypto Structure Pipeline ──────────────────────────
+    global crypto_data_svc, external_data_svc, structure_context_svc
+    try:
+        trend_cfg = TrendlinesConfig.from_dict(ZOECONFIG.get("trendlines", {}))
+        bounce_cfg = BounceConfig.from_dict(ZOECONFIG.get("bounce", {}))
+
+        crypto_data_svc = CryptoDataService()
+        external_data_svc = ExternalDataService()
+        structure_context_svc = StructureContextService(trend_cfg, bounce_cfg)
+        structure_context_svc.restore()
+
+        # Start the candle-close scheduler
+        crypto_candle_loop.start()
+        print("   📊 Crypto Structure Pipeline active (trendlines + bounce catcher)")
+        print(f"      Universe: {bounce_cfg.universe}")
+        print(f"      Bounce mode: {'LIVE' if bounce_cfg.enabled else 'SHADOW'}")
+    except Exception as e:
+        print(f"   ⚠️ Crypto Pipeline init failed: {e}")
+        import traceback
+        traceback.print_exc()
+
     # Sync slash commands
     try:
         synced = await tree.sync()
@@ -1034,6 +1069,306 @@ async def cmd_analyze(interaction: discord.Interaction, topic: str):
             
     except Exception as e:
         await interaction.followup.send(f"⚠️ process failed: {e}", ephemeral=True)
+
+
+# ============================================================================
+# Crypto Structure Pipeline — Candle Close Scheduler + Intent Bridge
+# ============================================================================
+
+# Track which candle closes we've already processed to avoid duplicates
+_processed_candle_closes: Dict[str, float] = {}  # "(symbol,tf)" -> last_processed_ts
+
+
+def _is_candle_boundary(minute: int, timeframe: str) -> bool:
+    """Check if the current minute marks a candle boundary for the given timeframe."""
+    if timeframe == "15m":
+        return minute % 15 == 0
+    elif timeframe == "1h":
+        return minute == 0
+    elif timeframe == "4h":
+        now = datetime.now(timezone.utc)
+        return minute == 0 and now.hour % 4 == 0
+    elif timeframe == "1d":
+        return minute == 0 and datetime.now(timezone.utc).hour == 0
+    return False
+
+
+def _candle_key(symbol: str, timeframe: str) -> str:
+    return f"{symbol}|{timeframe}"
+
+
+@tasks.loop(seconds=60)
+async def crypto_candle_loop():
+    """
+    Core crypto analysis scheduler.
+
+    Runs every 60 seconds. On 15m candle boundaries, fetches candles for
+    each symbol in the universe and runs the full trendlines + bounce pipeline.
+    """
+    if not structure_context_svc or not crypto_data_svc:
+        return
+
+    now = datetime.now(timezone.utc)
+    current_minute = now.minute
+
+    # Determine which timeframes just closed
+    active_timeframes = []
+    for tf in ["15m", "1h", "4h", "1d"]:
+        if _is_candle_boundary(current_minute, tf):
+            active_timeframes.append(tf)
+
+    if not active_timeframes:
+        return
+
+    # Get the universe from config
+    bounce_cfg = ZOECONFIG.get("bounce", {})
+    trendline_cfg = ZOECONFIG.get("trendlines", {})
+    universe = list(set(
+        bounce_cfg.get("universe", []) +
+        trendline_cfg.get("universe", [])
+    ))
+
+    if not universe:
+        return
+
+    for symbol in universe:
+        for tf in active_timeframes:
+            # Deduplicate: don't process the same candle close twice
+            key = _candle_key(symbol, tf)
+            now_ts = now.timestamp()
+            last = _processed_candle_closes.get(key, 0)
+            if now_ts - last < 60:  # already processed within this minute
+                continue
+            _processed_candle_closes[key] = now_ts
+
+            try:
+                await _process_candle_close(symbol, tf)
+            except Exception as e:
+                _crypto_logger.error("Candle close error %s %s: %s", symbol, tf, e)
+                import traceback
+                traceback.print_exc()
+
+
+async def _process_candle_close(symbol: str, timeframe: str):
+    """
+    Full pipeline for one candle close event:
+      1. Fetch candles (15m + 1h)
+      2. Fetch indicators (RSI + external data)
+      3. Fetch market state (bid/ask/24h)
+      4. Run StructureContextService.on_candle_close()
+      5. Handle any emitted events or bounce intents
+    """
+    _crypto_logger.info("Processing candle close: %s %s", symbol, timeframe)
+
+    # 1. Fetch candle data
+    df = crypto_data_svc.get_candles(symbol, timeframe, limit=200)
+    if df.empty:
+        _crypto_logger.warning("No candle data for %s %s — skipping", symbol, timeframe)
+        return
+
+    # Also fetch 1h candles for the bounce catcher (it needs both 15m and 1h)
+    df_1h = None
+    if timeframe == "15m":
+        df_1h = crypto_data_svc.get_candles(symbol, "1h", limit=200)
+
+    # 2. Fetch indicators
+    external_indicators = {}
+    try:
+        external_indicators = await external_data_svc.get_all_indicators(symbol)
+    except Exception as e:
+        _crypto_logger.warning("External data fetch failed for %s: %s", symbol, e)
+
+    indicators = crypto_data_svc.build_indicators(symbol, df, external_indicators)
+
+    # 3. Fetch market state
+    market_state = crypto_data_svc.get_market_state(symbol)
+
+    # 4. Run the pipeline
+    result = structure_context_svc.on_candle_close(
+        symbol=symbol,
+        timeframe=timeframe,
+        df=df,
+        df_1h=df_1h,
+        indicators=indicators,
+        market_state=market_state,
+    )
+
+    _crypto_logger.info(
+        "Pipeline result %s %s: structure_updated=%s, events=%d, intent=%s",
+        symbol, timeframe,
+        result.get("structure_updated"),
+        len(result.get("events", [])),
+        "YES" if result.get("bounce_intent") else "none",
+    )
+
+    # 5. Handle events (breakout/breakdown/retest)
+    for event in result.get("events", []):
+        await _post_structure_event(symbol, timeframe, event)
+
+    # 6. Handle bounce intent
+    if result.get("bounce_intent"):
+        await _handle_bounce_intent(result["bounce_intent"], symbol)
+
+
+async def _post_structure_event(symbol: str, timeframe: str, event: Dict):
+    """Post a trendline/level event to the trades Discord channel."""
+    trades_channel_id = ZOECONFIG.get("discord", {}).get("trades_channel_id")
+    if not trades_channel_id:
+        return
+
+    channel = bot.get_channel(int(trades_channel_id))
+    if not channel:
+        return
+
+    event_type = event.get("type", "unknown")
+    level_price = event.get("price", 0)
+
+    color_map = {
+        "breakout": 0x00ff88,     # green
+        "breakdown": 0xff4444,    # red
+        "retest": 0xffaa00,       # orange
+    }
+    emoji_map = {
+        "breakout": "🚀",
+        "breakdown": "💥",
+        "retest": "🔄",
+    }
+
+    embed = discord.Embed(
+        title=f"{emoji_map.get(event_type, '📊')} {event_type.upper()}: {symbol}",
+        description=f"**{timeframe}** candle confirmed {event_type} at **${level_price:,.2f}**",
+        color=color_map.get(event_type, 0x888888),
+        timestamp=datetime.now(timezone.utc),
+    )
+    embed.set_footer(text="Zoe Structure Engine")
+
+    try:
+        await channel.send(embed=embed)
+    except Exception as e:
+        _crypto_logger.warning("Failed to post structure event: %s", e)
+
+
+async def _handle_bounce_intent(intent, symbol: str):
+    """
+    Handle a bounce catcher TradeIntent:
+      - Always post to Discord
+      - In shadow mode: log only
+      - In live mode: bridge to paper_broker (or CryptoTraderService when ready)
+    """
+    # Always post the detection to Discord
+    await _post_bounce_alert(intent, symbol)
+
+    bounce_cfg = ZOECONFIG.get("bounce", {})
+    if not bounce_cfg.get("enabled", False):
+        # Shadow mode — log and return
+        thought_logger.log("bounce_shadow", f"Shadow bounce intent: {symbol} score={intent.score}", {
+            "symbol": symbol,
+            "score": intent.score,
+            "entry_price": intent.entry_price,
+            "tp": intent.tp_price,
+            "sl": intent.sl_price,
+        })
+        _crypto_logger.info("SHADOW: Bounce intent for %s (score=%d) — not executing", symbol, intent.score)
+        return
+
+    # Live execution mode — compute position size
+    trading_cfg = ZOECONFIG.get("trading", {})
+
+    # Get account equity for sizing
+    try:
+        account_summary = paper_broker.get_account_summary(str(OWNER_DISCORD_USER_ID))
+        equity = account_summary.get("equity", trading_cfg.get("starting_equity", 2000))
+    except Exception:
+        equity = trading_cfg.get("starting_equity", 2000)
+
+    # Calculate position size using risk model
+    sizing = position_sizer.calculate(
+        equity=equity,
+        entry_price=intent.entry_price,
+        sl_price=intent.sl_price,
+        tp_price=intent.tp_price,
+        score=intent.score,
+    )
+
+    if sizing is None:
+        _crypto_logger.warning("Position sizer rejected trade for %s (equity=%.2f, entry=%.6f, sl=%.6f)",
+                               symbol, equity, intent.entry_price, intent.sl_price)
+        thought_logger.log("bounce_sizing_reject", f"Sizing rejected for {symbol}", {
+            "symbol": symbol,
+            "equity": equity,
+            "entry_price": intent.entry_price,
+            "sl_price": intent.sl_price,
+            "score": intent.score,
+        })
+        return
+
+    _crypto_logger.info("Position sized for %s: %s", symbol, sizing.reason)
+
+    if trading_cfg.get("paper_only", True):
+        # Paper trade via Supabase paper_broker
+        try:
+            result = await paper_broker.place_order(
+                {
+                    "symbol": symbol,
+                    "side": "buy",
+                    "notional": sizing.notional_usd,
+                    "strategy": "bounce_catcher",
+                    "limit_price": intent.entry_price,
+                },
+                discord_id=str(OWNER_DISCORD_USER_ID),
+            )
+            _crypto_logger.info("Paper order placed for %s: %s", symbol, result)
+            thought_logger.log("bounce_paper_trade", f"Paper bounce trade: {symbol}", {
+                "symbol": symbol,
+                "score": intent.score,
+                "sizing": sizing.to_dict(),
+                "result": result,
+            })
+        except Exception as e:
+            _crypto_logger.error("Paper order failed for %s: %s", symbol, e)
+    else:
+        # Future: wire to CryptoTraderService for live Robinhood execution
+        _crypto_logger.warning("Live crypto execution not yet wired — intent logged only (sized: %s)", sizing.reason)
+
+
+async def _post_bounce_alert(intent, symbol: str):
+    """Post a bounce detection alert to the trades Discord channel."""
+    trades_channel_id = ZOECONFIG.get("discord", {}).get("trades_channel_id")
+    if not trades_channel_id:
+        return
+
+    channel = bot.get_channel(int(trades_channel_id))
+    if not channel:
+        return
+
+    bounce_cfg = ZOECONFIG.get("bounce", {})
+    mode = "SHADOW" if not bounce_cfg.get("enabled", False) else "LIVE"
+    mode_color = 0x888888 if mode == "SHADOW" else 0x00ff88
+
+    embed = discord.Embed(
+        title=f"⚡ BOUNCE DETECTED: {symbol}",
+        description=f"Capitulation → Stabilization → Intent emitted",
+        color=mode_color,
+        timestamp=datetime.now(timezone.utc),
+    )
+    embed.add_field(name="Score", value=f"{intent.score}/100", inline=True)
+    embed.add_field(name="Entry", value=f"${intent.entry_price:,.2f}", inline=True)
+    embed.add_field(name="TP", value=f"${intent.tp_price:,.2f}", inline=True)
+    embed.add_field(name="SL", value=f"${intent.sl_price:,.2f}", inline=True)
+    embed.add_field(name="Mode", value=mode, inline=True)
+    embed.set_footer(text="Zoe Bounce Catcher")
+
+    try:
+        await channel.send(embed=embed)
+    except Exception as e:
+        _crypto_logger.warning("Failed to post bounce alert: %s", e)
+
+
+@crypto_candle_loop.before_loop
+async def _before_crypto_candle_loop():
+    """Wait until the bot is ready before starting the candle loop."""
+    await bot.wait_until_ready()
+    _crypto_logger.info("Crypto candle loop starting...")
 
 
 # ============================================================================

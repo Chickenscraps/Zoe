@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Database } from "../lib/types";
 import { supabase } from "../lib/supabaseClient";
 
@@ -13,6 +13,12 @@ type CryptoFill = Database["public"]["Tables"]["crypto_fills"]["Row"];
 type DailyNotional = Database["public"]["Tables"]["daily_notional"]["Row"];
 
 const LIVE_WINDOW_MS = 60_000;
+const POLL_INTERVAL_MS = 30_000;
+
+export interface EquityPoint {
+  date: string;
+  equity: number;
+}
 
 export function useDashboardData(discordId: string = "292890243852664855") {
   const [accountOverview, setAccountOverview] = useState<AccountOverview | null>(null);
@@ -24,81 +30,98 @@ export function useDashboardData(discordId: string = "292890243852664855") {
   const [cryptoOrders, setCryptoOrders] = useState<CryptoOrder[]>([]);
   const [cryptoFills, setCryptoFills] = useState<CryptoFill[]>([]);
   const [dailyNotional, setDailyNotional] = useState<DailyNotional | null>(null);
+  const [cashHistory, setCashHistory] = useState<CryptoCashSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true);
+  const fetchData = useCallback(async (isInitial = false) => {
+    try {
+      if (isInitial) setLoading(true);
 
-        const [
-          overviewRes,
-          feedRes,
-          healthRes,
-          cashRes,
-          holdingsRes,
-          reconcileRes,
-          ordersRes,
-          fillsRes,
-          dailyNotionalRes,
-        ] = await Promise.all([
-          supabase.rpc("get_account_overview" as never, { p_discord_id: discordId } as never),
-          supabase.rpc("get_activity_feed" as never, { p_limit: 10 } as never),
-          supabase.from("health_heartbeat").select("*"),
-          supabase
-            .from("crypto_cash_snapshots")
-            .select("*")
-            .order("taken_at", { ascending: false })
-            .limit(1)
-            .maybeSingle(),
-          supabase
-            .from("crypto_holdings_snapshots")
-            .select("*")
-            .order("taken_at", { ascending: false })
-            .limit(1)
-            .maybeSingle(),
-          supabase
-            .from("crypto_reconciliation_events")
-            .select("*")
-            .order("taken_at", { ascending: false })
-            .limit(1)
-            .maybeSingle(),
-          supabase
-            .from("crypto_orders")
-            .select("*")
-            .order("requested_at", { ascending: false })
-            .limit(20),
-          supabase
-            .from("crypto_fills")
-            .select("*")
-            .order("executed_at", { ascending: false })
-            .limit(50),
-          supabase
-            .from("daily_notional")
-            .select("*")
-            .eq("day", new Date().toISOString().slice(0, 10))
-            .maybeSingle(),
-        ]);
+      const [
+        overviewRes,
+        feedRes,
+        healthRes,
+        cashRes,
+        cashHistoryRes,
+        holdingsRes,
+        reconcileRes,
+        ordersRes,
+        fillsRes,
+        dailyNotionalRes,
+      ] = await Promise.all([
+        supabase.rpc("get_account_overview" as never, { p_discord_id: discordId } as never),
+        supabase.rpc("get_activity_feed" as never, { p_limit: 10 } as never),
+        supabase.from("health_heartbeat").select("*"),
+        supabase
+          .from("crypto_cash_snapshots")
+          .select("*")
+          .order("taken_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        // Fetch full cash snapshot history for equity chart (last 90 days)
+        supabase
+          .from("crypto_cash_snapshots")
+          .select("*")
+          .order("taken_at", { ascending: true })
+          .gte("taken_at", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
+          .limit(500),
+        supabase
+          .from("crypto_holdings_snapshots")
+          .select("*")
+          .order("taken_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from("crypto_reconciliation_events")
+          .select("*")
+          .order("taken_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from("crypto_orders")
+          .select("*")
+          .order("requested_at", { ascending: false })
+          .limit(20),
+        supabase
+          .from("crypto_fills")
+          .select("*")
+          .order("executed_at", { ascending: false })
+          .limit(50),
+        supabase
+          .from("daily_notional")
+          .select("*")
+          .eq("day", new Date().toISOString().slice(0, 10))
+          .maybeSingle(),
+      ]);
 
-        if (overviewRes.data && overviewRes.data.length > 0)
-          setAccountOverview(overviewRes.data[0] as AccountOverview);
-        if (feedRes.data) setRecentEvents(feedRes.data as ActivityFeedItem[]);
-        if (healthRes.data) setHealthStatus(healthRes.data as HealthHeartbeat[]);
-        setCryptoCash((cashRes.data ?? null) as CryptoCashSnapshot | null);
-        setCryptoHoldings((holdingsRes.data ?? null) as CryptoHoldingSnapshot | null);
-        setReconcile((reconcileRes.data ?? null) as CryptoReconcileEvent | null);
-        setCryptoOrders((ordersRes.data ?? []) as CryptoOrder[]);
-        setCryptoFills((fillsRes.data ?? []) as CryptoFill[]);
-        setDailyNotional((dailyNotionalRes.data ?? null) as DailyNotional | null);
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-      } finally {
-        setLoading(false);
-      }
+      if (overviewRes.data && overviewRes.data.length > 0)
+        setAccountOverview(overviewRes.data[0] as AccountOverview);
+      if (feedRes.data) setRecentEvents(feedRes.data as ActivityFeedItem[]);
+      if (healthRes.data) setHealthStatus(healthRes.data as HealthHeartbeat[]);
+      setCryptoCash((cashRes.data ?? null) as CryptoCashSnapshot | null);
+      setCashHistory((cashHistoryRes.data ?? []) as CryptoCashSnapshot[]);
+      setCryptoHoldings((holdingsRes.data ?? null) as CryptoHoldingSnapshot | null);
+      setReconcile((reconcileRes.data ?? null) as CryptoReconcileEvent | null);
+      setCryptoOrders((ordersRes.data ?? []) as CryptoOrder[]);
+      setCryptoFills((fillsRes.data ?? []) as CryptoFill[]);
+      setDailyNotional((dailyNotionalRes.data ?? null) as DailyNotional | null);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      if (isInitial) setLoading(false);
     }
-
-    fetchData();
   }, [discordId]);
+
+  // Initial fetch + polling every 30s
+  useEffect(() => {
+    fetchData(true);
+
+    pollRef.current = setInterval(() => fetchData(false), POLL_INTERVAL_MS);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [fetchData]);
 
   const healthSummary = useMemo(() => {
     const last = reconcile?.taken_at ? Date.parse(reconcile.taken_at) : 0;
@@ -129,6 +152,52 @@ export function useDashboardData(discordId: string = "292890243852664855") {
     }, 0);
   }, [cryptoFills]);
 
+  // Build equity history from cash snapshots, or fallback to running P&L from fills
+  const equityHistory = useMemo((): EquityPoint[] => {
+    // Primary source: crypto_cash_snapshots history (real Robinhood truth data)
+    if (cashHistory.length > 0) {
+      // Deduplicate by date (keep latest snapshot per day)
+      const byDay = new Map<string, number>();
+      for (const snap of cashHistory) {
+        const day = snap.taken_at.slice(0, 10);
+        byDay.set(day, snap.cash_available + (snap.buying_power - snap.cash_available));
+      }
+      return Array.from(byDay.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, equity]) => ({ date, equity }));
+    }
+
+    // Fallback: compute running equity from fills (starting from buying power or $100k paper)
+    if (cryptoFills.length > 0) {
+      const startingEquity = cryptoCash?.buying_power ?? 100_000;
+      // Fills are newest-first, reverse for chronological order
+      const chronFills = [...cryptoFills].reverse();
+      let runningEquity = startingEquity;
+      const points: EquityPoint[] = [
+        { date: chronFills[0].executed_at.slice(0, 10), equity: startingEquity },
+      ];
+      for (const fill of chronFills) {
+        const gross = fill.qty * fill.price;
+        const delta = (fill.side === "sell" ? gross : -gross) - fill.fee;
+        runningEquity += delta;
+        points.push({
+          date: fill.executed_at.slice(0, 10),
+          equity: runningEquity,
+        });
+      }
+      // Deduplicate by date (keep last per day)
+      const byDay = new Map<string, number>();
+      for (const pt of points) {
+        byDay.set(pt.date, pt.equity);
+      }
+      return Array.from(byDay.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, equity]) => ({ date, equity }));
+    }
+
+    return [];
+  }, [cashHistory, cryptoFills, cryptoCash]);
+
   return {
     accountOverview,
     recentEvents,
@@ -141,6 +210,7 @@ export function useDashboardData(discordId: string = "292890243852664855") {
     cryptoFills,
     dailyNotional,
     realizedPnl,
+    equityHistory,
     loading,
   };
 }

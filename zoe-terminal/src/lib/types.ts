@@ -196,6 +196,101 @@ export interface Database {
           notional_used: number;
         };
       };
+      market_pivots: {
+        Row: {
+          id: number;
+          symbol: string;
+          timeframe: string;
+          timestamp: string;
+          price: number;
+          type: "high" | "low";
+          source: "wick" | "body";
+          atr_snapshot: number | null;
+          confirmed: boolean;
+          created_at: string;
+        };
+      };
+      technical_trendlines: {
+        Row: {
+          id: number;
+          symbol: string;
+          timeframe: string;
+          side: "support" | "resistance";
+          slope: number;
+          intercept: number;
+          start_at: string;
+          end_at: string;
+          inlier_count: number;
+          score: number;
+          metadata: Json;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+      };
+      technical_levels: {
+        Row: {
+          id: number;
+          symbol: string;
+          timeframe: string;
+          price_centroid: number;
+          price_top: number;
+          price_bottom: number;
+          role: "support" | "resistance" | "flip" | null;
+          touch_count: number;
+          score: number;
+          first_tested: string | null;
+          last_tested: string | null;
+          is_active: boolean;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+        };
+      };
+      structure_events: {
+        Row: {
+          id: number;
+          symbol: string;
+          timeframe: string;
+          event_type: "breakout" | "breakdown" | "retest";
+          reference_id: number | null;
+          reference_kind: "trendline" | "level" | null;
+          price_at: number;
+          confirmed: boolean;
+          confirm_count: number;
+          reason_json: Json;
+          ts: string;
+        };
+      };
+      bounce_events: {
+        Row: {
+          id: string;
+          ts: string;
+          symbol: string;
+          prev_state: string | null;
+          state: string;
+          score: number | null;
+          reason_json: Json;
+        };
+      };
+      bounce_intents: {
+        Row: {
+          id: string;
+          ts: string;
+          symbol: string;
+          entry_style: "retest" | "breakout" | null;
+          entry_price: number | null;
+          expected_move_pct: number | null;
+          tp_price: number | null;
+          sl_price: number | null;
+          score: number | null;
+          components_json: Json;
+          blocked: boolean;
+          blocked_reason: string | null;
+          executed: boolean;
+          reason_json: Json;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
