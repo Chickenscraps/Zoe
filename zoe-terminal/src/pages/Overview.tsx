@@ -1,4 +1,4 @@
-import { Activity, DollarSign, TrendingUp, ShieldCheck } from "lucide-react";
+import { Activity, DollarSign, TrendingUp, ShieldCheck, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
 import { EquityChart } from "../components/EquityChart";
 import { KPICard } from "../components/KPICard";
 import { Skeleton } from "../components/Skeleton";
@@ -15,22 +15,30 @@ export default function Overview() {
     holdingsRows,
     healthSummary,
     dailyNotional,
+    pnlDaily,
     realizedPnl,
     cryptoOrders,
+    livePrices,
     loading,
+    error,
   } = useDashboardData();
 
   const equity = accountOverview?.equity ?? 0;
   const todayPnl = accountOverview?.day_pnl ?? 0;
-  const dailyNotionalUsed = dailyNotional?.notional_used ?? 0;
+  const dailyNotionalUsed = dailyNotional?.amount ?? 0;
 
-  const displayPnl = [
-    { date: "2023-10-01", equity: 10000 },
-    { date: "2023-10-02", equity: 10200 },
-    { date: "2023-10-03", equity: 10150 },
-    { date: "2023-10-04", equity: 10400 },
-    { date: "2023-10-05", equity: 10800 },
-  ].map((d) => ({ ...d, daily_pnl: 0 }));
+  const currentEquity = (cryptoCash?.buying_power ?? equity) || 2000;
+  const displayPnl = pnlDaily.length > 0
+    ? pnlDaily
+    : (() => {
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        return [
+          { date: yesterday.toISOString().slice(0, 10), equity: currentEquity, daily_pnl: 0 },
+          { date: today.toISOString().slice(0, 10), equity: currentEquity, daily_pnl: 0 },
+        ];
+      })();
 
   if (loading) {
     return (
@@ -41,6 +49,20 @@ export default function Overview() {
           ))}
         </div>
         <Skeleton className="h-80" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 space-y-4">
+        <div className="text-loss text-sm font-bold uppercase tracking-widest">Connection Error</div>
+        <p className="text-text-secondary text-sm max-w-md text-center">
+          Failed to load dashboard data. Check that Supabase environment variables are configured.
+        </p>
+        <code className="text-xs text-text-dim bg-surface-base border border-border rounded-lg px-4 py-2 max-w-lg overflow-auto">
+          {error}
+        </code>
       </div>
     );
   }
@@ -79,6 +101,79 @@ export default function Overview() {
           icon={ShieldCheck}
         />
       </div>
+
+      {/* Live Prices Ticker */}
+      {livePrices.length > 0 && (
+        <div className="card-premium p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">
+              Live Prices
+            </h3>
+            <span className="text-[9px] text-text-dim font-bold uppercase tracking-widest">
+              {livePrices[0]?.created_at
+                ? new Date(livePrices[0].created_at).toLocaleTimeString()
+                : ""}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+            {livePrices.map((scan) => {
+              const info = scan.info as any ?? {};
+              const mid = info.mid ?? 0;
+              const momShort = info.momentum_short;
+              const rsi = info.rsi;
+              const isUp = momShort != null && momShort > 0;
+              const isDown = momShort != null && momShort < 0;
+              const symbol = (scan.symbol ?? "").replace("-USD", "");
+
+              return (
+                <div
+                  key={scan.id}
+                  className="bg-background/60 border border-border/50 rounded-xl px-4 py-3 flex flex-col gap-1 hover:border-border transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-white tracking-tight">{symbol}</span>
+                    {isUp ? (
+                      <ArrowUpRight className="w-3.5 h-3.5 text-profit" />
+                    ) : isDown ? (
+                      <ArrowDownRight className="w-3.5 h-3.5 text-loss" />
+                    ) : (
+                      <Minus className="w-3 h-3 text-text-dim" />
+                    )}
+                  </div>
+                  <div className="text-sm font-black text-white tabular-nums tracking-tight">
+                    {mid >= 1
+                      ? `$${mid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : `$${mid.toFixed(6)}`}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {momShort != null && (
+                      <span
+                        className={cn(
+                          "text-[10px] font-bold tabular-nums",
+                          isUp ? "text-profit" : isDown ? "text-loss" : "text-text-dim"
+                        )}
+                      >
+                        {momShort > 0 ? "+" : ""}
+                        {momShort.toFixed(3)}%
+                      </span>
+                    )}
+                    {rsi != null && (
+                      <span
+                        className={cn(
+                          "text-[9px] font-bold tabular-nums",
+                          rsi > 70 ? "text-orange-400" : rsi < 30 ? "text-blue-400" : "text-text-dim"
+                        )}
+                      >
+                        RSI {rsi.toFixed(0)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">

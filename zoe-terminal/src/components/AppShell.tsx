@@ -1,18 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Briefcase, 
-  History, 
-  Scan, 
-  Map, 
-  BrainCircuit, 
-  Activity, 
+import {
+  LayoutDashboard,
+  Briefcase,
+  History,
+  Scan,
+  Map,
+  BrainCircuit,
+  Activity,
   Settings,
   Menu,
   X
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { supabase } from '../lib/supabaseClient';
+import { MODE, isPaper, isLive } from '../lib/mode';
 
 const NAV_ITEMS = [
   { label: 'Overview', path: '/', icon: LayoutDashboard },
@@ -27,7 +29,20 @@ const NAV_ITEMS = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [equity, setEquity] = useState<number | null>(null);
   const location = useLocation();
+
+  useEffect(() => {
+    async function fetchEquity() {
+      const { data } = await supabase.rpc("get_account_overview" as never, { p_discord_id: "292890243852664855" } as never);
+      if (data && (data as unknown[]).length > 0) {
+        setEquity((data as { equity: number }[])[0].equity);
+      }
+    }
+    fetchEquity();
+    const interval = setInterval(fetchEquity, 30_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const closeSidebar = () => {
     if (window.innerWidth < 1024) {
@@ -106,12 +121,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-6 text-sm">
                <div className="flex flex-col items-end">
                  <span className="text-[10px] text-text-muted uppercase font-bold tracking-widest leading-tight">Net Equity</span>
-                 <span className="font-mono text-lg font-black text-white">$2,000.00</span>
+                 <span className="font-mono text-lg font-black text-white">
+                   {equity !== null ? `$${equity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '---'}
+                 </span>
                </div>
                <div className="h-8 w-px bg-border hidden xs:block" />
-               <div className="hidden xs:block bg-profit/10 border border-profit/20 text-profit px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase">
-                 Paper Mode
-               </div>
+               {isPaper ? (
+                 <div className="hidden xs:block bg-profit/10 border border-profit/20 text-profit px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase">
+                   Simulated
+                 </div>
+               ) : (
+                 <div className="hidden xs:block bg-loss/10 border border-loss/20 text-loss px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase animate-pulse">
+                   Live Funds
+                 </div>
+               )}
             </div>
           </div>
         </header>

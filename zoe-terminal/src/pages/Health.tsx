@@ -75,7 +75,7 @@ export default function Health() {
         </div>
         <div className="flex justify-between">
           <span className="text-text-secondary">Daily notional used</span>
-          <span className="text-white">{formatCurrency(dailyNotional?.notional_used ?? 0)}</span>
+          <span className="text-white">{formatCurrency(dailyNotional?.amount ?? 0)}</span>
         </div>
       </div>
     </div>

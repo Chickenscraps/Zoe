@@ -43,6 +43,7 @@ export interface Database {
           day_trades_used: number;
           realized_pnl: number;
           unrealized_pnl: number;
+          mode: "paper" | "live";
         };
       };
       candidate_scans: {
@@ -55,6 +56,7 @@ export interface Database {
           info: Json;
           recommended_strategy: string;
           created_at: string;
+          mode: "paper" | "live";
         };
       };
       thoughts: {
@@ -66,6 +68,7 @@ export interface Database {
           symbol: string | null;
           created_at: string;
           metadata: Json;
+          mode: "paper" | "live";
         };
       };
       health_heartbeat: {
@@ -76,6 +79,7 @@ export interface Database {
           status: "ok" | "warning" | "error" | "down";
           last_heartbeat: string;
           details: Json;
+          mode: "paper" | "live";
         };
       };
       daily_gameplans: {
@@ -142,6 +146,7 @@ export interface Database {
           submitted_at: string | null;
           updated_at: string;
           raw_response: Json;
+          mode: "paper" | "live";
         };
       };
       crypto_fills: {
@@ -156,6 +161,7 @@ export interface Database {
           fee: number;
           executed_at: string;
           raw_fill: Json;
+          mode: "paper" | "live";
         };
       };
       crypto_holdings_snapshots: {
@@ -165,6 +171,7 @@ export interface Database {
           holdings: Json;
           total_crypto_value: number;
           source: "robinhood";
+          mode: "paper" | "live";
         };
       };
       crypto_cash_snapshots: {
@@ -174,6 +181,7 @@ export interface Database {
           cash_available: number;
           buying_power: number;
           source: "robinhood";
+          mode: "paper" | "live";
         };
       };
       crypto_reconciliation_events: {
@@ -188,12 +196,40 @@ export interface Database {
           holdings_diff: Json;
           status: "ok" | "degraded";
           reason: string | null;
+          mode: "paper" | "live";
         };
       };
       daily_notional: {
         Row: {
           day: string;
-          notional_used: number;
+          amount: number;
+          mode: "paper" | "live";
+        };
+      };
+      agent_state: {
+        Row: {
+          id: string;
+          mode: "paper" | "live";
+          instance_id: string;
+          state: Json;
+          updated_at: string;
+        };
+      };
+      boot_audit: {
+        Row: {
+          id: string;
+          run_id: string;
+          mode: "paper" | "live";
+          instance_id: string;
+          started_at: string;
+          finished_at: string | null;
+          duration_ms: number | null;
+          status: "running" | "ok" | "safe_mode" | "halted" | "error";
+          diffs: Json;
+          integrity_checks: Json;
+          resume_policy: string | null;
+          error_message: string | null;
+          created_at: string;
         };
       };
     };

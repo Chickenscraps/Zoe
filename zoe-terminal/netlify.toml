@@ -2,7 +2,17 @@
   command = "npm run build"
   publish = "dist"
 
+[build.environment]
+  VITE_MODE_LOCK = "paper"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+# ─── Second Netlify site (Live) ───
+# Create a separate Netlify site pointing at the same repo.
+# In the Netlify dashboard for the live site, set:
+#   VITE_MODE_LOCK = "live"
+# This overrides the build.environment value above.
+# Optionally use a separate Supabase anon key for extra isolation.

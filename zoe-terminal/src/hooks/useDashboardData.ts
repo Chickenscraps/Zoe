@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Database } from "../lib/types";
-import { supabase } from "../lib/supabaseClient";
+import { supabase, supabaseMisconfigured } from "../lib/supabaseClient";
+import { MODE } from "../lib/mode";
 
 type HealthHeartbeat = Database["public"]["Tables"]["health_heartbeat"]["Row"];
 type AccountOverview = Database["public"]["Functions"]["get_account_overview"]["Returns"][0];
@@ -11,6 +12,8 @@ type CryptoReconcileEvent = Database["public"]["Tables"]["crypto_reconciliation_
 type CryptoOrder = Database["public"]["Tables"]["crypto_orders"]["Row"];
 type CryptoFill = Database["public"]["Tables"]["crypto_fills"]["Row"];
 type DailyNotional = Database["public"]["Tables"]["daily_notional"]["Row"];
+type PnlDaily = Database["public"]["Tables"]["pnl_daily"]["Row"];
+type CandidateScan = Database["public"]["Tables"]["candidate_scans"]["Row"];
 
 const LIVE_WINDOW_MS = 60_000;
 
@@ -24,12 +27,19 @@ export function useDashboardData(discordId: string = "292890243852664855") {
   const [cryptoOrders, setCryptoOrders] = useState<CryptoOrder[]>([]);
   const [cryptoFills, setCryptoFills] = useState<CryptoFill[]>([]);
   const [dailyNotional, setDailyNotional] = useState<DailyNotional | null>(null);
+  const [pnlDaily, setPnlDaily] = useState<PnlDaily[]>([]);
+  const [livePrices, setLivePrices] = useState<CandidateScan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
       try {
         setLoading(true);
+        if (supabaseMisconfigured) {
+          setError("Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY. Copy .env.example to .env and configure.");
+          return;
+        }
 
         const [
           overviewRes,
@@ -41,43 +51,74 @@ export function useDashboardData(discordId: string = "292890243852664855") {
           ordersRes,
           fillsRes,
           dailyNotionalRes,
+          pnlDailyRes,
+          livePricesRes,
         ] = await Promise.all([
           supabase.rpc("get_account_overview" as never, { p_discord_id: discordId } as never),
           supabase.rpc("get_activity_feed" as never, { p_limit: 10 } as never),
-          supabase.from("health_heartbeat").select("*"),
+          supabase.from("health_heartbeat").select("*").eq("mode", MODE),
           supabase
             .from("crypto_cash_snapshots")
             .select("*")
+            .eq("mode", MODE)
             .order("taken_at", { ascending: false })
             .limit(1)
             .maybeSingle(),
           supabase
             .from("crypto_holdings_snapshots")
             .select("*")
+            .eq("mode", MODE)
             .order("taken_at", { ascending: false })
             .limit(1)
             .maybeSingle(),
           supabase
             .from("crypto_reconciliation_events")
             .select("*")
+            .eq("mode", MODE)
             .order("taken_at", { ascending: false })
             .limit(1)
             .maybeSingle(),
           supabase
             .from("crypto_orders")
             .select("*")
+            .eq("mode", MODE)
             .order("requested_at", { ascending: false })
             .limit(20),
           supabase
             .from("crypto_fills")
             .select("*")
+            .eq("mode", MODE)
             .order("executed_at", { ascending: false })
             .limit(50),
           supabase
             .from("daily_notional")
             .select("*")
+            .eq("mode", MODE)
             .eq("day", new Date().toISOString().slice(0, 10))
             .maybeSingle(),
+          supabase
+            .from("pnl_daily")
+            .select("date, equity, daily_pnl")
+            .eq("mode", MODE)
+            .order("date", { ascending: true })
+            .limit(90),
+          // Latest scan batch for live prices
+          (async () => {
+            const { data: latest } = await supabase
+              .from("candidate_scans")
+              .select("created_at")
+              .eq("mode", MODE)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (!latest?.created_at) return { data: [], error: null };
+            return supabase
+              .from("candidate_scans")
+              .select("*")
+              .eq("mode", MODE)
+              .eq("created_at", latest.created_at)
+              .order("score", { ascending: false });
+          })(),
         ]);
 
         if (overviewRes.data && overviewRes.data.length > 0)
@@ -90,8 +131,12 @@ export function useDashboardData(discordId: string = "292890243852664855") {
         setCryptoOrders((ordersRes.data ?? []) as CryptoOrder[]);
         setCryptoFills((fillsRes.data ?? []) as CryptoFill[]);
         setDailyNotional((dailyNotionalRes.data ?? null) as DailyNotional | null);
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
+        setPnlDaily((pnlDailyRes.data ?? []) as PnlDaily[]);
+        setLivePrices((livePricesRes.data ?? []) as CandidateScan[]);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("Error fetching dashboard data:", msg);
+        setError(msg);
       } finally {
         setLoading(false);
       }
@@ -140,7 +185,10 @@ export function useDashboardData(discordId: string = "292890243852664855") {
     cryptoOrders,
     cryptoFills,
     dailyNotional,
+    pnlDaily,
     realizedPnl,
+    livePrices,
     loading,
+    error,
   };
 }
