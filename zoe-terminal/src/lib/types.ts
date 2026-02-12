@@ -223,6 +223,22 @@ export interface Database {
           updated_at: string;
         };
       };
+      crypto_candles: {
+        Row: {
+          id: number;
+          symbol: string;
+          timeframe: string;
+          open_time: number;
+          open: number;
+          high: number;
+          low: number;
+          close: number;
+          volume: number;
+          patterns: Json;
+          mode: "paper" | "live";
+          created_at: string;
+        };
+      };
       boot_audit: {
         Row: {
           id: string;

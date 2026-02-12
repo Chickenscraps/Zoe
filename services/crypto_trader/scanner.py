@@ -11,10 +11,13 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from integrations.robinhood_crypto_client import RobinhoodCryptoClient
 from .price_cache import PriceCache
+
+if TYPE_CHECKING:
+    from .candle_manager import CandleManager
 
 
 # ── Watchlist ────────────────────────────────────────────────────
@@ -186,6 +189,7 @@ def _pick_strategy(snapshot: dict[str, Any]) -> str:
 async def scan_candidates(
     client: RobinhoodCryptoClient,
     price_cache: PriceCache,
+    candle_manager: CandleManager | None = None,
 ) -> list[CandidateScan]:
     """Fetch prices, update cache, score all watchlist symbols.
 
@@ -244,6 +248,36 @@ async def scan_candidates(
         total = round(liq_score + mom_score + vol_score + trend_score, 1)
         strategy = _pick_strategy(snap)
 
+        # Chart analysis: patterns + multi-timeframe (if candle_manager available)
+        chart_info: dict[str, Any] = {}
+        if candle_manager is not None:
+            try:
+                from .patterns import detect_patterns, detect_support_resistance
+                from .mtf_analyzer import analyze_mtf
+
+                # Pattern detection on 1h candles (most reliable timeframe)
+                candles_1h = candle_manager.get_candles(symbol, "1h")
+                patterns = detect_patterns(candles_1h, lookback=5) if len(candles_1h) >= 3 else []
+                sr_levels = detect_support_resistance(candles_1h) if len(candles_1h) >= 10 else []
+
+                # Multi-timeframe analysis
+                mtf = analyze_mtf(candle_manager, symbol)
+
+                chart_info = {
+                    "patterns": [p.to_dict() for p in patterns[:5]],  # top 5
+                    "mtf_alignment": round(mtf.alignment_score, 3),
+                    "mtf_dominant_trend": mtf.dominant_trend,
+                    "mtf_details": [tf.to_dict() for tf in mtf.timeframes],
+                    "support_levels": [l.to_dict() for l in sr_levels if l.level_type == "support"][:3],
+                    "resistance_levels": [l.to_dict() for l in sr_levels if l.level_type == "resistance"][:3],
+                    "candle_counts": {
+                        tf: candle_manager.candle_count(symbol, tf)
+                        for tf in ["15m", "1h", "4h"]
+                    },
+                }
+            except Exception:
+                pass  # chart analysis is non-critical
+
         candidates.append(CandidateScan(
             symbol=symbol,
             score=total,
@@ -266,6 +300,7 @@ async def scan_candidates(
                 "ema_crossover": round(snap["ema_crossover"], 4) if snap["ema_crossover"] is not None else None,
                 "volatility_ann": round(snap["volatility"], 2) if snap["volatility"] is not None else None,
                 "trend_strength": round(snap["trend_strength"], 3) if snap["trend_strength"] is not None else None,
+                **chart_info,
             },
             recommended_strategy=strategy,
         ))

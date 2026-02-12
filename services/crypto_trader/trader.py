@@ -10,6 +10,7 @@ from typing import Any
 from integrations.robinhood_crypto_client import RobinhoodCryptoClient
 from integrations.robinhood_crypto_client.client import _sanitize
 
+from .candle_manager import CandleManager
 from .config import CONFIRM_PHRASE, CryptoTraderConfig
 from .logger import JsonAuditLogger
 from .price_cache import PriceCache
@@ -36,11 +37,14 @@ class CryptoTraderService:
         self.mode = self.cfg.mode
         self.audit = JsonAuditLogger()
         self.price_cache = PriceCache(capacity_per_symbol=288)  # 24h at 5-min ticks
+        self.candle_manager = CandleManager()
+        self.price_cache.set_candle_manager(self.candle_manager)  # Wire candle ingestion
         self._paused = False
         self._degraded = False
         self._last_reconcile_at: str | None = None
         self._safe_mode_until: float = 0.0
         self._cycle_count: int = 0
+        self._next_historical_refresh: float = 0.0
 
     def _require_admin(self, initiator_id: str) -> None:
         if initiator_id != self.cfg.admin_user_id:
@@ -334,8 +338,8 @@ class CryptoTraderService:
     async def _run_scan(self) -> None:
         """Full pipeline: scan -> score -> signal -> (optional) auto-execute."""
         try:
-            # Phase 1: Scan — fetch prices, update cache, score
-            candidates = await scan_candidates(self.client, self.price_cache)
+            # Phase 1: Scan — fetch prices, update cache, score (with chart analysis)
+            candidates = await scan_candidates(self.client, self.price_cache, self.candle_manager)
             if not candidates:
                 return
 
@@ -515,6 +519,44 @@ class CryptoTraderService:
         except Exception:
             pass  # non-critical — full scan will retry
 
+    async def _persist_candles(self) -> None:
+        """Persist newly finalized candles to Supabase."""
+        pending = self.candle_manager.drain_pending()
+        if not pending:
+            return
+        try:
+            rows = [
+                {
+                    "symbol": c.symbol,
+                    "timeframe": c.timeframe,
+                    "open_time": c.open_time,
+                    "open": c.open,
+                    "high": c.high,
+                    "low": c.low,
+                    "close": c.close,
+                    "volume": c.volume,
+                    "patterns": None,
+                    "mode": self.mode,
+                }
+                for c in pending
+            ]
+            self.repo.upsert_candles(rows)
+        except Exception as e:
+            print(f"[ZOE] Candle persist error: {e}")
+
+    async def _refresh_historical(self) -> None:
+        """Refresh CoinGecko historical data every 4 hours."""
+        now = time.time()
+        if now < self._next_historical_refresh:
+            return
+        try:
+            count = await self.candle_manager.load_historical()
+            self._next_historical_refresh = now + 4 * 3600  # 4 hours
+            print(f"[ZOE] Historical candle refresh: {count} candles loaded")
+        except Exception as e:
+            print(f"[ZOE] Historical refresh failed: {e}")
+            self._next_historical_refresh = now + 600  # retry in 10 min
+
     async def run_forever(self) -> None:
         next_order_poll = 0.0
         next_scan = 0.0
@@ -555,6 +597,12 @@ class CryptoTraderService:
                 if now >= next_scan:
                     await self._run_scan()
                     next_scan = now + scan_interval
+
+                # Persist finalized candles to Supabase
+                await self._persist_candles()
+
+                # Refresh CoinGecko historical data periodically
+                await self._refresh_historical()
 
                 # Save agent state every 5 cycles
                 if self._cycle_count % 5 == 0:

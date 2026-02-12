@@ -10,6 +10,7 @@ import Positions from './pages/Positions';
 import Trades from './pages/Trades';
 import TradeDetail from './pages/TradeDetail';
 import Scanner from './pages/Scanner';
+import Charts from './pages/Charts';
 import Plan from './pages/Plan';
 import Thoughts from './pages/Thoughts';
 import Health from './pages/Health';
@@ -51,6 +52,7 @@ function AppWithNotifications() {
           <Route path="/trades" element={<Trades />} />
           <Route path="/trades/:id" element={<TradeDetail />} />
           <Route path="/scanner" element={<Scanner />} />
+          <Route path="/charts" element={<Charts />} />
           <Route path="/plan" element={<Plan />} />
           <Route path="/thoughts" element={<Thoughts />} />
           <Route path="/structure" element={<Structure />} />

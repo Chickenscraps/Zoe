@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import type { Database } from '../lib/types';
-import { Activity, TrendingUp, Droplets, Gauge, BarChart3 } from 'lucide-react';
+import { Activity, TrendingUp, TrendingDown, Minus, Droplets, Gauge, BarChart3 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { MODE } from '../lib/mode';
+import { cn } from '../lib/utils';
 
 type CandidateScan = Database['public']['Tables']['candidate_scans']['Row'];
 
@@ -123,6 +125,50 @@ export default function Scanner() {
                       <ScoreBar label="Trend" value={breakdown.trend ?? 0} max={25} icon={<BarChart3 className="w-3 h-3" />} color="bg-white/80" />
                   </div>
 
+                  {/* Chart Analysis: Patterns + MTF */}
+                  {(info.patterns?.length > 0 || info.mtf_alignment != null) && (
+                    <div className="mb-4 relative z-10">
+                      {/* MTF Alignment */}
+                      {info.mtf_alignment != null && (
+                        <div className="flex items-center gap-2 mb-2">
+                          {info.mtf_dominant_trend === 'bullish' ? (
+                            <TrendingUp className="w-3.5 h-3.5 text-profit" />
+                          ) : info.mtf_dominant_trend === 'bearish' ? (
+                            <TrendingDown className="w-3.5 h-3.5 text-loss" />
+                          ) : (
+                            <Minus className="w-3.5 h-3.5 text-text-muted" />
+                          )}
+                          <span className={cn(
+                            'text-[10px] font-black uppercase tracking-widest',
+                            info.mtf_alignment > 0.3 ? 'text-profit' : info.mtf_alignment < -0.3 ? 'text-loss' : 'text-yellow-400'
+                          )}>
+                            MTF {info.mtf_alignment > 0 ? '+' : ''}{info.mtf_alignment.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                      {/* Pattern Badges */}
+                      {info.patterns?.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {(info.patterns as any[]).slice(0, 3).map((p: any, i: number) => (
+                            <span
+                              key={`${p.name}-${i}`}
+                              className={cn(
+                                'text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border',
+                                p.direction === 'bullish'
+                                  ? 'bg-profit/10 text-profit border-profit/20'
+                                  : p.direction === 'bearish'
+                                    ? 'bg-loss/10 text-loss border-loss/20'
+                                    : 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20'
+                              )}
+                            >
+                              {p.name.replace(/_/g, ' ')}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Technical Indicators */}
                   <div className="pt-4 border-t border-border/50 space-y-2 relative z-10">
                       <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-[11px]">
@@ -134,6 +180,16 @@ export default function Scanner() {
                           <Indicator label="Trend R&sup2;" value={info.trend_strength != null ? info.trend_strength.toFixed(3) : '--'} />
                           <Indicator label="Vol (ann)" value={info.volatility_ann != null ? `${info.volatility_ann.toFixed(1)}%` : '--'} />
                           <Indicator label="Ticks" value={`${info.tick_count ?? 0}`} />
+                      </div>
+
+                      {/* View Chart Link */}
+                      <div className="pt-2">
+                        <Link
+                          to={`/charts`}
+                          className="text-[10px] text-text-muted hover:text-profit transition-colors font-bold uppercase tracking-widest"
+                        >
+                          View Chart &rarr;
+                        </Link>
                       </div>
                   </div>
               </div>

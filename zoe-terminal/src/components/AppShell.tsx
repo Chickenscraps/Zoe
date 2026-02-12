@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   Layers,
+  BarChart3,
 } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { useDashboardData } from '../hooks/useDashboardData';
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { label: 'Trades', path: '/trades', icon: History },
   { label: 'Structure', path: '/structure', icon: Layers },
   { label: 'Scanner', path: '/scanner', icon: Scan },
+  { label: 'Charts', path: '/charts', icon: BarChart3 },
   { label: 'Plan', path: '/plan', icon: Map },
   { label: 'Thoughts', path: '/thoughts', icon: BrainCircuit },
   { label: 'Health', path: '/health', icon: Activity },

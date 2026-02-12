@@ -265,12 +265,21 @@ async def main() -> None:
     # ── Warm the price cache before starting the main loop ──
     await _warm_price_cache(service)
 
+    # ── Load historical candle data from CoinGecko ──
+    try:
+        historical_count = await service.candle_manager.load_historical()
+        print(f"[ZOE] Historical candles loaded: {historical_count}")
+    except Exception as e:
+        print(f"[ZOE] Historical candle load failed (non-fatal): {e}")
+        historical_count = 0
+
     # ── Write boot thought ──
     service._write_thought(
         f"Service booted (mode={trader_config.mode}, run_id={boot_result.run_id}). "
         f"Boot: {boot_result.action} in {boot_result.duration_ms}ms. "
         f"Paused={service._paused}, Degraded={service._degraded}. "
-        f"Price cache seeded with {len(service.price_cache.symbols)} symbols.",
+        f"Price cache seeded with {len(service.price_cache.symbols)} symbols. "
+        f"Historical candles: {historical_count}.",
         thought_type="health",
     )
 

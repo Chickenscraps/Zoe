@@ -132,6 +132,17 @@ class SupabaseCryptoRepository:
     def insert_thought(self, row: dict[str, Any]) -> None:
         self.sb.table("thoughts").insert(row).execute()
 
+    def upsert_candles(self, candles: list[dict[str, Any]]) -> None:
+        """Persist finalized candles to Supabase crypto_candles table."""
+        if not candles:
+            return
+        try:
+            self.sb.table("crypto_candles").upsert(
+                candles, on_conflict="symbol,timeframe,open_time,mode"
+            ).execute()
+        except Exception as e:
+            print(f"[REPO] candle upsert error: {e}")
+
     def get_realized_pnl(self, mode: str) -> float:
         resp = (
             self.sb.table("crypto_fills")

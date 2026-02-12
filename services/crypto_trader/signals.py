@@ -135,6 +135,54 @@ def _compute_buy_confidence(candidate: CandidateScan, snap: dict[str, Any]) -> t
         confidence += 0.05
         reasons.append(f"tight spread ({spread:.3f}%)")
 
+    # ── Chart pattern boosts (from candle analysis) ──
+    patterns = snap.get("patterns", [])
+    mtf_alignment = snap.get("mtf_alignment")
+    support_levels = snap.get("support_levels", [])
+    resistance_levels = snap.get("resistance_levels", [])
+    current_price = snap.get("mid", 0)
+
+    # Bullish reversal patterns boost buy confidence
+    bullish_patterns = [p for p in patterns if p.get("direction") == "bullish"]
+    if bullish_patterns:
+        best = max(bullish_patterns, key=lambda p: p.get("strength", 0))
+        pattern_boost = min(0.12, best.get("strength", 0) * 0.15)
+        confidence += pattern_boost
+        reasons.append(f"bullish pattern: {best.get('name')} ({best.get('strength', 0):.0%})")
+
+    # Bearish patterns penalize buy
+    bearish_patterns = [p for p in patterns if p.get("direction") == "bearish"]
+    if bearish_patterns:
+        confidence *= 0.7
+        reasons.append(f"bearish pattern detected: {bearish_patterns[0].get('name')}")
+
+    # MTF alignment boost
+    if mtf_alignment is not None:
+        if mtf_alignment > 0.5:
+            confidence += 0.10
+            reasons.append(f"MTF aligned bullish ({mtf_alignment:+.2f})")
+        elif mtf_alignment > 0.2:
+            confidence += 0.05
+            reasons.append(f"MTF leaning bullish ({mtf_alignment:+.2f})")
+        elif mtf_alignment < -0.3:
+            confidence *= 0.8
+            reasons.append(f"MTF bearish ({mtf_alignment:+.2f})")
+
+    # Support/resistance proximity
+    if current_price > 0 and support_levels:
+        nearest_support = min(support_levels, key=lambda l: abs(l.get("price", 0) - current_price))
+        dist_pct = abs(current_price - nearest_support.get("price", 0)) / current_price * 100
+        if dist_pct < 1.0:
+            confidence += 0.06
+            reasons.append(f"near support ${nearest_support.get('price', 0):,.0f}")
+
+    if current_price > 0 and resistance_levels:
+        nearest_resistance = min(resistance_levels, key=lambda l: abs(l.get("price", 0) - current_price))
+        dist_pct = abs(current_price - nearest_resistance.get("price", 0)) / current_price * 100
+        if dist_pct < 1.0:
+            confidence *= 0.85
+            reasons.append(f"near resistance ${nearest_resistance.get('price', 0):,.0f}")
+
     # ── Penalties ──
     if not has_technicals:
         confidence *= 0.6  # reduce when working with limited data
@@ -195,6 +243,33 @@ def _compute_sell_confidence(candidate: CandidateScan, snap: dict[str, Any], has
         confidence += 0.15
         reasons.append(f"EMA crossover bearish ({ema_cross:.3f}%)")
 
+    # ── Chart pattern sell boosts ──
+    patterns = snap.get("patterns", [])
+    mtf_alignment = snap.get("mtf_alignment")
+    resistance_levels = snap.get("resistance_levels", [])
+    current_price = snap.get("mid", 0)
+
+    # Bearish reversal patterns boost sell
+    bearish_patterns = [p for p in patterns if p.get("direction") == "bearish"]
+    if bearish_patterns:
+        best = max(bearish_patterns, key=lambda p: p.get("strength", 0))
+        pattern_boost = min(0.15, best.get("strength", 0) * 0.18)
+        confidence += pattern_boost
+        reasons.append(f"bearish pattern: {best.get('name')} ({best.get('strength', 0):.0%})")
+
+    # MTF bearish alignment boosts sell
+    if mtf_alignment is not None and mtf_alignment < -0.5:
+        confidence += 0.10
+        reasons.append(f"MTF aligned bearish ({mtf_alignment:+.2f})")
+
+    # At resistance — good time to take profit
+    if current_price > 0 and resistance_levels:
+        nearest = min(resistance_levels, key=lambda l: abs(l.get("price", 0) - current_price))
+        dist_pct = abs(current_price - nearest.get("price", 0)) / current_price * 100
+        if dist_pct < 1.0:
+            confidence += 0.08
+            reasons.append(f"at resistance ${nearest.get('price', 0):,.0f}")
+
     confidence = min(1.0, max(0.0, confidence))
     reason = "; ".join(reasons) if reasons else "no sell signal"
     return confidence, reason
@@ -225,6 +300,14 @@ def generate_signals(
     for cand in candidates:
         snap = price_cache.snapshot(cand.symbol)
         has_position = cand.symbol in open_positions
+
+        # Merge chart analysis data from scanner info into snapshot
+        # so signal functions can access patterns, MTF, S/R levels
+        for chart_key in ("patterns", "mtf_alignment", "mtf_dominant_trend",
+                          "support_levels", "resistance_levels"):
+            if chart_key in cand.info:
+                snap[chart_key] = cand.info[chart_key]
+
         indicators = {
             "rsi": snap.get("rsi"),
             "momentum_short": snap.get("momentum_short"),
@@ -234,6 +317,8 @@ def generate_signals(
             "trend_strength": snap.get("trend_strength"),
             "trend_direction": snap.get("trend_direction"),
             "spread_pct": snap.get("spread_pct"),
+            "mtf_alignment": snap.get("mtf_alignment"),
+            "patterns": snap.get("patterns", []),
         }
 
         # Check for sell signal first (if we have a position)

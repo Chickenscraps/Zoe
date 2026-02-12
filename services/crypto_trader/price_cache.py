@@ -72,6 +72,11 @@ class PriceCache:
     def __init__(self, capacity_per_symbol: int = 288) -> None:
         self._capacity = capacity_per_symbol
         self._symbols: dict[str, SymbolHistory] = {}
+        self._candle_manager: Any | None = None  # Optional CandleManager reference
+
+    def set_candle_manager(self, candle_manager: Any) -> None:
+        """Wire a CandleManager to receive ticks for candle aggregation."""
+        self._candle_manager = candle_manager
 
     def record(self, symbol: str, bid: float, ask: float, ts: float | None = None) -> PriceTick:
         """Record a new bid/ask observation. Returns the created tick."""
@@ -81,6 +86,11 @@ class PriceCache:
         spread_pct = ((ask - bid) / mid) * 100 if mid > 0 else 999.0
         tick = PriceTick(ts=ts or time.time(), bid=bid, ask=ask, mid=mid, spread_pct=spread_pct)
         self._symbols[symbol].push(tick)
+
+        # Feed tick into candle aggregation if wired
+        if self._candle_manager is not None:
+            self._candle_manager.ingest_tick(symbol, mid, tick.ts)
+
         return tick
 
     def get(self, symbol: str) -> SymbolHistory | None:
