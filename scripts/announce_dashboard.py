@@ -2,7 +2,7 @@ import discord
 import asyncio
 import os
 
-TOKEN = "MTQ2NzI5NTI4ODEwMzQwNzY0OA.G4eAfe.TgCgwfLuTk8_iicQA9WAv9E0-x9va01eeASUD4"
+TOKEN = os.getenv("DISCORD_TOKEN", "")
 CHANNEL_ID = 1462568915195527273 # Using the Trade/General channel ID from config
 
 intents = discord.Intents.default()
