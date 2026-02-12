@@ -68,7 +68,9 @@ export type TableName =
   | "daily_gameplan_items"
   | "audit_log"
   | "config"
-  | "artifacts";
+  | "artifacts"
+  | "strategy_configs"
+  | "config_audit_log";
 
 /**
  * Shorthand for db.from(table).

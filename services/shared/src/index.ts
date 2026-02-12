@@ -15,3 +15,18 @@ export {
   auditLog,
   type TableName,
 } from "./db.js";
+export {
+  strategyConfigSchema,
+  validateConfig,
+  safeValidateConfig,
+  configChecksum,
+  configDiff,
+  getConfigValue,
+  setConfigValue,
+  DIAL_BOUNDS,
+  PRESET_PROFILES,
+  HIGH_RISK_DIALS,
+  type StrategyConfig,
+  type DialBounds,
+} from "./strategy-config.js";
+export { ConfigLoader, type ConfigMetadata } from "./config-loader.js";

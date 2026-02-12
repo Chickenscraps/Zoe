@@ -59,6 +59,8 @@ export interface Trade {
   risk_at_entry: RiskSnapshot | null;
   score_at_entry: Record<string, unknown> | null;
   notes: string | null;
+  config_version?: number;
+  config_checksum?: string;
 }
 
 export interface TradeLeg {
@@ -85,6 +87,8 @@ export interface Order {
   filled_price: number | null;
   legs: TradeLeg[];
   meta: Record<string, unknown> | null;
+  config_version?: number;
+  config_checksum?: string;
 }
 
 export interface Fill {

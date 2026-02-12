@@ -394,6 +394,57 @@ export interface Database {
           reason_json: Json;
         };
       };
+      strategy_configs: {
+        Row: {
+          id: string;
+          mode: "paper" | "live";
+          name: string;
+          config_json: Json;
+          version: number;
+          is_active: boolean;
+          created_at: string;
+          created_by: string;
+          checksum: string;
+        };
+        Insert: {
+          id?: string;
+          mode: "paper" | "live";
+          name?: string;
+          config_json: Json;
+          version?: number;
+          is_active?: boolean;
+          created_at?: string;
+          created_by?: string;
+          checksum: string;
+        };
+        Update: {
+          is_active?: boolean;
+        };
+      };
+      config_audit_log: {
+        Row: {
+          id: string;
+          mode: "paper" | "live";
+          version: number;
+          changed_at: string;
+          changed_by: string;
+          diff_json: Json;
+          reason: string | null;
+          prev_config: Json;
+          new_config: Json;
+        };
+        Insert: {
+          id?: string;
+          mode: "paper" | "live";
+          version: number;
+          changed_at?: string;
+          changed_by?: string;
+          diff_json: Json;
+          reason?: string;
+          prev_config?: Json;
+          new_config?: Json;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
