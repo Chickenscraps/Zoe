@@ -143,10 +143,10 @@ class TestOutboundSanitization:
         assert sanitize_outbound_text("") == ""
         assert sanitize_outbound_text(None) == ""
 
-    def test_all_stripped_returns_empty(self):
+    def test_all_stripped_returns_fallback(self):
         text = "Thought for 3 seconds"
         result = sanitize_outbound_text(text)
-        assert result == ""
+        assert result == "Got it. Give me one sec\u2014what\u2019s the goal here?"
 
     def test_caps_at_1800(self):
         text = "a" * 2000

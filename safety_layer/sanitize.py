@@ -40,7 +40,9 @@ _OUTBOUND_FORBIDDEN_RAW = [
     # Chain-of-thought / reasoning leaks
     r'(?im)^(?:thought|thinking|reasoning|reflection|analysis):?\s.*$',
     r'(?i)\bthought for \d+',
+    r'(?i)\bthought for the\b.*',
     r'(?i)\breasoned for \d+',
+    r'(?im)^.*\bReasoned:.*$',
     r'(?i)\bprogress update:?\b.*',
     # Internal monologue patterns (include optional leading words)
     r'(?i)(?:the\s+)?user wants me to\b.*',
@@ -67,6 +69,8 @@ _OUTBOUND_FORBIDDEN_RAW = [
     r'<\|reserved_special_token_\d+\|>',
     # Raw JSON tool call structures
     r'\{"name":\s*"[^"]+",\s*"parameters":.*?\}',
+    # Bare JSON objects with path-like keys (internal data leaks)
+    r'\{[^}]*"path"[^}]*\}',
     # Debug markers
     r'\[DEBUG\].*',
     r'__main__.*',
@@ -90,6 +94,9 @@ def sanitize_outbound_text(text: str) -> str:
 
     # 1. Strip <thought>...</thought> blocks (multiline)
     text = re.sub(r'<thought>.*?</thought>', '', text, flags=re.DOTALL)
+
+    # 1b. Strip code blocks (```...```)
+    text = re.sub(r'```[\s\S]*?```', '', text)
 
     # 2. Apply all forbidden patterns
     for pattern in _OUTBOUND_PATTERNS:
@@ -116,9 +123,9 @@ def sanitize_outbound_text(text: str) -> str:
     # 5. Trim
     text = text.strip()
 
-    # 6. If nothing meaningful remains, return empty
+    # 6. If nothing meaningful remains, return a safe fallback
     if not text or not any(c.isalnum() for c in text):
-        return ""
+        return "Got it. Give me one sec\u2014what\u2019s the goal here?"
 
     # 7. Cap to Discord-safe length
     if len(text) > 1800:
