@@ -4,7 +4,7 @@ import os
 print("🔍 Debugging Antigravity Proxy...")
 client = OpenAI(
     base_url="http://127.0.0.1:8045/v1",
-    api_key="sk-50f00d8905394467aa79543666012345"
+    api_key=os.getenv("OPENAI_API_KEY", "sk-placeholder")
 )
 
 try:

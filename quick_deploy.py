@@ -5,7 +5,7 @@ import zipfile
 import io
 
 # Load token
-TOKEN = "nfp_s9HhtBqZj7CQqBFSEPpDy5t6hDjrb8wsfa27"
+TOKEN = os.getenv("NETLIFY_TOKEN", "")
 DIR_PATH = r"C:\Users\josha\OneDrive\Desktop\Zoes\zoe-manifesto"
 
 # Create zip

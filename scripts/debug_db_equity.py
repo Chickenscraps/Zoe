@@ -1,9 +1,8 @@
 import os
 from supabase import create_client, Client
 
-# Hardcoded for debug speed (matching deploy script)
-URL = "https://qwdkadwuyejyadwptgfd.supabase.co"
-KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3ZGthZHd1eWVqeWFkd3B0Z2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2MDM1MzQsImV4cCI6MjA4NjE3OTUzNH0.Lo946df4Vy_bVWjTgJtBIWo7c1PSXQw5M2r9ixCl9Q8"
+URL = os.getenv("SUPABASE_URL", "")
+KEY = os.getenv("SUPABASE_KEY", "")
 
 supabase: Client = create_client(URL, KEY)
 

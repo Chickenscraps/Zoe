@@ -6,7 +6,7 @@ import subprocess
 import json
 
 # Configuration
-TOKEN = "nfp_s9HhtBqZj7CQqBFSEPpDy5t6hDjrb8wsfa27"
+TOKEN = os.getenv("NETLIFY_TOKEN", "")
 SITE_NAME = "euphonious-kitten-ef0a9d" # Updating to the actual active site name
 SITE_ID = "f5ef5c5c-6f02-41dd-917a-f435c186c95c" # Hardcoding the ID to prevent new site creation
 PROJECT_DIR = r"c:\Users\josha\OneDrive\Desktop\Clawd\zoe-terminal"
@@ -14,8 +14,8 @@ DIST_DIR = os.path.join(PROJECT_DIR, "dist")
 
 # Env Vars to inject
 ENV_VARS = {
-    "VITE_SUPABASE_URL": "https://qwdkadwuyejyadwptgfd.supabase.co",
-    "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3ZGthZHd1eWVqeWFkd3B0Z2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2MDM1MzQsImV4cCI6MjA4NjE3OTUzNH0.Lo946df4Vy_bVWjTgJtBIWo7c1PSXQw5M2r9ixCl9Q8"
+    "VITE_SUPABASE_URL": os.getenv("SUPABASE_URL", ""),
+    "VITE_SUPABASE_ANON_KEY": os.getenv("SUPABASE_KEY", "")
 }
 
 def create_env_file():
