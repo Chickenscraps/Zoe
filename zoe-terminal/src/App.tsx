@@ -11,12 +11,9 @@ import Trades from './pages/Trades';
 import TradeDetail from './pages/TradeDetail';
 import Scanner from './pages/Scanner';
 import Charts from './pages/Charts';
-import Plan from './pages/Plan';
-import Thoughts from './pages/Thoughts';
+import Intelligence from './pages/Intelligence';
 import Health from './pages/Health';
 import Settings from './pages/Settings';
-import Structure from './pages/Structure';
-import Consensus from './pages/Consensus';
 
 import ShareTrade from './pages/share/ShareTrade';
 import SharePnL from './pages/share/SharePnL';
@@ -54,10 +51,7 @@ function AppWithNotifications() {
           <Route path="/trades/:id" element={<TradeDetail />} />
           <Route path="/scanner" element={<Scanner />} />
           <Route path="/charts" element={<Charts />} />
-          <Route path="/plan" element={<Plan />} />
-          <Route path="/thoughts" element={<Thoughts />} />
-          <Route path="/structure" element={<Structure />} />
-          <Route path="/consensus" element={<Consensus />} />
+          <Route path="/intelligence" element={<Intelligence />} />
           <Route path="/health" element={<Health />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>

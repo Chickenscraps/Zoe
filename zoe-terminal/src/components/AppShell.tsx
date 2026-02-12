@@ -5,15 +5,12 @@ import {
   Briefcase,
   History,
   Scan,
-  Map,
-  BrainCircuit,
   Activity,
   Settings,
   Menu,
   X,
-  Layers,
   BarChart3,
-  Shield,
+  BrainCircuit,
 } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { useDashboardData } from '../hooks/useDashboardData';
@@ -23,12 +20,9 @@ const NAV_ITEMS = [
   { label: 'Overview', path: '/', icon: LayoutDashboard },
   { label: 'Positions', path: '/positions', icon: Briefcase },
   { label: 'Trades', path: '/trades', icon: History },
-  { label: 'Structure', path: '/structure', icon: Layers },
   { label: 'Scanner', path: '/scanner', icon: Scan },
   { label: 'Charts', path: '/charts', icon: BarChart3 },
-  { label: 'Consensus', path: '/consensus', icon: Shield },
-  { label: 'Plan', path: '/plan', icon: Map },
-  { label: 'Thoughts', path: '/thoughts', icon: BrainCircuit },
+  { label: 'Intelligence', path: '/intelligence', icon: BrainCircuit },
   { label: 'Health', path: '/health', icon: Activity },
   { label: 'Settings', path: '/settings', icon: Settings },
 ];
