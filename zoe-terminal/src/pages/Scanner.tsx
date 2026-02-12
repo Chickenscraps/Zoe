@@ -5,6 +5,7 @@ import { Activity, TrendingUp, TrendingDown, Minus, Droplets, Gauge, BarChart3 }
 import { supabase } from '../lib/supabaseClient';
 import { MODE } from '../lib/mode';
 import { cn } from '../lib/utils';
+import IndicatorPanel from '../components/IndicatorPanel';
 
 type CandidateScan = Database['public']['Tables']['candidate_scans']['Row'];
 
@@ -13,6 +14,8 @@ const STRATEGY_COLORS: Record<string, string> = {
   trend_follow_long: 'text-blue-400',
   mean_reversion: 'text-yellow-400',
   mean_reversion_long: 'text-yellow-300',
+  bb_mean_reversion_long: 'text-purple-400',
+  bb_breakout_long: 'text-cyan-400',
   take_profit: 'text-orange-400',
   hold: 'text-text-muted',
 };
@@ -22,9 +25,12 @@ const STRATEGY_LABELS: Record<string, string> = {
   trend_follow_long: 'Trend Follow',
   mean_reversion: 'Mean Reversion',
   mean_reversion_long: 'MR Long',
+  bb_mean_reversion_long: 'BB Mean Rev',
+  bb_breakout_long: 'BB Breakout',
   take_profit: 'Take Profit',
   hold: 'Hold',
 };
+
 
 export default function Scanner() {
   const [candidates, setCandidates] = useState<CandidateScan[]>([]);
@@ -167,6 +173,18 @@ export default function Scanner() {
                         </div>
                       )}
                     </div>
+                  )}
+
+                  {/* Advanced Indicators (MACD, BB, Consensus) */}
+                  {(info.macd || info.bollinger || info.consensus) && (
+                    <IndicatorPanel
+                      macd={info.macd}
+                      bollinger={info.bollinger}
+                      consensus={info.consensus}
+                      regime={info.regime}
+                      divergences={info.divergences}
+                      goldenDeathCross={info.golden_death_cross}
+                    />
                   )}
 
                   {/* Technical Indicators */}

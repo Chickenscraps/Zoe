@@ -22,6 +22,8 @@ from typing import Any
 
 from .scanner import CandidateScan
 from .price_cache import PriceCache
+from .regime import detect_regime
+from .consensus import ConsensusEngine, ConsensusResult
 
 
 # ── Configuration ────────────────────────────────────────────────
@@ -90,9 +92,14 @@ def _compute_buy_confidence(candidate: CandidateScan, snap: dict[str, Any]) -> t
     confidence = 0.0
     reasons = []
 
+    # ── Regime detection for adaptive thresholds ──
+    regime = detect_regime(snap)
+    rsi_oversold = regime.rsi_oversold
+    rsi_overbought = regime.rsi_overbought
+
     # ── Hard vetoes (return 0) ──
-    if rsi is not None and rsi > 78:
-        return 0.0, "RSI overbought (>78) — no buy"
+    if rsi is not None and rsi > rsi_overbought:
+        return 0.0, f"RSI overbought (>{rsi_overbought:.0f} in {regime.regime} regime) — no buy"
     if spread > 2.0:
         return 0.0, "Spread too wide (>2%) — illiquid"
     if vol is not None and vol > 200:
@@ -122,13 +129,44 @@ def _compute_buy_confidence(candidate: CandidateScan, snap: dict[str, Any]) -> t
         confidence += 0.08
         reasons.append(f"EMA crossover bullish ({ema_cross:.3f}%)")
 
-    # ── RSI oversold bounce ──
-    if rsi is not None and rsi < 32:
+    # ── MACD boost ──
+    macd = snap.get("macd")
+    if macd is not None:
+        hist = macd.get("histogram", 0)
+        slope = macd.get("histogram_slope", 0)
+        crossover = macd.get("crossover", 0)
+        if crossover == 1:
+            confidence += 0.10
+            reasons.append("MACD bullish crossover")
+        elif hist > 0 and slope > 0:
+            confidence += 0.06
+            reasons.append(f"MACD histogram rising ({hist:+.4f})")
+        elif hist < 0 and slope < 0:
+            confidence *= 0.75
+            reasons.append(f"MACD histogram falling ({hist:+.4f})")
+
+    # ── RSI oversold bounce (regime-adaptive) ──
+    if rsi is not None and rsi < rsi_oversold:
         confidence += 0.12
-        reasons.append(f"RSI oversold ({rsi:.0f}) — bounce potential")
-    elif rsi is not None and rsi < 45:
+        reasons.append(f"RSI oversold ({rsi:.0f} < {rsi_oversold:.0f} in {regime.regime}) — bounce")
+    elif rsi is not None and rsi < (rsi_oversold + rsi_overbought) / 2:
         confidence += 0.05
-        reasons.append(f"RSI favorable ({rsi:.0f})")
+        reasons.append(f"RSI favorable ({rsi:.0f}, {regime.regime} regime)")
+
+    # ── Bollinger Bands ──
+    bb = snap.get("bollinger")
+    if bb is not None:
+        pct_b = bb.get("percent_b", 0.5)
+        squeeze = bb.get("squeeze", False)
+        if pct_b < 0.1 and squeeze:
+            confidence += 0.12
+            reasons.append(f"BB deeply oversold + squeeze (%B={pct_b:.2f})")
+        elif pct_b < 0.2:
+            confidence += 0.08
+            reasons.append(f"BB oversold (%B={pct_b:.2f})")
+        elif pct_b > 0.9:
+            confidence *= 0.80
+            reasons.append(f"BB overbought (%B={pct_b:.2f})")
 
     # ── Liquidity bonus ──
     if spread < 0.15:
@@ -182,6 +220,33 @@ def _compute_buy_confidence(candidate: CandidateScan, snap: dict[str, Any]) -> t
         if dist_pct < 1.0:
             confidence *= 0.85
             reasons.append(f"near resistance ${nearest_resistance.get('price', 0):,.0f}")
+
+    # ── Divergence boost ──
+    divergences = snap.get("divergences", [])
+    bullish_divs = [d for d in divergences if d.get("is_bullish")]
+    if bullish_divs:
+        best_div = max(bullish_divs, key=lambda d: d.get("strength", 0))
+        div_type = best_div.get("type", "")
+        if div_type == "regular_bullish":
+            confidence += 0.15
+            reasons.append(f"bullish divergence ({best_div.get('indicator')}) — reversal signal")
+        elif div_type == "hidden_bullish":
+            confidence += 0.08
+            reasons.append(f"hidden bullish divergence — trend continuation")
+    bearish_divs = [d for d in divergences if not d.get("is_bullish")]
+    if bearish_divs:
+        confidence *= 0.75
+        reasons.append(f"bearish divergence detected — conflicting signal")
+
+    # ── Golden / Death Cross ──
+    cross = snap.get("golden_death_cross")
+    if cross is not None:
+        if cross.get("type") == "golden":
+            confidence += 0.12
+            reasons.append(f"Golden Cross (EMA 50/200) — macro bullish")
+        elif cross.get("type") == "death":
+            confidence *= 0.65
+            reasons.append(f"Death Cross (EMA 50/200) — macro bearish")
 
     # ── Penalties ──
     if not has_technicals:
@@ -243,6 +308,24 @@ def _compute_sell_confidence(candidate: CandidateScan, snap: dict[str, Any], has
         confidence += 0.15
         reasons.append(f"EMA crossover bearish ({ema_cross:.3f}%)")
 
+    # MACD bearish crossover
+    macd = snap.get("macd")
+    if macd is not None:
+        if macd.get("crossover") == -1:
+            confidence += 0.15
+            reasons.append("MACD bearish crossover")
+        elif macd.get("histogram", 0) < 0 and macd.get("histogram_slope", 0) < 0:
+            confidence += 0.06
+            reasons.append("MACD histogram declining")
+
+    # Bollinger overbought
+    bb = snap.get("bollinger")
+    if bb is not None:
+        pct_b = bb.get("percent_b", 0.5)
+        if pct_b > 0.9:
+            confidence += 0.08
+            reasons.append(f"BB overbought (%B={pct_b:.2f})")
+
     # ── Chart pattern sell boosts ──
     patterns = snap.get("patterns", [])
     mtf_alignment = snap.get("mtf_alignment")
@@ -270,6 +353,24 @@ def _compute_sell_confidence(candidate: CandidateScan, snap: dict[str, Any], has
             confidence += 0.08
             reasons.append(f"at resistance ${nearest.get('price', 0):,.0f}")
 
+    # Bearish divergence boosts sell
+    divergences = snap.get("divergences", [])
+    bearish_divs = [d for d in divergences if not d.get("is_bullish")]
+    if bearish_divs:
+        best_div = max(bearish_divs, key=lambda d: d.get("strength", 0))
+        if best_div.get("type") == "regular_bearish":
+            confidence += 0.15
+            reasons.append(f"bearish divergence ({best_div.get('indicator')}) — reversal signal")
+        elif best_div.get("type") == "hidden_bearish":
+            confidence += 0.08
+            reasons.append("hidden bearish divergence — trend continuation down")
+
+    # Death Cross boosts sell
+    cross = snap.get("golden_death_cross")
+    if cross is not None and cross.get("type") == "death":
+        confidence += 0.12
+        reasons.append("Death Cross (EMA 50/200) — macro bearish")
+
     confidence = min(1.0, max(0.0, confidence))
     reason = "; ".join(reasons) if reasons else "no sell signal"
     return confidence, reason
@@ -296,17 +397,26 @@ def generate_signals(
         Includes HOLD signals for context but they're not actionable.
     """
     signals: list[Signal] = []
+    consensus_engine = ConsensusEngine()
 
     for cand in candidates:
         snap = price_cache.snapshot(cand.symbol)
         has_position = cand.symbol in open_positions
 
         # Merge chart analysis data from scanner info into snapshot
-        # so signal functions can access patterns, MTF, S/R levels
+        # so signal functions can access patterns, MTF, S/R levels, divergences
         for chart_key in ("patterns", "mtf_alignment", "mtf_dominant_trend",
-                          "support_levels", "resistance_levels"):
+                          "support_levels", "resistance_levels",
+                          "divergences", "golden_death_cross"):
             if chart_key in cand.info:
                 snap[chart_key] = cand.info[chart_key]
+
+        # Compute regime for adaptive thresholds and add to snap
+        snap["regime"] = detect_regime(snap).to_dict()
+
+        # Run consensus engine (for buy direction — sell uses own checks)
+        consensus = consensus_engine.evaluate(snap, direction="long")
+        snap["consensus"] = consensus.to_dict()
 
         indicators = {
             "rsi": snap.get("rsi"),
@@ -319,6 +429,12 @@ def generate_signals(
             "spread_pct": snap.get("spread_pct"),
             "mtf_alignment": snap.get("mtf_alignment"),
             "patterns": snap.get("patterns", []),
+            "macd": snap.get("macd"),
+            "bollinger": snap.get("bollinger"),
+            "golden_death_cross": snap.get("golden_death_cross"),
+            "divergences": snap.get("divergences", []),
+            "regime": snap.get("regime"),
+            "consensus": snap.get("consensus"),
         }
 
         # Check for sell signal first (if we have a position)
@@ -338,7 +454,33 @@ def generate_signals(
 
         # Check buy signal (only if we don't already hold)
         if not has_position:
+            # Kill switch: consensus engine blocks the trade
+            if consensus.result == ConsensusResult.BLOCKED:
+                block_reason = "; ".join(consensus.blocking_reasons) or "consensus blocked"
+                signals.append(Signal(
+                    symbol=cand.symbol,
+                    action="HOLD",
+                    confidence=0.0,
+                    reason=f"KILL SWITCH: {block_reason}",
+                    strategy="blocked",
+                    suggested_notional=0,
+                    score=cand.score,
+                    indicators=indicators,
+                ))
+                continue
+
             buy_conf, buy_reason = _compute_buy_confidence(cand, snap)
+
+            # Apply consensus multiplier
+            if consensus.result == ConsensusResult.STRONG_BUY:
+                buy_conf = min(1.0, buy_conf * 1.20)
+                buy_reason += f" | CONSENSUS STRONG ({consensus.gates_passed}/{consensus.gates_total})"
+            elif consensus.result == ConsensusResult.BUY:
+                buy_conf = min(1.0, buy_conf * 1.05)
+                buy_reason += f" | consensus OK ({consensus.gates_passed}/{consensus.gates_total})"
+            elif consensus.result == ConsensusResult.NEUTRAL:
+                buy_conf *= 0.85
+                buy_reason += f" | consensus weak ({consensus.gates_passed}/{consensus.gates_total})"
 
             if buy_conf >= MIN_CONFIDENCE_BUY:
                 # Scale notional by confidence (more confident → bigger position)

@@ -106,6 +106,131 @@ def _momentum_from_closes(closes: list[float], lookback: int = 6) -> float | Non
     return ((new - old) / old) * 100
 
 
+def _ema_series_from_closes(closes: list[float], span: int) -> list[float]:
+    """Compute full EMA series from close prices."""
+    if len(closes) < span:
+        return []
+    alpha = 2.0 / (span + 1)
+    result = [closes[0]]
+    for price in closes[1:]:
+        result.append(alpha * price + (1 - alpha) * result[-1])
+    return result
+
+
+def _macd_from_closes(
+    closes: list[float], fast: int = 12, slow: int = 26, signal: int = 9,
+) -> dict[str, Any] | None:
+    """Compute MACD from candle close prices.
+
+    Returns dict with macd_line, signal_line, histogram,
+    histogram_slope, and crossover (+1/−1/0).
+    """
+    if len(closes) < slow + signal:
+        return None
+
+    fast_series = _ema_series_from_closes(closes, fast)
+    slow_series = _ema_series_from_closes(closes, slow)
+
+    if not fast_series or not slow_series:
+        return None
+
+    macd_series = [f - s for f, s in zip(fast_series, slow_series)]
+    warmed = macd_series[slow - 1:]
+    if len(warmed) < signal:
+        return None
+
+    signal_series = _ema_series_from_closes(warmed, signal)
+    if len(signal_series) < 2:
+        return None
+
+    macd_line = macd_series[-1]
+    signal_line = signal_series[-1]
+    histogram = macd_line - signal_line
+    prev_histogram = macd_series[-2] - signal_series[-2]
+    histogram_slope = histogram - prev_histogram
+
+    crossover = 0
+    if prev_histogram <= 0 < histogram:
+        crossover = 1
+    elif prev_histogram >= 0 > histogram:
+        crossover = -1
+
+    return {
+        "macd_line": macd_line,
+        "signal_line": signal_line,
+        "histogram": histogram,
+        "histogram_slope": histogram_slope,
+        "crossover": crossover,
+    }
+
+
+# ── Golden / Death Cross detection ────────────────────────────
+
+def detect_golden_death_cross(
+    candle_manager: CandleManager, symbol: str, timeframe: str = "4h",
+) -> dict[str, Any] | None:
+    """Detect Golden Cross (50 EMA > 200 SMA) or Death Cross (opposite).
+
+    Research: Golden Cross preceded BTC rallying from $7K→$64K in 2020;
+    Death Cross confirmed declines of −30%+ historically.
+
+    Returns dict with: type ("golden"/"death"), strength, ema_50, ema_200,
+    bars_since_cross, or None if no cross detected in last 10 candles.
+    """
+    closes = candle_manager.get_closes(symbol, timeframe)
+    if len(closes) < 210:
+        return None
+
+    ema_50_cur = _ema_from_closes(closes, 50)
+    ema_200_cur = _ema_from_closes(closes, 200)
+    ema_50_prev = _ema_from_closes(closes[:-1], 50)
+    ema_200_prev = _ema_from_closes(closes[:-1], 200)
+
+    if None in (ema_50_cur, ema_200_cur, ema_50_prev, ema_200_prev):
+        return None
+
+    cross_type = None
+    bars_since = 0
+
+    # Check current candle for crossover
+    if ema_50_prev <= ema_200_prev and ema_50_cur > ema_200_cur:
+        cross_type = "golden"
+    elif ema_50_prev >= ema_200_prev and ema_50_cur < ema_200_cur:
+        cross_type = "death"
+    else:
+        # Scan last 10 candles for recent cross
+        for i in range(2, min(11, len(closes))):
+            old_50 = _ema_from_closes(closes[:-i], 50)
+            old_200 = _ema_from_closes(closes[:-i], 200)
+            new_50 = _ema_from_closes(closes[:-i + 1], 50)
+            new_200 = _ema_from_closes(closes[:-i + 1], 200)
+            if None in (old_50, old_200, new_50, new_200):
+                continue
+            if old_50 <= old_200 and new_50 > new_200:
+                cross_type = "golden"
+                bars_since = i
+                break
+            if old_50 >= old_200 and new_50 < new_200:
+                cross_type = "death"
+                bars_since = i
+                break
+
+    if not cross_type:
+        return None
+
+    separation_pct = abs(ema_50_cur - ema_200_cur) / ema_200_cur if ema_200_cur else 0
+    recent_momentum = (closes[-1] - closes[-10]) / closes[-10] if len(closes) >= 10 and closes[-10] else 0
+    strength = min(1.0, separation_pct * 10 + abs(recent_momentum) * 2)
+
+    return {
+        "type": cross_type,
+        "strength": round(strength, 3),
+        "ema_50": round(ema_50_cur, 2),
+        "ema_200": round(ema_200_cur, 2),
+        "bars_since_cross": bars_since,
+    }
+
+
 # ── Timeframe trend analysis ────────────────────────────────────
 
 # EMA spans per timeframe (in candle counts)
@@ -136,6 +261,7 @@ def analyze_timeframe(candle_manager: CandleManager, symbol: str, timeframe: str
     ema_slow = _ema_from_closes(closes, cfg["ema_slow"])
     rsi = _rsi_from_closes(closes, cfg["rsi_period"])
     momentum = _momentum_from_closes(closes, cfg["mom_lookback"])
+    macd = _macd_from_closes(closes, fast=12, slow=26, signal=9)
 
     # Determine trend direction
     trend = "neutral"
@@ -173,6 +299,17 @@ def analyze_timeframe(candle_manager: CandleManager, symbol: str, timeframe: str
         if momentum is not None:
             if (momentum > 0 and trend == "bullish") or (momentum < 0 and trend == "bearish"):
                 strength = min(1.0, strength + 0.1)
+
+        # MACD histogram confirmation
+        if macd is not None:
+            hist = macd.get("histogram", 0)
+            slope = macd.get("histogram_slope", 0)
+            if trend == "bullish" and hist > 0 and slope > 0:
+                strength = min(1.0, strength + 0.12)
+            elif trend == "bearish" and hist < 0 and slope < 0:
+                strength = min(1.0, strength + 0.12)
+            elif (trend == "bullish" and hist < 0) or (trend == "bearish" and hist > 0):
+                strength *= 0.8  # MACD disagrees, weaken signal
 
     return TimeframeTrend(
         timeframe=timeframe,

@@ -119,6 +119,40 @@ bounce:
   alerts:
     throttle_minutes: 30             # max 1 discord alert per 30m/symbol
 
+# ─── Advanced Indicators & Consensus Engine ───
+indicators:
+  macd:
+    enabled: true
+    fast: 8                            # crypto-optimized (standard: 12)
+    slow: 17                           # crypto-optimized (standard: 26)
+    signal: 9
+  bollinger:
+    enabled: true
+    period: 20
+    std_dev: 2.0
+    squeeze_detection: true
+  divergence:
+    enabled: true
+    lookback_candles: 30
+    min_strength: 0.3
+    pivot_window: 5
+  regime_adaptive_rsi:
+    enabled: true
+    thresholds:
+      bull: [40, 90]
+      bear: [10, 60]
+      sideways: [30, 70]
+      high_vol: [20, 80]
+
+consensus:
+  enabled: true
+  min_gates_to_trade: 4                # out of 7 gates
+  kill_switch_active: true             # block trades when < 3 gates pass
+  confidence_multipliers:
+    strong: 1.20                       # STRONG_BUY/SELL multiplier
+    normal: 1.05                       # BUY/SELL multiplier
+    weak: 0.85                         # NEUTRAL multiplier
+
 # ─── Position Sizing ───
 position_sizing:
   risk_fraction: 0.02             # risk 2% of equity per trade

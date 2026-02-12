@@ -127,6 +127,8 @@ class PositionSizer:
         sl_price: float,
         tp_price: float = 0.0,
         score: int = 100,
+        volatility: float | None = None,
+        bb_squeeze: bool = False,
     ) -> Optional[SizingResult]:
         """
         Calculate position size for a trade.
@@ -167,6 +169,15 @@ class PositionSizer:
             # Map score 70-100 → 0.5-1.0 multiplier
             score_mult = max(0.5, min(1.0, (score - 40) / 60.0))
             risk_budget_usd *= score_mult
+
+        # Volatility adjustment: reduce size in high volatility, increase in squeeze
+        if volatility is not None and volatility > 80:
+            # Scale down linearly: 80% vol = full size, 200% vol = 60% size
+            vol_mult = max(0.6, 1.0 - (volatility - 80) / 300)
+            risk_budget_usd *= vol_mult
+        if bb_squeeze:
+            # BB squeeze = breakout anticipated, allow 10% larger position
+            risk_budget_usd *= 1.10
 
         # Units = risk_budget / risk_per_unit
         units = risk_budget_usd / risk_per_unit

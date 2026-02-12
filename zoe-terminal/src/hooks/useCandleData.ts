@@ -36,6 +36,53 @@ export interface SRLevel {
   strength: number;
 }
 
+export interface MACDData {
+  histogram: number;
+  histogram_slope: number;
+  crossover: number;
+  macd_line: number;
+  signal_line: number;
+}
+
+export interface BollingerData {
+  percent_b: number;
+  squeeze: boolean;
+  bandwidth: number;
+  upper: number;
+  middle: number;
+  lower: number;
+}
+
+export interface ConsensusData {
+  result: string;
+  confidence: number;
+  gates_passed: number;
+  gates_total: number;
+  blocking_reasons: string[];
+  supporting_reasons: string[];
+}
+
+export interface RegimeData {
+  regime: string;
+  confidence: number;
+  rsi_oversold: number;
+  rsi_overbought: number;
+}
+
+export interface DivergenceData {
+  type: string;
+  strength: number;
+  indicator: string;
+  is_reversal: boolean;
+  is_bullish: boolean;
+}
+
+export interface GoldenDeathCrossData {
+  type: string;
+  strength: number;
+  bars_since_cross: number;
+}
+
 export interface ChartAnalysis {
   patterns: PatternInfo[];
   mtfAlignment: number | null;
@@ -43,6 +90,12 @@ export interface ChartAnalysis {
   mtfDetails: MTFDetail[];
   supportLevels: SRLevel[];
   resistanceLevels: SRLevel[];
+  macd: MACDData | null;
+  bollinger: BollingerData | null;
+  consensus: ConsensusData | null;
+  regime: RegimeData | null;
+  divergences: DivergenceData[];
+  goldenDeathCross: GoldenDeathCrossData | null;
 }
 
 export function useCandleData(symbol: string, timeframe: string = '1h') {
@@ -55,6 +108,12 @@ export function useCandleData(symbol: string, timeframe: string = '1h') {
     mtfDetails: [],
     supportLevels: [],
     resistanceLevels: [],
+    macd: null,
+    bollinger: null,
+    consensus: null,
+    regime: null,
+    divergences: [],
+    goldenDeathCross: null,
   });
 
   const fetchCandles = useCallback(async () => {
@@ -102,6 +161,12 @@ export function useCandleData(symbol: string, timeframe: string = '1h') {
           mtfDetails: info.mtf_details ?? [],
           supportLevels: info.support_levels ?? [],
           resistanceLevels: info.resistance_levels ?? [],
+          macd: info.macd ?? null,
+          bollinger: info.bollinger ?? null,
+          consensus: info.consensus ?? null,
+          regime: info.regime ?? null,
+          divergences: info.divergences ?? [],
+          goldenDeathCross: info.golden_death_cross ?? null,
         });
       }
     } catch (err) {

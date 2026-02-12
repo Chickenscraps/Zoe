@@ -273,6 +273,157 @@ class PriceCache:
         rs = avg_gain / avg_loss
         return 100 - (100 / (1 + rs))
 
+    # ── MACD ──────────────────────────────────────────────────────
+
+    @staticmethod
+    def _compute_ema_series(values: list[float], span: int) -> list[float]:
+        """Compute full EMA series from a list of values.
+
+        Returns a list the same length as `values` with EMA at each point.
+        Reusable helper for MACD, Bollinger, and other composite indicators.
+        """
+        if len(values) < span:
+            return []
+        alpha = 2 / (span + 1)
+        result = [values[0]]
+        for price in values[1:]:
+            result.append(alpha * price + (1 - alpha) * result[-1])
+        return result
+
+    def macd(
+        self, symbol: str, fast: int = 12, slow: int = 26, signal: int = 9,
+    ) -> dict[str, Any] | None:
+        """Moving Average Convergence Divergence.
+
+        Returns dict with:
+            macd_line:       fast EMA − slow EMA
+            signal_line:     9-period EMA of the MACD line series
+            histogram:       macd_line − signal_line
+            histogram_slope: current histogram − previous histogram
+                             (positive = momentum accelerating)
+            crossover:       +1 bullish, −1 bearish, 0 none
+        """
+        hist = self._symbols.get(symbol)
+        if not hist or hist.count < slow + signal:
+            return None
+
+        mids = hist.mids()
+        fast_series = self._compute_ema_series(mids, fast)
+        slow_series = self._compute_ema_series(mids, slow)
+
+        if len(fast_series) < slow + signal or len(slow_series) < slow + signal:
+            return None
+
+        # MACD line series (fast EMA − slow EMA)
+        macd_series = [f - s for f, s in zip(fast_series, slow_series)]
+
+        # Signal line: EMA of MACD line (use only from index `slow-1` onward
+        # where the slow EMA has warmed up)
+        warmed = macd_series[slow - 1:]
+        if len(warmed) < signal:
+            return None
+        signal_series = self._compute_ema_series(warmed, signal)
+
+        macd_line = macd_series[-1]
+        signal_line = signal_series[-1]
+        histogram = macd_line - signal_line
+
+        # Histogram slope (momentum acceleration / deceleration)
+        prev_histogram = macd_series[-2] - signal_series[-2] if len(signal_series) >= 2 else 0.0
+        histogram_slope = histogram - prev_histogram
+
+        # Crossover detection
+        crossover = 0
+        if len(signal_series) >= 2:
+            if prev_histogram <= 0 < histogram:
+                crossover = 1   # bullish crossover
+            elif prev_histogram >= 0 > histogram:
+                crossover = -1  # bearish crossover
+
+        return {
+            "macd_line": macd_line,
+            "signal_line": signal_line,
+            "histogram": histogram,
+            "histogram_slope": histogram_slope,
+            "crossover": crossover,
+        }
+
+    def macd_crypto(self, symbol: str) -> dict[str, Any] | None:
+        """MACD with crypto-optimized parameters (8/17/9).
+
+        Faster settings capture sharper momentum shifts common in 24/7
+        crypto markets, per quantitative research recommendations.
+        """
+        return self.macd(symbol, fast=8, slow=17, signal=9)
+
+    # ── Bollinger Bands ───────────────────────────────────────────
+
+    def bollinger_bands(
+        self, symbol: str, period: int = 20, std_dev: float = 2.0,
+    ) -> dict[str, Any] | None:
+        """Bollinger Bands: SMA ± (std_dev × σ).
+
+        Returns dict with:
+            upper:     upper band
+            middle:    20-period SMA (center line)
+            lower:     lower band
+            bandwidth: (upper − lower) / middle × 100  (volatility measure)
+            percent_b: (price − lower) / (upper − lower)
+                       0 = at lower band, 0.5 = at middle, 1 = at upper
+            squeeze:   True when bandwidth is in lowest 20th percentile
+                       of recent 50 readings (breakout imminent)
+        """
+        hist = self._symbols.get(symbol)
+        if not hist or hist.count < period:
+            return None
+
+        mids = hist.mids()
+        recent = mids[-period:]
+
+        # SMA (middle band)
+        sma = sum(recent) / period
+
+        # Population standard deviation over the window
+        variance = sum((p - sma) ** 2 for p in recent) / period
+        stddev = math.sqrt(variance)
+
+        upper = sma + std_dev * stddev
+        lower = sma - std_dev * stddev
+        current = mids[-1]
+
+        # Bandwidth: measures current volatility regime
+        bandwidth = ((upper - lower) / sma) * 100 if sma > 0 else 0.0
+
+        # %B: where price sits within the bands
+        band_range = upper - lower
+        percent_b = (current - lower) / band_range if band_range > 0 else 0.5
+
+        # Squeeze detection: bandwidth in lowest 20th percentile of
+        # recent 50 bandwidth readings.  Low bandwidth → consolidation →
+        # high probability of directional breakout.
+        squeeze = False
+        if hist.count >= period + 50:
+            bw_history: list[float] = []
+            for end in range(len(mids) - 50, len(mids)):
+                window = mids[max(0, end - period + 1) : end + 1]
+                if len(window) == period:
+                    w_sma = sum(window) / period
+                    w_std = math.sqrt(sum((p - w_sma) ** 2 for p in window) / period)
+                    w_bw = ((2 * std_dev * w_std) / w_sma * 100) if w_sma > 0 else 0.0
+                    bw_history.append(w_bw)
+            if bw_history:
+                threshold_idx = max(1, len(bw_history) // 5)  # 20th percentile
+                squeeze = bandwidth <= sorted(bw_history)[threshold_idx]
+
+        return {
+            "upper": upper,
+            "middle": sma,
+            "lower": lower,
+            "bandwidth": bandwidth,
+            "percent_b": percent_b,
+            "squeeze": squeeze,
+        }
+
     def snapshot(self, symbol: str) -> dict[str, Any]:
         """Full technical snapshot for a symbol — used by scanner."""
         hist = self._symbols.get(symbol)
@@ -297,4 +448,7 @@ class PriceCache:
             "spread_volatility": self.spread_volatility(symbol) if has_data else None,
             "ema_crossover": self.ema_crossover(symbol) if has_data else None,
             "rsi": self.rsi(symbol) if has_data else None,
+            "macd": self.macd(symbol) if has_data else None,
+            "macd_crypto": self.macd_crypto(symbol) if has_data else None,
+            "bollinger": self.bollinger_bands(symbol) if has_data else None,
         }

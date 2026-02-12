@@ -87,10 +87,13 @@ def _score_momentum(mom_short: float | None, mom_medium: float | None, ema_cross
     return round(short_score + med_score + ema_score, 2)
 
 
-def _score_volatility(vol: float | None, spread_vol: float | None) -> float:
-    """0-20 pts. Moderate volatility = opportunity, extreme = risk.
+def _score_volatility(
+    vol: float | None, spread_vol: float | None, bollinger: dict | None = None,
+) -> float:
+    """0-25 pts. Moderate volatility = opportunity, extreme = risk.
 
     Sweet spot: enough movement to profit, not so wild it's gambling.
+    Bollinger Band squeeze adds bonus (breakout imminent).
     """
     if vol is None:
         return 10.0  # neutral
@@ -109,7 +112,13 @@ def _score_volatility(vol: float | None, spread_vol: float | None) -> float:
     else:
         spread_penalty = 0.0
 
-    return round(vol_score + (10 - spread_penalty), 2)
+    base = vol_score + (10 - spread_penalty)
+
+    # BB squeeze bonus: consolidation often precedes breakout
+    if bollinger is not None and bollinger.get("squeeze"):
+        base += 5.0
+
+    return round(min(25.0, base), 2)
 
 
 def _score_trend(trend_str: float | None, trend_dir: float | None, rsi: float | None) -> float:
@@ -150,16 +159,29 @@ def _score_trend(trend_str: float | None, trend_dir: float | None, rsi: float | 
 
 
 def _pick_strategy(snapshot: dict[str, Any]) -> str:
-    """Choose strategy based on indicators."""
+    """Choose strategy based on indicators including MACD and Bollinger Bands."""
     rsi = snapshot.get("rsi")
     trend_str = snapshot.get("trend_strength")
     ema_cross = snapshot.get("ema_crossover")
     mom_med = snapshot.get("momentum_medium")
+    bb = snapshot.get("bollinger")
+    macd = snapshot.get("macd")
 
     # Not enough data → default
     if rsi is None or trend_str is None:
         spread = snapshot.get("spread_pct", 1)
         return "momentum_long" if spread < 0.3 else "mean_reversion"
+
+    # BB squeeze + MACD expanding → breakout strategy
+    if bb is not None and bb.get("squeeze") and macd is not None:
+        hist = macd.get("histogram", 0)
+        slope = macd.get("histogram_slope", 0)
+        if hist > 0 and slope > 0:
+            return "bb_breakout_long"
+
+    # BB oversold + RSI oversold → mean reversion bounce
+    if bb is not None and bb.get("percent_b", 0.5) < 0.15 and rsi < 35:
+        return "bb_mean_reversion_long"
 
     # Oversold bounce play
     if rsi < 30:
@@ -242,7 +264,7 @@ async def scan_candidates(
         # Score components
         liq_score = _score_liquidity(snap["spread_pct"], snap["mean_spread"])
         mom_score = _score_momentum(snap["momentum_short"], snap["momentum_medium"], snap["ema_crossover"])
-        vol_score = _score_volatility(snap["volatility"], snap["spread_volatility"])
+        vol_score = _score_volatility(snap["volatility"], snap["spread_volatility"], snap.get("bollinger"))
         trend_score = _score_trend(snap["trend_strength"], snap["trend_direction"], snap["rsi"])
 
         total = round(liq_score + mom_score + vol_score + trend_score, 1)
@@ -263,6 +285,13 @@ async def scan_candidates(
                 # Multi-timeframe analysis
                 mtf = analyze_mtf(candle_manager, symbol)
 
+                # Golden/Death Cross detection
+                from .mtf_analyzer import detect_golden_death_cross
+                cross = detect_golden_death_cross(candle_manager, symbol, "4h")
+
+                # Divergence detection on 1h candles
+                divs = candle_manager.compute_divergences(symbol, "1h")
+
                 chart_info = {
                     "patterns": [p.to_dict() for p in patterns[:5]],  # top 5
                     "mtf_alignment": round(mtf.alignment_score, 3),
@@ -274,6 +303,8 @@ async def scan_candidates(
                         tf: candle_manager.candle_count(symbol, tf)
                         for tf in ["15m", "1h", "4h"]
                     },
+                    "golden_death_cross": cross,
+                    "divergences": [d.to_dict() for d in divs[:3]],
                 }
             except Exception:
                 pass  # chart analysis is non-critical
@@ -300,6 +331,8 @@ async def scan_candidates(
                 "ema_crossover": round(snap["ema_crossover"], 4) if snap["ema_crossover"] is not None else None,
                 "volatility_ann": round(snap["volatility"], 2) if snap["volatility"] is not None else None,
                 "trend_strength": round(snap["trend_strength"], 3) if snap["trend_strength"] is not None else None,
+                "macd": snap.get("macd"),
+                "bollinger": snap.get("bollinger"),
                 **chart_info,
             },
             recommended_strategy=strategy,

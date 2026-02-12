@@ -204,6 +204,52 @@ class CandleManager:
         """Number of finalized candles available."""
         return len(self._get_series(symbol, timeframe))
 
+    def compute_divergences(self, symbol: str, timeframe: str = "1h") -> list:
+        """Detect price/indicator divergences on candles.
+
+        Computes RSI and MACD histogram series from candle closes,
+        then runs divergence detection for both.
+
+        Returns list of Divergence objects (from divergence.py).
+        """
+        from .divergence import detect_rsi_divergence, detect_macd_divergence
+        from .mtf_analyzer import _rsi_from_closes, _macd_from_closes
+
+        closes = self.get_closes(symbol, timeframe)
+        if len(closes) < 30:
+            return []
+
+        divergences = []
+
+        # RSI divergence
+        # Build RSI series aligned to closes (pad leading None→skip)
+        rsi_series: list[float] = []
+        for i in range(len(closes)):
+            rsi_val = _rsi_from_closes(closes[: i + 1], period=14)
+            rsi_series.append(rsi_val if rsi_val is not None else 50.0)  # neutral pad
+
+        divergences.extend(detect_rsi_divergence(closes, rsi_series))
+
+        # MACD histogram divergence
+        macd_result = _macd_from_closes(closes, fast=12, slow=26, signal=9)
+        if macd_result is not None:
+            # Build full MACD histogram series
+            from .price_cache import PriceCache
+            fast_s = PriceCache._compute_ema_series(closes, 12)
+            slow_s = PriceCache._compute_ema_series(closes, 26)
+            if fast_s and slow_s:
+                macd_line_series = [f - s for f, s in zip(fast_s, slow_s)]
+                warmed = macd_line_series[25:]  # after slow EMA warms up
+                if len(warmed) >= 9:
+                    sig_s = PriceCache._compute_ema_series(warmed, 9)
+                    hist_series = [m - s for m, s in zip(warmed, sig_s)]
+                    # Pad to match closes length
+                    pad_len = len(closes) - len(hist_series)
+                    padded_hist = [0.0] * pad_len + hist_series
+                    divergences.extend(detect_macd_divergence(closes, padded_hist))
+
+        return divergences
+
     # ── Historical data loading (CoinGecko) ────────────────────
 
     async def load_historical(self, symbols: list[str] | None = None) -> int:

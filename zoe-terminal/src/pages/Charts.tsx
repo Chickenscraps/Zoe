@@ -1,6 +1,9 @@
-import { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Minus, BarChart3, Layers, Shield } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { TrendingUp, TrendingDown, Minus, BarChart3, Layers, Shield, Activity } from 'lucide-react';
 import CandlestickChart from '../components/CandlestickChart';
+import type { BollingerOverlay } from '../components/CandlestickChart';
+import IndicatorPanel from '../components/IndicatorPanel';
+import MACDChart from '../components/MACDChart';
 import { useCandleData, type PatternInfo, type MTFDetail } from '../hooks/useCandleData';
 import { supabase } from '../lib/supabaseClient';
 import { MODE } from '../lib/mode';
@@ -19,6 +22,29 @@ export default function Charts() {
   const [symbolPrices, setSymbolPrices] = useState<Record<string, number>>({});
 
   const { candles, loading, analysis } = useCandleData(selectedSymbol, selectedTimeframe);
+
+  // Compute BB overlay from candle closes (client-side for chart rendering)
+  const bollingerOverlay = useMemo<BollingerOverlay | null>(() => {
+    if (candles.length < 20) return null;
+    const closes = candles.map(c => c.close);
+    const period = 20;
+    const stdMult = 2.0;
+    const upper: number[] = [];
+    const middle: number[] = [];
+    const lower: number[] = [];
+
+    for (let i = period - 1; i < closes.length; i++) {
+      const slice = closes.slice(i - period + 1, i + 1);
+      const mean = slice.reduce((a, b) => a + b, 0) / period;
+      const variance = slice.reduce((a, b) => a + (b - mean) ** 2, 0) / period;
+      const std = Math.sqrt(variance);
+      middle.push(mean);
+      upper.push(mean + stdMult * std);
+      lower.push(mean - stdMult * std);
+    }
+
+    return { upper, middle, lower };
+  }, [candles]);
 
   // Fetch latest prices for symbol selector
   useEffect(() => {
@@ -167,6 +193,7 @@ export default function Charts() {
               candles={candles}
               supportLevels={analysis.supportLevels}
               resistanceLevels={analysis.resistanceLevels}
+              bollingerOverlay={bollingerOverlay}
               height={400}
             />
           ) : (
@@ -179,8 +206,40 @@ export default function Charts() {
         </div>
       </div>
 
+      {/* MACD Sub-Chart */}
+      {candles.length >= 26 && (
+        <div className="bg-surface border border-border rounded-xl overflow-hidden">
+          <div className="px-6 py-3 border-b border-border bg-surface-highlight/20 flex items-center gap-2">
+            <Activity className="w-3.5 h-3.5 text-text-muted" />
+            <h3 className="font-bold text-xs tracking-tight">MACD (8, 17, 9)</h3>
+            {analysis.macd && (
+              <span className={cn(
+                'text-[9px] font-black uppercase tracking-wider ml-auto',
+                analysis.macd.histogram > 0 ? 'text-profit' : analysis.macd.histogram < 0 ? 'text-loss' : 'text-text-muted'
+              )}>
+                Hist: {analysis.macd.histogram > 0 ? '+' : ''}{analysis.macd.histogram.toFixed(4)}
+                {analysis.macd.histogram_slope > 0 ? ' ▲' : analysis.macd.histogram_slope < 0 ? ' ▼' : ''}
+              </span>
+            )}
+          </div>
+          <div className="p-2">
+            <MACDChart candles={candles} fast={8} slow={17} signal={9} height={150} />
+          </div>
+        </div>
+      )}
+
       {/* Bottom Panels */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Advanced Indicators */}
+        <IndicatorPanel
+          macd={analysis.macd}
+          bollinger={analysis.bollinger}
+          consensus={analysis.consensus}
+          regime={analysis.regime}
+          divergences={analysis.divergences}
+          goldenDeathCross={analysis.goldenDeathCross}
+        />
+
         {/* Active Patterns */}
         <div className="bg-surface border border-border rounded-xl overflow-hidden">
           <div className="px-6 py-4 border-b border-border bg-surface-highlight/20 flex items-center gap-2">
