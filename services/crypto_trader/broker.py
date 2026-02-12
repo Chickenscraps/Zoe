@@ -52,7 +52,7 @@ class PaperBroker(Broker):
     def __init__(self, market_data_provider: Any, repo: Any):
         self.mdp = market_data_provider
         self.repo = repo
-        self._cash = 1000.0 # Start with $1k paper
+        self._cash = 2000.0 # Start with $2k paper
         self._positions: Dict[str, float] = {}
 
     async def get_cash(self) -> float:

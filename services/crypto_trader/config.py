@@ -24,6 +24,7 @@ class CryptoTraderConfig:
     max_daily_notional: float = float(os.getenv("MAX_DAILY_NOTIONAL", "50"))
     max_open_positions: int = int(os.getenv("MAX_OPEN_POSITIONS", "3"))
     stop_trading_on_degraded: bool = _bool("STOP_TRADING_ON_DEGRADED", True)
+    starting_equity: float = float(os.getenv("STARTING_EQUITY", "2000"))
     reconcile_interval_seconds: int = int(os.getenv("RECONCILE_INTERVAL_SECONDS", "60"))
     order_poll_interval_seconds: int = int(os.getenv("ORDER_POLL_INTERVAL_SECONDS", "5"))
 

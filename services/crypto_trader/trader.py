@@ -145,6 +145,45 @@ class CryptoTraderService:
         return local_cash, holdings
 
     async def reconcile(self) -> HealthState:
+        if self.mode == "paper":
+            return await self._reconcile_paper()
+        return await self._reconcile_live()
+
+    async def _reconcile_paper(self) -> HealthState:
+        """Paper mode: use local ledger only, no Robinhood API calls."""
+        local_cash, local_holdings = self._compute_local_ledger()
+        # If no fills yet, use starting equity from config
+        if local_cash == 0.0 and not local_holdings:
+            local_cash = float(getattr(self.cfg, "starting_equity", 2000.0))
+
+        total_value = 0.0  # Paper mode doesn't track market value
+        self.repo.insert_cash_snapshot(cash_available=local_cash, buying_power=local_cash, mode=self.mode)
+        self.repo.insert_holdings_snapshot(holdings=local_holdings, total_value=total_value, mode=self.mode)
+        self.repo.insert_reconciliation_event(
+            {
+                "taken_at": datetime.now(timezone.utc).isoformat(),
+                "local_cash": local_cash,
+                "rh_cash": local_cash,
+                "cash_diff": 0.0,
+                "local_holdings": local_holdings,
+                "rh_holdings": local_holdings,
+                "status": "ok",
+                "reason": "paper mode - local ledger only",
+                "mode": self.mode,
+            }
+        )
+        notional = self.repo.get_daily_notional(date.today(), self.mode)
+        return HealthState(
+            status="ok",
+            reason="paper mode",
+            last_reconcile_at=datetime.now(timezone.utc).isoformat(),
+            daily_notional_used=notional,
+            live_enabled=False,
+            open_orders=0,
+        )
+
+    async def _reconcile_live(self) -> HealthState:
+        """Live mode: reconcile against real Robinhood API."""
         balances = await self.client.get_account_balances()
         holdings_resp = await self.client.get_holdings()
 
