@@ -3,6 +3,7 @@ import { Activity, Server, Database as DbIcon, Shield, Wifi } from 'lucide-react
 import { StatusChip } from '../components/StatusChip';
 import { formatDate } from '../lib/utils';
 import { supabase } from '../lib/supabaseClient';
+import { MODE } from '../lib/mode';
 import type { Database } from '../lib/types';
 
 type HealthHeartbeat = Database['public']['Tables']['health_heartbeat']['Row'];
@@ -30,6 +31,7 @@ export default function Health() {
         const { data, error } = await supabase
           .from('health_heartbeat')
           .select('*')
+          .eq('mode', MODE)
           .order('last_heartbeat', { ascending: false });
 
         if (error) throw error;

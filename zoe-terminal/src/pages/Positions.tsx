@@ -2,6 +2,7 @@ import { DataTable } from '../components/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useMemo } from 'react';
 import { formatCurrency, formatPercentage } from '../lib/utils';
+import { useDashboardData } from '../hooks/useDashboardData';
 
 interface PositionRow {
   symbol: string;
@@ -13,20 +14,51 @@ interface PositionRow {
   unrealized_pnl: number;
 }
 
-// Blank placeholder row
-const EMPTY_POSITIONS: PositionRow[] = [
-  {
-    symbol: '--',
-    quantity: 0,
-    avg_price: 0,
-    current_price: 0,
-    market_value: 0,
-    pnl_percent: 0,
-    unrealized_pnl: 0,
-  },
-];
-
 export default function Positions() {
+  const { holdingsRows, livePrices, cryptoFills } = useDashboardData();
+
+  // Build position rows from holdings + live prices
+  const positions = useMemo<PositionRow[]>(() => {
+    if (!holdingsRows || holdingsRows.length === 0) return [];
+
+    // Compute avg price from fills
+    const avgPrices: Record<string, { totalCost: number; totalQty: number }> = {};
+    for (const fill of (cryptoFills || [])) {
+      if (fill.side === 'buy') {
+        const sym = fill.symbol;
+        if (!avgPrices[sym]) avgPrices[sym] = { totalCost: 0, totalQty: 0 };
+        avgPrices[sym].totalCost += fill.qty * fill.price;
+        avgPrices[sym].totalQty += fill.qty;
+      }
+    }
+
+    // Map live prices by symbol
+    const priceMap: Record<string, number> = {};
+    for (const scan of (livePrices || [])) {
+      const info = scan.info as any ?? {};
+      if (info.mid) priceMap[scan.symbol] = info.mid;
+    }
+
+    return holdingsRows.map(h => {
+      const avg = avgPrices[h.asset] ? avgPrices[h.asset].totalCost / avgPrices[h.asset].totalQty : 0;
+      const current = priceMap[h.asset] ?? avg;
+      const mktVal = h.qty * current;
+      const cost = h.qty * avg;
+      const pnl = mktVal - cost;
+      const pnlPct = cost > 0 ? pnl / cost : 0;
+
+      return {
+        symbol: h.asset,
+        quantity: h.qty,
+        avg_price: avg,
+        current_price: current,
+        market_value: mktVal,
+        pnl_percent: pnlPct,
+        unrealized_pnl: pnl,
+      };
+    });
+  }, [holdingsRows, livePrices, cryptoFills]);
+
   const columns = useMemo<ColumnDef<PositionRow>[]>(() => [
     {
       header: 'Symbol',
@@ -36,22 +68,22 @@ export default function Positions() {
     {
       header: 'Qty',
       accessorKey: 'quantity',
-      cell: info => <span className="text-text-secondary">{info.getValue() as number}</span>
+      cell: info => <span className="text-text-secondary tabular-nums">{(info.getValue() as number).toFixed(6)}</span>
     },
     {
       header: 'Avg Price',
       accessorKey: 'avg_price',
-      cell: info => formatCurrency(info.getValue() as number)
+      cell: info => <span className="tabular-nums">{formatCurrency(info.getValue() as number)}</span>
     },
     {
       header: 'Current Mark',
       accessorKey: 'current_price',
-      cell: info => formatCurrency(info.getValue() as number)
+      cell: info => <span className="tabular-nums">{formatCurrency(info.getValue() as number)}</span>
     },
     {
         header: 'Market Value',
         accessorKey: 'market_value',
-        cell: info => <span className="text-text-primary font-medium">{formatCurrency(info.getValue() as number)}</span>
+        cell: info => <span className="text-text-primary font-medium tabular-nums">{formatCurrency(info.getValue() as number)}</span>
     },
     {
       header: 'P&L (%)',
@@ -59,7 +91,7 @@ export default function Positions() {
       cell: info => {
         const val = info.getValue() as number;
         return (
-          <span className={val >= 0 ? "text-profit" : "text-loss"}>
+          <span className={val >= 0 ? "text-profit tabular-nums" : "text-loss tabular-nums"}>
             {formatPercentage(val)}
           </span>
         );
@@ -71,7 +103,7 @@ export default function Positions() {
       cell: info => {
         const val = info.getValue() as number;
         return (
-          <span className={val >= 0 ? "text-profit" : "text-loss"}>
+          <span className={val >= 0 ? "text-profit tabular-nums" : "text-loss tabular-nums"}>
             {formatCurrency(val)}
           </span>
         );
@@ -84,14 +116,21 @@ export default function Positions() {
       <div className="flex items-center justify-between">
          <h2 className="text-xl font-semibold text-white">Open Positions</h2>
          <div className="text-sm text-text-secondary">
-            0 active trades
+            {positions.length} active trade{positions.length !== 1 ? 's' : ''}
          </div>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={EMPTY_POSITIONS}
-      />
+      {positions.length > 0 ? (
+        <DataTable
+          columns={columns}
+          data={positions}
+        />
+      ) : (
+        <div className="card-premium p-12 text-center">
+          <p className="text-text-dim text-sm">No open positions</p>
+          <p className="text-text-dim text-xs mt-1">Positions will appear when the bot executes trades</p>
+        </div>
+      )}
     </div>
   );
 }

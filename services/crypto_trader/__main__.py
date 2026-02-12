@@ -14,9 +14,12 @@ from datetime import datetime, timezone
 # Allow running from repo root
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-# Load .env from this package directory
+# Load .env — root .env, root .env.secrets, then package .env (last wins)
 from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+load_dotenv(os.path.join(_root, ".env"))
+load_dotenv(os.path.join(_root, ".env.secrets"), override=True)
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"), override=True)
 
 from integrations.robinhood_crypto_client import RobinhoodCryptoClient, RobinhoodCryptoConfig
 from services.crypto_trader.config import CryptoTraderConfig

@@ -5,6 +5,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { cn, formatCurrency } from '../lib/utils';
 import { Lock, FileEdit, CheckCircle, Target, Zap, ShieldCheck, DollarSign, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { MODE } from '../lib/mode';
 import { useDashboardData } from '../hooks/useDashboardData';
 
 type PlanItem = Database['public']['Tables']['daily_gameplan_items']['Row'];
@@ -64,6 +65,7 @@ export default function Plan() {
           const { data: scans, error: scanError } = await supabase
             .from('candidate_scans')
             .select('*')
+            .eq('mode', MODE)
             .order('created_at', { ascending: false })
             .limit(12);
 

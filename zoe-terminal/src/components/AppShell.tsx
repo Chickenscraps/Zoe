@@ -34,12 +34,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const { cryptoCash, accountOverview, healthSummary } = useDashboardData();
 
-  // Dynamic equity: prefer crypto cash snapshot, fall back to account overview, then default
-  const equity = cryptoCash?.cash_available ?? accountOverview?.equity ?? 0;
-
-  // Dynamic mode: if reconciliation data exists and is fresh, we're live; otherwise paper
-  const isLiveMode = healthSummary.status === 'LIVE' && !healthSummary.stale;
-  const tradingMode = isLiveMode ? 'live' : 'paper';
+  // Dynamic equity: prefer crypto cash snapshot buying power, then default
+  const equity = cryptoCash?.buying_power ?? cryptoCash?.cash_available ?? accountOverview?.equity ?? 0;
 
   const closeSidebar = () => {
     if (window.innerWidth < 1024) {
@@ -48,9 +44,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-background text-text-primary flex relative">
+    <div className="min-h-screen bg-background text-text-primary flex flex-col relative">
       <div className="noise-overlay" />
 
+      {/* Mode Banner */}
+      <div className={cn(
+        "w-full text-center py-1.5 text-[11px] font-black tracking-[0.25em] uppercase z-[60] relative select-none",
+        isPaper
+          ? "bg-profit/15 text-profit border-b border-profit/20"
+          : "bg-loss/15 text-loss border-b border-loss/20 animate-pulse"
+      )}>
+        {isPaper ? "◆ PAPER TRADING ◆" : "◆ LIVE TRADING ◆"}
+      </div>
+
+      <div className="flex flex-1 relative">
       {/* Sidebar */}
       <aside
         className={cn(
@@ -121,7 +128,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                  <span className="font-mono text-lg font-black text-white">{formatCurrency(equity)}</span>
                </div>
                <div className="h-8 w-px bg-border hidden xs:block" />
-               {tradingMode === 'paper' ? (
+               {isPaper ? (
                  <div className="hidden xs:block bg-profit/10 border border-profit/20 text-profit px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase">
                    Paper Mode
                  </div>
@@ -139,6 +146,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {children}
           </div>
         </main>
+      </div>
       </div>
     </div>
   );
