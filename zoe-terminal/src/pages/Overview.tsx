@@ -1,4 +1,5 @@
-import { DollarSign, TrendingUp } from "lucide-react";
+import { useMemo } from "react";
+import { DollarSign, TrendingUp, Briefcase } from "lucide-react";
 import { EquityChart } from "../components/EquityChart";
 import { KPICard } from "../components/KPICard";
 import { Skeleton } from "../components/Skeleton";
@@ -11,6 +12,8 @@ export default function Overview() {
     livePrices,
     equityHistory,
     realizedPnl,
+    holdingsRows,
+    cryptoFills,
     loading,
   } = useDashboardData();
 
@@ -22,6 +25,33 @@ export default function Overview() {
   const startEquity = equityHistory.length > 0 ? equityHistory[0].equity : 0;
   const totalReturn = startEquity > 0 ? ((equity - startEquity) / startEquity) : 0;
   const totalReturnDollars = equity - startEquity;
+
+  // Build open positions from holdings + live prices + fills
+  const positions = useMemo(() => {
+    if (!holdingsRows || holdingsRows.length === 0) return [];
+    const avgPrices: Record<string, { totalCost: number; totalQty: number }> = {};
+    for (const fill of (cryptoFills || [])) {
+      if (fill.side === 'buy') {
+        if (!avgPrices[fill.symbol]) avgPrices[fill.symbol] = { totalCost: 0, totalQty: 0 };
+        avgPrices[fill.symbol].totalCost += fill.qty * fill.price;
+        avgPrices[fill.symbol].totalQty += fill.qty;
+      }
+    }
+    const priceMap: Record<string, number> = {};
+    for (const scan of (livePrices || [])) {
+      const info = scan.info as any ?? {};
+      if (info.mid) priceMap[scan.symbol] = info.mid;
+    }
+    return holdingsRows.map(h => {
+      const avg = avgPrices[h.asset] ? avgPrices[h.asset].totalCost / avgPrices[h.asset].totalQty : 0;
+      const current = priceMap[h.asset] ?? avg;
+      const mktVal = h.qty * current;
+      const cost = h.qty * avg;
+      const pnl = mktVal - cost;
+      const pnlPct = cost > 0 ? pnl / cost : 0;
+      return { symbol: h.asset, qty: h.qty, avg, current, mktVal, pnl, pnlPct };
+    });
+  }, [holdingsRows, livePrices, cryptoFills]);
 
   if (loading) {
     return (
@@ -126,6 +156,53 @@ export default function Overview() {
                 </p>
               </div>
            </div>
+        </div>
+
+        {/* Open Trades */}
+        <div className="card-premium p-8">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+              <Briefcase className="w-3 h-3 text-profit" /> Open Trades
+            </h3>
+            <span className="text-[10px] font-bold text-text-dim uppercase tracking-widest">
+              {positions.length} position{positions.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          {positions.length > 0 ? (
+            <div className="space-y-2">
+              {/* Header */}
+              <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr] gap-3 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-text-muted">
+                <span>Symbol</span>
+                <span className="text-right">Qty</span>
+                <span className="text-right">Avg Price</span>
+                <span className="text-right">Mark</span>
+                <span className="text-right">Mkt Value</span>
+                <span className="text-right">P&L</span>
+              </div>
+              {positions.map(p => (
+                <div key={p.symbol} className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr] gap-3 items-center bg-background/50 border border-border rounded-lg px-4 py-3 text-xs">
+                  <span className="font-black text-white tracking-wider">{p.symbol.replace('-USD', '')}</span>
+                  <span className="text-right font-mono text-text-secondary tabular-nums">{p.qty.toFixed(6)}</span>
+                  <span className="text-right font-mono text-text-secondary tabular-nums">{formatCurrency(p.avg)}</span>
+                  <span className="text-right font-mono text-white tabular-nums">{formatCurrency(p.current)}</span>
+                  <span className="text-right font-mono text-text-primary tabular-nums">{formatCurrency(p.mktVal)}</span>
+                  <div className="text-right">
+                    <span className={cn("font-mono font-bold tabular-nums", p.pnl >= 0 ? "text-profit" : "text-loss")}>
+                      {p.pnl >= 0 ? '+' : ''}{formatCurrency(p.pnl)}
+                    </span>
+                    <span className={cn("text-[10px] ml-1 tabular-nums", p.pnlPct >= 0 ? "text-profit/70" : "text-loss/70")}>
+                      ({formatPercentage(p.pnlPct)})
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-text-dim text-xs italic">No open positions</p>
+              <p className="text-text-dim text-[10px] mt-1">Positions will appear when trades are executed</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
