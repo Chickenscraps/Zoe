@@ -11,6 +11,7 @@ bun.lockb
 coverage
 .pnpm-store
 .worktrees/
+.claude/worktrees/
 .DS_Store
 **/.DS_Store
 ui/src/ui/__screenshots__/
