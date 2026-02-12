@@ -38,13 +38,22 @@ SERVICES = {
         "env_extra": {},
         "color": "#6366f1",  # indigo
     },
-    "dashboard": {
-        "label": "Dashboard (Zoe Terminal)",
+    "dashboard_paper": {
+        "label": "Dashboard \u2014 Paper",
         "cmd": ["npm.cmd", "run", "dev"],
         "cwd": str(ROOT / "zoe-terminal"),
-        "env_extra": {},
+        "env_extra": {"VITE_MODE_LOCK": "paper"},
         "color": "#f59e0b",  # amber
         "url": "http://localhost:5180",
+        "shell": True,
+    },
+    "dashboard_live": {
+        "label": "Dashboard \u2014 LIVE",
+        "cmd": ["npm.cmd", "run", "dev", "--", "--port", "5181"],
+        "cwd": str(ROOT / "zoe-terminal"),
+        "env_extra": {"VITE_MODE_LOCK": "live"},
+        "color": "#ef4444",  # red
+        "url": "http://localhost:5181",
         "shell": True,
     },
     "host_bridge": {
