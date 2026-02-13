@@ -52,7 +52,7 @@ class MarketData:
     def get_price(self, symbol: str) -> float:
         """Get real-time price for a symbol."""
         if not self.client: return 0.0
-        
+
         # Check cache
         cached = self.quote_cache.get(symbol)
         if cached and (time.time() - cached['timestamp'] < self.cache_ttl):
@@ -62,7 +62,7 @@ class MarketData:
             # Polygon Last Trade
             trade = self.client.get_last_trade(symbol)
             price = trade.price
-            
+
             # Update cache
             self.quote_cache[symbol] = {
                 'price': price,
@@ -123,13 +123,13 @@ class MarketData:
         This endpoint returns universal snapshot for options of a symbol.
         """
         if not self.client: return []
-        
+
         try:
             # client.list_snapshot_options_chain(underlying_asset, params...)
             # We filter for near-term expiries (e.g., next 45 days)
             # Actually, standard snapshot gets ALL or we can filter.
             # We want to iterate and filter in memory if necessary, or pass params.
-            
+
             chain = []
             # Note: This might be heavy. In production, use filters.
             # Assuming client has list_snapshot_options_chain
@@ -154,7 +154,7 @@ class MarketData:
                 })
                 count += 1
                 if count >= 250: break # Safety limit for dev
-            
+
             return chain
 
         except Exception as e:

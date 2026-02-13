@@ -238,9 +238,9 @@ class OrderManager:
                 try:
                     quote = await self.quotes.refresh(ticket.symbol)
                     # Widen price by one step (0.05%) per retry
+                    step = 0.0005 * (ticket.retries_used + 1)
                     # Buy: step UP from bid (cross toward ask)
                     # Sell: step DOWN from ask (cross toward bid)
-                    step = 0.0005 * (ticket.retries_used + 1)
                     if ticket.side == "buy":
                         ticket.limit_price = quote.bid * (1.0 + step)
                     else:

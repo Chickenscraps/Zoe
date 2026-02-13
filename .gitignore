@@ -96,3 +96,6 @@ temp*/
 *.wav
 *.png
 group_dm_export.json
+
+# Local Netlify folder
+.netlify

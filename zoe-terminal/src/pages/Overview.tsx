@@ -1,6 +1,7 @@
 import { Coins, DollarSign, TrendingUp, Wallet } from "lucide-react";
 import { EquityChart } from "../components/EquityChart";
 import { KPICard } from "../components/KPICard";
+import { OpenOrdersTable } from "../components/OpenOrdersTable";
 import { PositionsTable } from "../components/PositionsTable";
 import { Skeleton } from "../components/Skeleton";
 import { useDashboardData } from "../hooks/useDashboardData";
@@ -101,6 +102,9 @@ export default function Overview() {
 
       {/* Open Positions */}
       <PositionsTable />
+
+      {/* Open Orders */}
+      <OpenOrdersTable />
 
       {/* Equity Curve with Day + Overall P&L */}
       <EquityChart

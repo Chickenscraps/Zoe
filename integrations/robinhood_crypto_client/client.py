@@ -143,7 +143,7 @@ class TokenBucket:
             elapsed = now - self.last_refill
             self.last_refill = now
             self._tokens = min(self.capacity, self._tokens + elapsed * self.refill_rate)
-            
+
             if self._tokens < tokens:
                 wait_time = (tokens - self._tokens) / self.refill_rate
                 await asyncio.sleep(wait_time)
@@ -194,7 +194,7 @@ class RobinhoodCryptoClient:
         # sees real-world UTC even though the local clock may be off.
         now_ts = time.time() - self._time_offset
         timestamp = str(int(now_ts))  # Unix epoch seconds as string
-        
+
         signature = self._sign(timestamp, method, path, body)
 
         headers = {
@@ -204,7 +204,7 @@ class RobinhoodCryptoClient:
             "x-signature": signature,
         }
         url = f"{self.config.base_url.rstrip('/')}{path}"
-        
+
         retries = 0
         while True:
             try:
@@ -215,18 +215,18 @@ class RobinhoodCryptoClient:
                         print(f"[RH] Rate Limit (429). Sleeping {retry_after}s")
                         await asyncio.sleep(retry_after)
                         continue
-                        
+
                     if resp.status >= 500:
                         resp.raise_for_status()
-                    
+
                     if 200 <= resp.status < 300:
                         text = await resp.text()
                         return json.loads(text) if text else {}
-                    
+
                     # 4xx errors
                     text = await resp.text()
                     raise RuntimeError(f"Robinhood API Error {resp.status}: {text[:200]}")
-                    
+
             except aiohttp.ClientError as e:
                 if retries >= self.config.max_retries:
                     raise RuntimeError(f"Network error after {retries} retries: {e}")
@@ -294,7 +294,7 @@ class RobinhoodCryptoClient:
 
     async def get_order_fills(self, order_id: str) -> dict[str, Any]:
         return await self._request("GET", f"/api/v1/crypto/trading/orders/{order_id}/fills/")
-    
+
     async def get_best_bid_ask(self, symbol: str) -> dict[str, Any]:
         """Get current best bid/ask for a single symbol."""
         return await self._request("GET", f"/api/v1/crypto/marketdata/best_bid_ask/?symbol={symbol}")
