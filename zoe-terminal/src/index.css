@@ -618,3 +618,64 @@
   background-clip: text;
   background-size: 200% 100%;
 }
+
+/* ============================================
+   SCANNER HEAT CONSENSUS
+   ============================================ */
+
+/* Gold card — subtle sheen on hover */
+.scanner-card-gold {
+  transition: background 250ms ease, border-color 250ms ease, box-shadow 250ms ease;
+}
+.scanner-card-gold:hover {
+  filter: brightness(1.04);
+}
+
+/* Gold promotion pulse — plays once when a card becomes GOLD */
+@keyframes goldPromote {
+  0% {
+    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px 6px rgba(212, 175, 55, 0.25);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0);
+  }
+}
+.scanner-card-gold-promote {
+  animation: goldPromote 500ms ease-out;
+}
+
+/* Blocked card desaturation */
+.scanner-card-blocked {
+  filter: saturate(0.5);
+  transition: filter 250ms ease, opacity 250ms ease;
+}
+.scanner-card-blocked:hover {
+  filter: saturate(0.7);
+}
+
+/* Detail expand animation */
+@keyframes scannerDetailEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 500px;
+  }
+}
+.scanner-detail-enter {
+  animation: scannerDetailEnter 200ms ease-out both;
+  overflow: hidden;
+}
+
+/* Select dropdown styling for dark mode */
+select option {
+  background-color: #141823;
+  color: #f3f4f6;
+}
