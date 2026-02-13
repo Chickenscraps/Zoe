@@ -294,6 +294,11 @@ async def _run(dry_run: bool = False, instance_lock: InstanceLock | None = None)
     orchestrator._local_store = local_store  # type: ignore[attr-defined]
     orchestrator._flush_worker = flush_worker  # type: ignore[attr-defined]
 
+    # C3: Stash metrics + local_store on executor for IS tracking
+    executor = orchestrator.executor
+    executor._metrics = metrics_collector  # type: ignore[attr-defined]
+    executor._local_store = local_store  # type: ignore[attr-defined]
+
     try:
         if dry_run:
             logger.info("Dry-run: running one tick...")

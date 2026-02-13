@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -49,6 +50,10 @@ class LiveExecutor:
         self.quote_model = quote_model
         self.execution_policy = execution_policy
         self.order_manager = order_manager
+
+        # IS tracking (C3): set by orchestrator before each submit call
+        self._decision_price: float = 0.0
+
         self._verify_live_mode()
 
     @property
@@ -58,6 +63,71 @@ class LiveExecutor:
             self.quote_model is not None
             and self.execution_policy is not None
             and self.order_manager is not None
+        )
+
+    def _emit_fill_quality(
+        self,
+        symbol: str,
+        side: str,
+        decision_price: float,
+        fill_price: float,
+        spread_at_decision_pct: float = 0.0,
+        chase_steps: int = 0,
+    ) -> None:
+        """
+        Emit FILL_QUALITY event for implementation shortfall tracking (C3).
+
+        IS = (fill_price - decision_price) / decision_price * 10000 bps
+        Positive IS = slippage cost; Negative IS = price improvement.
+
+        References: [AA] §4.1, §4.3
+        """
+        if decision_price <= 0:
+            return
+
+        is_bps = ((fill_price - decision_price) / decision_price) * 10000.0
+
+        # Record on metrics collector if available
+        metrics = getattr(self, '_metrics', None)
+        if metrics is not None:
+            metrics.record_fill(
+                symbol=symbol,
+                side=side,
+                decision_price=decision_price,
+                fill_price=fill_price,
+                spread_at_decision_pct=spread_at_decision_pct,
+            )
+
+        # Persist to local event store if available
+        local_store = getattr(self, '_local_store', None)
+        if local_store is not None:
+            try:
+                local_store.insert_event(
+                    mode=self.config.mode,
+                    source="edge_factory",
+                    type="FILL_QUALITY",
+                    subtype="IMPLEMENTATION_SHORTFALL",
+                    symbol=symbol,
+                    severity="info",
+                    body=f"IS {is_bps:+.1f}bps {side} {symbol} "
+                         f"decision={decision_price:.4f} fill={fill_price:.4f}",
+                    meta={
+                        "symbol": symbol,
+                        "side": side,
+                        "decision_price": decision_price,
+                        "fill_price": fill_price,
+                        "is_bps": round(is_bps, 2),
+                        "spread_at_decision_pct": round(spread_at_decision_pct, 4),
+                        "chase_steps": chase_steps,
+                    },
+                )
+            except Exception as e:
+                logger.warning("Failed to persist FILL_QUALITY event: %s", e)
+
+        logger.info(
+            "FILL QUALITY: %s %s IS=%+.1f bps (decision=%.4f, fill=%.4f, spread=%.2f%%)",
+            side.upper(), symbol, is_bps, decision_price, fill_price,
+            spread_at_decision_pct * 100,
         )
 
     def _verify_live_mode(self) -> None:
@@ -157,6 +227,16 @@ class LiveExecutor:
                 logger.info(
                     "LIVE ENTRY FILLED (V2): %s @ %.4f (mode=%s)",
                     signal.symbol, ticket.fill_price, mode.value,
+                )
+
+                # C3: Emit implementation shortfall
+                self._emit_fill_quality(
+                    symbol=signal.symbol,
+                    side="buy",
+                    decision_price=self._decision_price or quote.mid,
+                    fill_price=ticket.fill_price,
+                    spread_at_decision_pct=quote.spread_pct,
+                    chase_steps=ticket.retries_used,
                 )
             else:
                 # Record failed attempt
@@ -349,6 +429,18 @@ class LiveExecutor:
                 "LIVE EXIT (V2): %s @ %.4f (reason=%s, pnl=$%.4f, mode=%s)",
                 position.symbol, fill_price, reason, pnl, params.mode.value,
             )
+
+            # C3: Emit implementation shortfall for exit
+            if ticket.fill_price:
+                self._emit_fill_quality(
+                    symbol=position.symbol,
+                    side="sell",
+                    decision_price=self._decision_price or quote.mid,
+                    fill_price=fill_price,
+                    spread_at_decision_pct=quote.spread_pct,
+                    chase_steps=ticket.retries_used,
+                )
+
             return ticket.order_id or position.position_id
 
         except Exception as e:

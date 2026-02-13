@@ -135,6 +135,10 @@ class EdgeFactoryOrchestrator:
                     )
 
                     if exit_reason:
+                        # Stash decision price for IS tracking (C3)
+                        if hasattr(self.executor, '_decision_price'):
+                            self.executor._decision_price = price
+
                         await self.executor.submit_exit(pos, exit_reason, price)
                         summary["actions"].append(
                             f"EXIT {pos.symbol} ({exit_reason} @ {price:.2f})"
@@ -218,6 +222,10 @@ class EdgeFactoryOrchestrator:
 
                 # Submit order
                 try:
+                    # Stash decision price for IS tracking (C3)
+                    if hasattr(self.executor, '_decision_price'):
+                        self.executor._decision_price = price  # mid at signal time
+
                     position_id = await self.executor.submit_entry(
                         signal, size, bid, tp, sl
                     )

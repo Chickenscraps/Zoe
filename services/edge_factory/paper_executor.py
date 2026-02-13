@@ -70,6 +70,9 @@ class PaperExecutor:
         self._asks: dict[str, float] = {}  # symbol -> best ask
         self._avg_spread: float = self.spread_pct  # Rolling average spread
 
+        # IS tracking (C3): set by orchestrator before each submit call
+        self._decision_price: float = 0.0
+
     def update_prices(self, prices: dict[str, float]) -> None:
         """Update cached prices from feature engine market data."""
         self._prices.update(prices)
@@ -134,6 +137,68 @@ class PaperExecutor:
                 return reduced
         return size_usd
 
+    def _emit_fill_quality(
+        self,
+        symbol: str,
+        side: str,
+        decision_price: float,
+        fill_price: float,
+        spread_at_decision_pct: float = 0.0,
+    ) -> None:
+        """
+        Emit FILL_QUALITY event for implementation shortfall tracking (C3).
+
+        IS = (fill_price - decision_price) / decision_price * 10000 bps
+        References: [AA] §4.1, §4.3
+        """
+        if decision_price <= 0:
+            return
+
+        is_bps = ((fill_price - decision_price) / decision_price) * 10000.0
+
+        # Record on metrics collector if available (stashed by runner.py)
+        metrics = getattr(self, '_metrics', None)
+        if metrics is not None:
+            metrics.record_fill(
+                symbol=symbol,
+                side=side,
+                decision_price=decision_price,
+                fill_price=fill_price,
+                spread_at_decision_pct=spread_at_decision_pct,
+            )
+
+        # Persist to local event store if available (stashed by runner.py)
+        local_store = getattr(self, '_local_store', None)
+        if local_store is not None:
+            try:
+                local_store.insert_event(
+                    mode=self.config.mode,
+                    source="edge_factory",
+                    type="FILL_QUALITY",
+                    subtype="IMPLEMENTATION_SHORTFALL",
+                    symbol=symbol,
+                    severity="info",
+                    body=f"IS {is_bps:+.1f}bps {side} {symbol} "
+                         f"decision={decision_price:.4f} fill={fill_price:.4f}",
+                    meta={
+                        "symbol": symbol,
+                        "side": side,
+                        "decision_price": decision_price,
+                        "fill_price": fill_price,
+                        "is_bps": round(is_bps, 2),
+                        "spread_at_decision_pct": round(spread_at_decision_pct, 4),
+                        "chase_steps": 0,
+                    },
+                )
+            except Exception as e:
+                logger.warning("Failed to persist FILL_QUALITY event: %s", e)
+
+        logger.info(
+            "FILL QUALITY: %s %s IS=%+.1f bps (decision=%.4f, fill=%.4f, spread=%.2f%%)",
+            side.upper(), symbol, is_bps, decision_price, fill_price,
+            spread_at_decision_pct * 100,
+        )
+
     async def submit_entry(
         self,
         signal: Signal,
@@ -196,6 +261,16 @@ class PaperExecutor:
             if actual_size < size_usd else "",
         )
 
+        # C3: Emit implementation shortfall
+        decision = self._decision_price or self._prices.get(signal.symbol, 0.0)
+        self._emit_fill_quality(
+            symbol=signal.symbol,
+            side="buy",
+            decision_price=decision,
+            fill_price=fill_price,
+            spread_at_decision_pct=self._current_spread_pct(signal.symbol),
+        )
+
         return position_id
 
     async def submit_exit(
@@ -241,6 +316,16 @@ class PaperExecutor:
         logger.info(
             "PAPER EXIT: %s @ %.4f (bid=%.4f, reason=%s, pnl=$%.4f)",
             position.symbol, fill_price, bid, reason, pnl,
+        )
+
+        # C3: Emit implementation shortfall for exit
+        decision = self._decision_price or current_price
+        self._emit_fill_quality(
+            symbol=position.symbol,
+            side="sell",
+            decision_price=decision,
+            fill_price=fill_price,
+            spread_at_decision_pct=self._current_spread_pct(position.symbol),
         )
 
         return position.order_id or position.position_id
