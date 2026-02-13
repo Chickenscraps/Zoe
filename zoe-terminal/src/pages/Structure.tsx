@@ -56,26 +56,26 @@ export default function Structure() {
   }
 
   return (
-    <div className="space-y-6 sm:space-y-10">
+    <div className="space-y-10">
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">
             Symbol
           </span>
-          <div className="flex flex-wrap gap-1">
+          <div className="flex gap-1">
             {SYMBOLS.map((s) => (
               <button
                 key={s}
                 onClick={() => setSymbol(s)}
                 className={cn(
-                  "px-2 sm:px-3 py-1.5 rounded-btns text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all",
+                  "px-3 py-1.5 rounded-btns text-[10px] font-black uppercase tracking-wider transition-all",
                   symbol === s
                     ? "bg-text-primary text-background"
                     : "bg-surface-base border border-border text-text-secondary hover:text-white hover:border-border-strong"
                 )}
               >
-                {s.replace('-USD', '')}
+                {s}
               </button>
             ))}
           </div>
@@ -83,15 +83,15 @@ export default function Structure() {
         <div className="h-6 w-px bg-border hidden sm:block" />
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-            TF
+            Timeframe
           </span>
-          <div className="flex flex-wrap gap-1">
+          <div className="flex gap-1">
             {TIMEFRAMES.map((tf) => (
               <button
                 key={tf}
                 onClick={() => setTimeframe(tf)}
                 className={cn(
-                  "px-2 sm:px-3 py-1.5 rounded-btns text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all",
+                  "px-3 py-1.5 rounded-btns text-[10px] font-black uppercase tracking-wider transition-all",
                   timeframe === tf
                     ? "bg-text-primary text-background"
                     : "bg-surface-base border border-border text-text-secondary hover:text-white hover:border-border-strong"
@@ -114,7 +114,7 @@ export default function Structure() {
         <SummaryStat label="Intents" value={bounceIntents.length} icon={Target} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Trendlines */}
         <div className="card-premium p-4 sm:p-8">
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-6 flex items-center gap-2">
@@ -125,7 +125,7 @@ export default function Structure() {
               trendlines.map((tl) => (
                 <div
                   key={tl.id}
-                  className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 sm:gap-3 bg-background/50 border border-border rounded-lg px-3 sm:px-4 py-2.5 sm:py-3 text-xs"
+                  className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 bg-background/50 border border-border rounded-lg px-4 py-3 text-xs"
                 >
                   <div className="flex items-center gap-2">
                     {tl.side === "support" ? (
@@ -168,7 +168,7 @@ export default function Structure() {
               levels.map((lv) => (
                 <div
                   key={lv.id}
-                  className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 sm:gap-3 bg-background/50 border border-border rounded-lg px-3 sm:px-4 py-2.5 sm:py-3 text-xs"
+                  className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-3 bg-background/50 border border-border rounded-lg px-4 py-3 text-xs"
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-black text-white">{lv.symbol}</span>
@@ -294,7 +294,7 @@ export default function Structure() {
       </div>
 
       {/* Trade Intents (full width) */}
-      <div className="card-premium p-4 sm:p-8">
+      <div className="card-premium p-8">
         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-6 flex items-center gap-2">
           <Target className="w-3 h-3 text-profit" /> Trade Intents
         </h3>
@@ -324,13 +324,13 @@ function SummaryStat({
   icon: React.ComponentType<{ className?: string; size?: number }>;
 }) {
   return (
-    <div className="card-premium p-4 flex items-center gap-3">
-      <div className="w-8 h-8 rounded-full bg-surface-highlight flex items-center justify-center">
+    <div className="card-premium p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-surface-highlight flex items-center justify-center shrink-0">
         <Icon size={14} className="text-text-secondary" />
       </div>
-      <div>
-        <div className="text-lg font-black text-white font-mono">{value}</div>
-        <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{label}</div>
+      <div className="min-w-0">
+        <div className="text-base sm:text-lg font-black text-white font-mono">{value}</div>
+        <div className="text-[9px] sm:text-[10px] font-bold text-text-muted uppercase tracking-widest truncate">{label}</div>
       </div>
     </div>
   );
@@ -406,7 +406,7 @@ function BounceStateIcon({ state }: { state: string }) {
 
 function IntentRow({ intent }: { intent: BounceIntent }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 sm:gap-4 bg-background/50 border border-border rounded-lg px-3 sm:px-5 py-3 sm:py-4 text-xs">
+    <div className="flex flex-col sm:grid sm:grid-cols-[auto_1fr_auto_auto_auto_auto] sm:items-center gap-3 sm:gap-4 bg-background/50 border border-border rounded-lg px-4 sm:px-5 py-3 sm:py-4 text-xs">
       {/* Status icon */}
       <div className="w-7 h-7 rounded-full flex items-center justify-center">
         {intent.blocked ? (

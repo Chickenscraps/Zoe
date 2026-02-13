@@ -4,7 +4,6 @@ import { useModeContext } from '../lib/mode';
 import type { Database } from '../lib/types';
 
 type CandleRow = Database['public']['Tables']['crypto_candles']['Row'];
-type CandidateScan = Database['public']['Tables']['candidate_scans']['Row'];
 
 export interface CandleData {
   time: number; // Unix timestamp
@@ -155,8 +154,8 @@ export function useCandleData(symbol: string, timeframe: string = '1h') {
         .limit(1)
         .maybeSingle();
 
-      if (scanData?.info) {
-        const info = scanData.info as any;
+      if ((scanData as any)?.info) {
+        const info = (scanData as any).info as any;
         setAnalysis({
           patterns: info.patterns ?? [],
           mtfAlignment: info.mtf_alignment ?? null,

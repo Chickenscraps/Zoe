@@ -96,7 +96,7 @@ class OrderManager:
         ask_at_submit = quote.ask if quote else 0.0
 
         ticket = OrderTicket(
-            client_order_id=f"ef-{side}-{symbol.lower()}-{uuid.uuid4().hex[:8]}",
+            client_order_id=str(uuid.uuid4()),
             symbol=symbol,
             side=side,
             size_usd=size_usd,
@@ -247,7 +247,7 @@ class OrderManager:
                         ticket.limit_price = quote.ask * (1.0 - step)
 
                     # Generate new client_order_id for replacement
-                    ticket.client_order_id = f"ef-{ticket.side}-{ticket.symbol.lower()}-{uuid.uuid4().hex[:8]}"
+                    ticket.client_order_id = str(uuid.uuid4())
                     ticket = await self._submit_order(ticket)
                     if ticket.status == "failed":
                         return ticket

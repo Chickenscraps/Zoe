@@ -78,7 +78,7 @@ class EdgeFactoryConfig:
     panic_ttl_sec: int = field(default_factory=lambda: _int("EDGE_FACTORY_PANIC_TTL", 15))
     max_order_retries: int = field(default_factory=lambda: _int("EDGE_FACTORY_MAX_ORDER_RETRIES", 2))
     max_avg_slippage_bps: float = field(default_factory=lambda: _float("EDGE_FACTORY_MAX_AVG_SLIPPAGE", 50.0))
-    max_spread_pct_entry: float = field(default_factory=lambda: _float("EDGE_FACTORY_MAX_SPREAD_ENTRY", 0.008))
+    max_spread_pct_entry: float = field(default_factory=lambda: _float("EDGE_FACTORY_MAX_SPREAD_ENTRY", 0.025))
     min_buf_pct: float = field(default_factory=lambda: _float("EDGE_FACTORY_MIN_BUF_PCT", 0.0005))
     max_buf_pct: float = field(default_factory=lambda: _float("EDGE_FACTORY_MAX_BUF_PCT", 0.002))
 

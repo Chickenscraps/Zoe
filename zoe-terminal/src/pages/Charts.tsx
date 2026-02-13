@@ -6,7 +6,7 @@ import IndicatorPanel from '../components/IndicatorPanel';
 import MACDChart from '../components/MACDChart';
 import { useCandleData, type PatternInfo, type MTFDetail } from '../hooks/useCandleData';
 import { supabase } from '../lib/supabaseClient';
-import { useModeContext } from '../lib/mode';
+import { MODE } from '../lib/mode';
 import { cn } from '../lib/utils';
 
 const SYMBOLS = [
@@ -17,13 +17,11 @@ const SYMBOLS = [
 const TIMEFRAMES = ['15m', '1h', '4h'] as const;
 
 export default function Charts() {
-  const { mode } = useModeContext();
   const [selectedSymbol, setSelectedSymbol] = useState('BTC-USD');
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>('1h');
   const [symbolPrices, setSymbolPrices] = useState<Record<string, number>>({});
 
   const { candles, loading, analysis } = useCandleData(selectedSymbol, selectedTimeframe);
-  const chartHeight = typeof window !== 'undefined' && window.innerWidth < 640 ? 280 : 400;
 
   // Compute BB overlay from candle closes (client-side for chart rendering)
   const bollingerOverlay = useMemo<BollingerOverlay | null>(() => {
@@ -55,13 +53,13 @@ export default function Charts() {
         const { data } = await supabase
           .from('candidate_scans')
           .select('symbol, info')
-          .eq('mode', mode)
+          .eq('mode', MODE)
           .order('created_at', { ascending: false })
           .limit(10);
 
         if (data) {
           const prices: Record<string, number> = {};
-          for (const row of data) {
+          for (const row of data as any[]) {
             const info = row.info as any;
             if (info?.mid && !prices[row.symbol]) {
               prices[row.symbol] = info.mid;
@@ -72,7 +70,7 @@ export default function Charts() {
       } catch { /* non-critical */ }
     }
     fetchPrices();
-  }, [mode]);
+  }, []);
 
   const trendIcon = (trend: string) => {
     if (trend === 'bullish') return <TrendingUp className="w-4 h-4 text-profit" />;
@@ -102,25 +100,25 @@ export default function Charts() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-2 border-b border-border pb-4 sm:pb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end border-b border-border pb-4 sm:pb-8 gap-2">
         <div>
           <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tighter">Chart Analysis</h2>
-          <p className="text-xs sm:text-sm text-text-muted mt-1 font-medium tracking-tight">
+          <p className="text-xs sm:text-sm text-text-muted mt-1 sm:mt-2 font-medium tracking-tight">
             Candlestick patterns, MTF trends &amp; S/R
           </p>
         </div>
       </div>
 
       {/* Controls Row */}
-      <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 items-start sm:items-center">
+      <div className="flex flex-wrap gap-2 sm:gap-4 items-center">
         {/* Symbol Selector */}
-        <div className="grid grid-cols-5 sm:flex gap-1.5 w-full sm:w-auto">
+        <div className="flex gap-1 sm:gap-1.5 flex-wrap">
           {SYMBOLS.map((sym) => (
             <button
               key={sym}
               onClick={() => setSelectedSymbol(sym)}
               className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-bold tracking-tight transition-all',
+                'px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold tracking-tight transition-all min-h-[36px]',
                 selectedSymbol === sym
                   ? 'bg-white text-background shadow-lg'
                   : 'bg-surface-highlight/50 text-text-secondary hover:text-white hover:bg-surface-highlight'
@@ -141,7 +139,7 @@ export default function Charts() {
               key={tf}
               onClick={() => setSelectedTimeframe(tf)}
               className={cn(
-                'px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all',
+                'px-3 sm:px-4 py-2 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-black uppercase tracking-widest transition-all min-h-[36px]',
                 selectedTimeframe === tf
                   ? 'bg-profit/20 text-profit border border-profit/30'
                   : 'bg-surface text-text-muted hover:text-white border border-border'
@@ -187,7 +185,7 @@ export default function Charts() {
 
         <div className="p-2">
           {loading ? (
-            <div className="flex items-center justify-center text-text-muted animate-pulse" style={{ height: chartHeight }}>
+            <div className="flex items-center justify-center h-[250px] sm:h-[400px] text-text-muted animate-pulse text-sm">
               Loading chart data...
             </div>
           ) : candles.length > 0 ? (
@@ -196,10 +194,10 @@ export default function Charts() {
               supportLevels={analysis.supportLevels}
               resistanceLevels={analysis.resistanceLevels}
               bollingerOverlay={bollingerOverlay}
-              height={chartHeight}
+              height={typeof window !== 'undefined' && window.innerWidth < 640 ? 250 : 400}
             />
           ) : (
-            <div className="flex flex-col items-center justify-center text-text-muted gap-3" style={{ height: chartHeight }}>
+            <div className="flex flex-col items-center justify-center h-[250px] sm:h-[400px] text-text-muted gap-3">
               <BarChart3 className="w-10 h-10 text-border opacity-50" />
               <p className="text-sm">No candle data yet for {selectedSymbol} ({selectedTimeframe})</p>
               <p className="text-xs text-text-muted/60">Candles will appear as the trader collects price data</p>
@@ -231,7 +229,7 @@ export default function Charts() {
       )}
 
       {/* Bottom Panels */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Advanced Indicators */}
         <IndicatorPanel
           macd={analysis.macd}
