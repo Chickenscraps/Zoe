@@ -294,6 +294,9 @@ async def _run(dry_run: bool = False, instance_lock: InstanceLock | None = None)
     orchestrator._local_store = local_store  # type: ignore[attr-defined]
     orchestrator._flush_worker = flush_worker  # type: ignore[attr-defined]
 
+    # Stash Supabase client on orchestrator for health heartbeats
+    orchestrator._supabase = getattr(flush_worker, 'sb', None) if flush_worker else None  # type: ignore[attr-defined]
+
     # C3: Stash metrics + local_store on executor for IS tracking
     executor = orchestrator.executor
     executor._metrics = metrics_collector  # type: ignore[attr-defined]
