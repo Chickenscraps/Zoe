@@ -162,57 +162,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       <div className="flex flex-1 relative overflow-hidden">
-      {/* Sidebar */}
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-[70] w-64 bg-surface border-r border-border transform transition-transform duration-200 ease-in-out lg:relative lg:z-auto lg:translate-x-0 shadow-crisp",
-          !sidebarOpen && "-translate-x-full"
-        )}
-      >
-        <div className="h-20 flex items-center px-8 border-b border-border">
-          <h1 className="text-xl font-bold tracking-tighter text-gradient-accent">
-            ZOE<span className="text-text-muted" style={{ WebkitTextFillColor: 'var(--color-text-muted)' }}>_</span>TERMINAL
-          </h1>
-        </div>
-
-        <nav className="p-4 space-y-2 pb-36 overflow-y-auto max-h-[calc(100vh-180px)]">
-          {NAV_ITEMS.map((item) => {
-            const isActive = location.pathname === item.path;
-            const Icon = item.icon;
-
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={closeSidebar}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-2.5 rounded-btns text-sm font-semibold transition-all duration-200",
-                  isActive
-                    ? "bg-surface-highlight text-text-primary shadow-soft border-l-[3px] border-l-text-primary/30"
-                    : "text-text-secondary hover:text-text-primary hover:bg-text-primary/[0.03] border-l-[3px] border-l-transparent"
-                )}
-              >
-                <Icon className={cn("w-4 h-4", isActive ? "text-profit" : "")} />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="absolute bottom-6 left-6 right-6 space-y-3">
-          <div className="bg-surface-base/50 p-3 rounded-cards border border-border flex flex-col gap-1">
-             <div className="text-[10px] uppercase tracking-widest text-text-muted font-medium">Node Instance</div>
-             <div className="text-xs font-mono text-text-primary truncate opacity-80">primary-v4-live</div>
-          </div>
-          <button
-            onClick={logout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-btns text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-loss hover:bg-loss/5 border border-border hover:border-loss/20 transition-all"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            Log Out
-          </button>
-        </div>
-      </aside>
+      {/* Desktop sidebar spacer (sidebar itself is fixed, rendered at root level) */}
+      <div className="hidden lg:block w-64 shrink-0" />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -343,6 +294,58 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </Suspense>
 
       </div>
+
+      {/* Sidebar — at root level so z-index works globally */}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-[70] w-64 bg-surface border-r border-border transform transition-transform duration-200 ease-in-out shadow-crisp",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        )}
+      >
+        <div className="h-20 flex items-center px-8 border-b border-border">
+          <h1 className="text-xl font-bold tracking-tighter text-gradient-accent">
+            ZOE<span className="text-text-muted" style={{ WebkitTextFillColor: 'var(--color-text-muted)' }}>_</span>TERMINAL
+          </h1>
+        </div>
+
+        <nav className="p-4 space-y-2 pb-36 overflow-y-auto max-h-[calc(100vh-180px)]">
+          {NAV_ITEMS.map((item) => {
+            const isActive = location.pathname === item.path;
+            const Icon = item.icon;
+
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={closeSidebar}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-2.5 rounded-btns text-sm font-semibold transition-all duration-200",
+                  isActive
+                    ? "bg-surface-highlight text-text-primary shadow-soft border-l-[3px] border-l-text-primary/30"
+                    : "text-text-secondary hover:text-text-primary hover:bg-text-primary/[0.03] border-l-[3px] border-l-transparent"
+                )}
+              >
+                <Icon className={cn("w-4 h-4", isActive ? "text-profit" : "")} />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="absolute bottom-6 left-6 right-6 space-y-3">
+          <div className="bg-surface-base/50 p-3 rounded-cards border border-border flex flex-col gap-1">
+             <div className="text-[10px] uppercase tracking-widest text-text-muted font-medium">Node Instance</div>
+             <div className="text-xs font-mono text-text-primary truncate opacity-80">primary-v4-live</div>
+          </div>
+          <button
+            onClick={logout}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-btns text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-loss hover:bg-loss/5 border border-border hover:border-loss/20 transition-all"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            Log Out
+          </button>
+        </div>
+      </aside>
 
       {/* Mobile Overlay — at root level so it covers banners too */}
       {sidebarOpen && (
