@@ -29,7 +29,7 @@ from .consensus import ConsensusEngine, ConsensusResult
 # ── Configuration ────────────────────────────────────────────────
 
 # Minimum confidence to surface a signal (below this → HOLD)
-MIN_CONFIDENCE_BUY = 0.65
+MIN_CONFIDENCE_BUY = 0.70   # raised from 0.65 — fewer but higher-quality entries
 MIN_CONFIDENCE_SELL = 0.60
 
 # Max notional per signal (overridable by trader config)
@@ -100,8 +100,8 @@ def _compute_buy_confidence(candidate: CandidateScan, snap: dict[str, Any]) -> t
     # ── Hard vetoes (return 0) ──
     if rsi is not None and rsi > rsi_overbought:
         return 0.0, f"RSI overbought (>{rsi_overbought:.0f} in {regime.regime} regime) — no buy"
-    if spread > 2.0:
-        return 0.0, "Spread too wide (>2%) — illiquid"
+    if spread > 0.3:
+        return 0.0, "Spread too wide (>0.3%) — execution cost exceeds edge"
     if vol is not None and vol > 200:
         return 0.0, "Extreme volatility (>200% ann.) — too risky"
 

@@ -105,7 +105,7 @@ export default function Structure() {
       </div>
 
       {/* Summary Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-4">
         <SummaryStat label="Trendlines" value={trendlines.length} icon={TrendingUp} />
         <SummaryStat label="Levels" value={levels.length} icon={Minus} />
         <SummaryStat label="Pivots" value={pivots.length} icon={CircleDot} />
@@ -116,7 +116,7 @@ export default function Structure() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Trendlines */}
-        <div className="card-premium p-8">
+        <div className="card-premium p-4 sm:p-8">
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-6 flex items-center gap-2">
             <TrendingUp className="w-3 h-3 text-profit" /> Active Trendlines
           </h3>
@@ -159,7 +159,7 @@ export default function Structure() {
         </div>
 
         {/* Horizontal Levels */}
-        <div className="card-premium p-8">
+        <div className="card-premium p-4 sm:p-8">
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-6 flex items-center gap-2">
             <Minus className="w-3 h-3 text-warning" /> Key Levels
           </h3>
@@ -202,7 +202,7 @@ export default function Structure() {
         </div>
 
         {/* Structure Events */}
-        <div className="card-premium p-8">
+        <div className="card-premium p-4 sm:p-8">
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-6 flex items-center gap-2">
             <Zap className="w-3 h-3 text-warning" /> Structure Events
           </h3>
@@ -254,7 +254,7 @@ export default function Structure() {
         </div>
 
         {/* Bounce State Machine */}
-        <div className="card-premium p-8">
+        <div className="card-premium p-4 sm:p-8">
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-6 flex items-center gap-2">
             <RotateCcw className="w-3 h-3 text-profit" /> Bounce State Machine
           </h3>
@@ -324,13 +324,13 @@ function SummaryStat({
   icon: React.ComponentType<{ className?: string; size?: number }>;
 }) {
   return (
-    <div className="card-premium p-4 flex items-center gap-3">
-      <div className="w-8 h-8 rounded-full bg-surface-highlight flex items-center justify-center">
+    <div className="card-premium p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-surface-highlight flex items-center justify-center shrink-0">
         <Icon size={14} className="text-text-secondary" />
       </div>
-      <div>
-        <div className="text-lg font-black text-white font-mono">{value}</div>
-        <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{label}</div>
+      <div className="min-w-0">
+        <div className="text-base sm:text-lg font-black text-white font-mono">{value}</div>
+        <div className="text-[9px] sm:text-[10px] font-bold text-text-muted uppercase tracking-widest truncate">{label}</div>
       </div>
     </div>
   );
@@ -406,7 +406,7 @@ function BounceStateIcon({ state }: { state: string }) {
 
 function IntentRow({ intent }: { intent: BounceIntent }) {
   return (
-    <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] items-center gap-4 bg-background/50 border border-border rounded-lg px-5 py-4 text-xs">
+    <div className="flex flex-col sm:grid sm:grid-cols-[auto_1fr_auto_auto_auto_auto] sm:items-center gap-3 sm:gap-4 bg-background/50 border border-border rounded-lg px-4 sm:px-5 py-3 sm:py-4 text-xs">
       {/* Status icon */}
       <div className="w-7 h-7 rounded-full flex items-center justify-center">
         {intent.blocked ? (

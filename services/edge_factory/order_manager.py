@@ -187,16 +187,33 @@ class OrderManager:
 
                     if status == "partially_filled":
                         # Accept partial for small account — don't chase remainder
+                        # Sum ALL fills (not just the first) for correct VWAP
                         fills = await self.rh.get_order_fills(ticket.order_id)
                         fill_list = fills.get("results", [])
-                        if fill_list:
-                            ticket.fill_price = float(fill_list[0].get("price", ticket.limit_price))
-                            ticket.filled_qty = float(fill_list[0].get("quantity", 0))
+                        total_qty = 0.0
+                        total_cost = 0.0
+                        for f in fill_list:
+                            qty = float(f.get("quantity", 0))
+                            px = float(f.get("price", 0))
+                            total_qty += qty
+                            total_cost += qty * px
+                        ticket.fill_price = (total_cost / total_qty) if total_qty > 0 else ticket.limit_price
+                        ticket.filled_qty = total_qty
                         ticket.status = "filled"  # Treat partial as filled
-                        logger.info(
-                            "ORDER PARTIAL FILL (accepted): %s @ %.4f",
-                            ticket.symbol, ticket.fill_price or 0,
-                        )
+
+                        # Warn if significantly underfilled
+                        expected_qty = ticket.size_usd / ticket.limit_price if ticket.limit_price > 0 else 0
+                        fill_pct = total_qty / expected_qty if expected_qty > 0 else 0
+                        if fill_pct < 0.8:
+                            logger.warning(
+                                "ORDER PARTIAL FILL: %s only %.0f%% filled ($%.2f of $%.2f)",
+                                ticket.symbol, fill_pct * 100, total_qty * ticket.fill_price, ticket.size_usd,
+                            )
+                        else:
+                            logger.info(
+                                "ORDER PARTIAL FILL (accepted): %s @ VWAP %.4f (%.0f%% filled)",
+                                ticket.symbol, ticket.fill_price, fill_pct * 100,
+                            )
                         return ticket
 
                     if status in {"canceled", "rejected", "failed"}:
@@ -221,11 +238,13 @@ class OrderManager:
                 try:
                     quote = await self.quotes.refresh(ticket.symbol)
                     # Widen price by one step (0.05%) per retry
+                    # Buy: step UP from bid (cross toward ask)
+                    # Sell: step DOWN from ask (cross toward bid)
                     step = 0.0005 * (ticket.retries_used + 1)
                     if ticket.side == "buy":
                         ticket.limit_price = quote.bid * (1.0 + step)
                     else:
-                        ticket.limit_price = quote.bid * (1.0 - step)
+                        ticket.limit_price = quote.ask * (1.0 - step)
 
                     # Generate new client_order_id for replacement
                     ticket.client_order_id = f"ef-{ticket.side}-{ticket.symbol.lower()}-{uuid.uuid4().hex[:8]}"

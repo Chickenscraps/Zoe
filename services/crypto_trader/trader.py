@@ -17,6 +17,8 @@ from .price_cache import PriceCache
 from .repository import CryptoRepository
 from .scanner import scan_candidates
 from .signals import generate_signals, Signal
+from .exit_manager import SmartExitManager, ExitConfig, ExitReason, ExitUrgency
+from .consensus import ConsensusEngine
 
 
 @dataclass
@@ -39,6 +41,11 @@ class CryptoTraderService:
         self.price_cache = PriceCache(capacity_per_symbol=288)  # 24h at 5-min ticks
         self.candle_manager = CandleManager()
         self.price_cache.set_candle_manager(self.candle_manager)  # Wire candle ingestion
+        self.exit_manager = SmartExitManager(
+            price_cache=self.price_cache,
+            consensus_engine=ConsensusEngine(),
+            config=ExitConfig(),
+        )
         self._paused = False
         self._degraded = False
         self._last_reconcile_at: str | None = None
@@ -426,6 +433,12 @@ class CryptoTraderService:
             return
         if notional <= 0:
             return
+        if notional < self.cfg.min_notional_per_trade:
+            self._write_thought(
+                f"Signal {action} {sym} skipped -- notional ${notional:.2f} below ${self.cfg.min_notional_per_trade:.0f} minimum",
+                thought_type="signal", symbol=sym,
+            )
+            return
 
         side = "buy" if action == "BUY" else "sell"
 
@@ -458,6 +471,17 @@ class CryptoTraderService:
                 metadata=signal.to_dict(),
             )
             print(f"[ZOE] PAPER TRADE: {action} {sym} ${notional:.2f}")
+
+            # Register with exit manager so exits are tracked even in paper mode
+            if action == "BUY":
+                snap = self.price_cache.snapshot(sym)
+                entry_price = snap.get("mid", 0)
+                if entry_price > 0:
+                    self.exit_manager.register_position(
+                        symbol=sym,
+                        entry_price=entry_price,
+                        entry_time=datetime.now(timezone.utc),
+                    )
             return
 
         # Live execution
@@ -475,6 +499,17 @@ class CryptoTraderService:
                 symbol=sym,
                 metadata={"order_id": order.get("id"), "signal": signal.to_dict()},
             )
+
+            # Register with exit manager on live BUY
+            if action == "BUY":
+                snap = self.price_cache.snapshot(sym)
+                entry_price = snap.get("mid", 0)
+                if entry_price > 0:
+                    self.exit_manager.register_position(
+                        symbol=sym,
+                        entry_price=entry_price,
+                        entry_time=datetime.now(timezone.utc),
+                    )
         except Exception as e:
             self._write_thought(
                 f"Order FAILED: {action} {sym} ${notional:.2f} -- {e}",
@@ -483,6 +518,123 @@ class CryptoTraderService:
                 metadata={"error": str(e), "signal": signal.to_dict()},
             )
             print(f"[ZOE] ORDER FAILED for {sym}: {e}")
+
+    async def _check_exits(self) -> None:
+        """Check all open positions against exit rules every tick.
+
+        This is the critical missing piece: without this, positions drift
+        indefinitely with no stop-loss, no take-profit, no time stop.
+        """
+        try:
+            holdings = (self.repo.latest_holdings_snapshot(self.mode) or {}).get("holdings", {})
+            open_symbols = {sym for sym, qty in holdings.items() if float(qty) > 0}
+
+            # Register any positions the exit manager doesn't know about
+            for sym in open_symbols:
+                if self.exit_manager.get_position_state(sym) is None:
+                    # Recover entry data from recent orders
+                    snap = self.price_cache.snapshot(sym)
+                    mid = snap.get("mid", 0)
+                    self.exit_manager.register_position(
+                        symbol=sym,
+                        entry_price=mid,  # best guess if no historical entry
+                        entry_time=datetime.now(timezone.utc),
+                    )
+
+            # Unregister positions that are no longer held
+            for sym in list(self.exit_manager.active_positions()):
+                if sym not in open_symbols:
+                    self.exit_manager.unregister_position(sym)
+
+            # Check each position for exit conditions
+            for sym in open_symbols:
+                snap = self.price_cache.snapshot(sym)
+                current_price = snap.get("mid", 0)
+                current_spread = snap.get("spread_pct", 0)
+
+                if current_price <= 0:
+                    continue
+
+                exit_signal = self.exit_manager.check_exits(
+                    symbol=sym,
+                    current_price=current_price,
+                    current_spread_pct=current_spread,
+                )
+
+                if exit_signal is not None:
+                    await self._execute_exit(sym, exit_signal)
+
+        except Exception as e:
+            import traceback
+            print(f"[ZOE] Exit check error: {e}")
+            traceback.print_exc()
+
+    async def _execute_exit(self, symbol: str, exit_signal: 'ExitSignal') -> None:
+        """Execute an exit signal — sell the position."""
+        self._write_thought(
+            f"EXIT {symbol}: {exit_signal.reason.value} | {exit_signal.details} | P&L: {exit_signal.pnl_pct:.2%}",
+            thought_type="exit_signal",
+            symbol=symbol,
+            metadata=exit_signal.to_dict(),
+        )
+        self.audit.write(
+            "crypto_exit_signal",
+            symbol=symbol,
+            reason=exit_signal.reason.value,
+            urgency=exit_signal.urgency.value,
+            pnl_pct=exit_signal.pnl_pct,
+            details=exit_signal.details,
+            mode=self.mode,
+        )
+        print(f"[ZOE] EXIT: {exit_signal.reason.value} {symbol} ({exit_signal.pnl_pct:.2%}) -- {exit_signal.details}")
+
+        if not self.cfg.live_ready():
+            # Paper mode: log exit but don't place order
+            self._write_thought(
+                f"PAPER EXIT {symbol}: {exit_signal.reason.value} (would sell if live)",
+                thought_type="paper_exit",
+                symbol=symbol,
+                metadata=exit_signal.to_dict(),
+            )
+            print(f"[ZOE] PAPER EXIT: {symbol} {exit_signal.reason.value}")
+            self.exit_manager.unregister_position(symbol)
+            return
+
+        # Live execution: sell the position
+        try:
+            holdings = (self.repo.latest_holdings_snapshot(self.mode) or {}).get("holdings", {})
+            qty = float(holdings.get(symbol, 0))
+            if qty <= 0:
+                self.exit_manager.unregister_position(symbol)
+                return
+
+            # Determine notional from current price
+            snap = self.price_cache.snapshot(symbol)
+            mid = snap.get("mid", 0)
+            notional = qty * mid if mid > 0 else 0
+
+            order = await self.place_order(
+                initiator_id=self.cfg.admin_user_id,
+                symbol=symbol,
+                side="sell",
+                qty=qty,
+                order_type="market",
+            )
+            self._write_thought(
+                f"Exit order placed: SELL {symbol} qty={qty} -> {order.get('status', 'submitted')} | reason={exit_signal.reason.value}",
+                thought_type="exit_order",
+                symbol=symbol,
+                metadata={"order_id": order.get("id"), "exit": exit_signal.to_dict()},
+            )
+            self.exit_manager.unregister_position(symbol)
+        except Exception as e:
+            self._write_thought(
+                f"Exit order FAILED: SELL {symbol} -- {e}",
+                thought_type="exit_error",
+                symbol=symbol,
+                metadata={"error": str(e), "exit": exit_signal.to_dict()},
+            )
+            print(f"[ZOE] EXIT ORDER FAILED for {symbol}: {e}")
 
     def _save_agent_state_snapshot(self) -> None:
         try:
@@ -580,6 +732,9 @@ class CryptoTraderService:
                 if now >= next_tick:
                     await self._tick_price_cache()
                     next_tick = now + tick_interval
+
+                # Exit checks run EVERY tick — critical for stop-loss/TP
+                await self._check_exits()
 
                 if now >= next_order_poll and not self._paused:
                     await self.poll_open_orders()

@@ -279,6 +279,13 @@ class LiveExecutor:
             await asyncio.sleep(poll_interval)
             elapsed += poll_interval
 
+        # Timeout — explicitly cancel the orphaned order on Robinhood
+        try:
+            await self.rh.cancel_order(order_id)
+            logger.info("Cancelled timed-out order %s", order_id)
+        except Exception as e:
+            logger.error("Failed to cancel timed-out order %s: %s", order_id, e)
+
         return None
 
     async def submit_exit(
