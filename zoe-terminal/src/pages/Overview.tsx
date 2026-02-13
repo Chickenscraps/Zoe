@@ -1,5 +1,6 @@
 import { Coins, DollarSign, TrendingUp, Wallet } from "lucide-react";
 import { EquityChart } from "../components/EquityChart";
+import FocusPanel from "../components/FocusPanel";
 import { KPICard } from "../components/KPICard";
 import { OpenOrdersTable } from "../components/OpenOrdersTable";
 import { PositionsTable } from "../components/PositionsTable";
@@ -115,7 +116,10 @@ export default function Overview() {
         height={280}
       />
 
-      {/* Live Crypto Prices */}
+      {/* Focus Universe Live Prices (from market_data_ws service) */}
+      <FocusPanel />
+
+      {/* Legacy Live Crypto Prices (from candidate_scans polling) */}
       {livePrices.length > 0 && (
         <div className="card-premium card-shimmer-sweep p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">

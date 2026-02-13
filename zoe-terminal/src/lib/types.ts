@@ -444,6 +444,79 @@ export interface Database {
           created_at: string;
         };
       };
+      market_catalog: {
+        Row: {
+          symbol: string;
+          exchange_symbol: string;
+          ws_symbol: string | null;
+          base: string;
+          quote: string;
+          exchange: string;
+          status: "active" | "delisted" | "halted";
+          min_qty: number;
+          lot_size: number;
+          tick_size: number;
+          fee_maker_pct: number;
+          fee_taker_pct: number;
+          ordermin: number;
+          metadata: Json;
+          discovered_at: string;
+          updated_at: string;
+        };
+      };
+      market_snapshot_focus: {
+        Row: {
+          symbol: string;
+          bid: number;
+          ask: number;
+          mid: number;
+          spread_pct: number;
+          volume_24h: number;
+          change_24h_pct: number;
+          vwap: number;
+          high_24h: number;
+          low_24h: number;
+          updated_at: string;
+        };
+      };
+      market_snapshot_scout: {
+        Row: {
+          symbol: string;
+          bid: number;
+          ask: number;
+          mid: number;
+          volume_24h: number;
+          change_24h_pct: number;
+          updated_at: string;
+        };
+      };
+      market_sparkline_points: {
+        Row: {
+          symbol: string;
+          ts: string;
+          price: number;
+        };
+      };
+      mover_events: {
+        Row: {
+          id: string;
+          symbol: string;
+          event_type: string;
+          magnitude: number;
+          direction: "up" | "down";
+          metadata: Json;
+          detected_at: string;
+        };
+      };
+      market_focus_config: {
+        Row: {
+          symbol: string;
+          reason: string;
+          promoted_at: string;
+          expires_at: string | null;
+          metadata: Json;
+        };
+      };
     };
     Views: {
       [_ in never]: never;

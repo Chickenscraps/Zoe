@@ -70,3 +70,44 @@
 - Verified: XXBT balance 0.00214748, 1482 tradable pairs, WS ticker + private auth working
 
 ---
+
+## Phase 2 — Market Catalog + Adaptive Market Watch
+**Status**: Complete
+**Date**: 2026-02-13
+
+### 2a — Database Migration
+- Created `migrations/20260213_market_data_tables.sql`
+- New tables: `market_catalog`, `market_snapshot_focus`, `market_snapshot_scout`, `market_sparkline_points`, `mover_events`, `market_focus_config`
+- Indexes on `updated_at` for focus/scout, `detected_at` for movers
+- RLS policies, realtime publication enabled on focus + mover_events
+
+### 2b — Market Data WS Service (`services/market_data_ws/`)
+- **config.py**: `MarketDataConfig` with env vars — focus flush 1s, scout flush 30s, mover thresholds
+- **catalog.py**: `MarketCatalog` discovers pairs from Kraken `AssetPairs`, upserts to `market_catalog` table
+- **coalescer.py**: `Coalescer` with `TickerSnapshot` dataclass, timer-based batch flush, dirty tracking per symbol
+- **snapshot_writer.py**: `SnapshotWriter` for focus/scout/sparkline/mover upserts with write stats tracking
+- **focus_manager.py**: `FocusManager` with promote/demote, DB persistence (`market_focus_config`), stale mover expiry
+- **mover_detector.py**: `MoverDetector` with 1h momentum calculation, price history deque, volume acceleration
+
+### 2c — Entry Point (`__main__.py`)
+- Startup sequence: catalog refresh → focus setup → WS subscribe → coalescers → sparkline/expiry loops
+- Routes WS ticker updates to focus or scout coalescer based on FocusManager membership
+- Batch subscription (50 symbols per batch) with max pairs cap
+- Background tasks: sparkline loop, mover expiry loop, periodic stats logging
+
+### 2d — Dashboard: Types + Hooks
+- **types.ts**: Added type definitions for all 6 new market tables
+- **useMarketData.ts**: `useFocusData()` (Supabase realtime), `useScoutData()` (30s polling), `useMoverAlerts()` (realtime), `useMarketData()` (combined focus + scout into `MarketRow[]`)
+
+### 2e — Dashboard: Markets Page
+- **Markets.tsx**: Full page with tabs (All / Focus / Gainers / Losers / Movers), search bar, sortable columns
+- Columns: Symbol, Price, 24h Change, Volume, Spread, Bid, Ask
+- Color-coded changes (green/red), formatted prices, mover event indicators
+
+### 2f — Dashboard: FocusPanel + Integration
+- **FocusPanel.tsx**: Compact grid tiles for focus-universe pairs (live bid/ask/change/spread)
+- **AppShell.tsx**: Added "Markets" nav item with Globe icon
+- **App.tsx**: Added `/markets` route
+- **Overview.tsx**: Integrated `<FocusPanel />` above legacy "Live Prices" section
+
+---

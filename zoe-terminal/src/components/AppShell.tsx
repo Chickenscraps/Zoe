@@ -12,6 +12,7 @@ import {
   Power,
   LogOut,
   Bot,
+  Globe,
 } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { useDashboardData } from '../hooks/useDashboardData';
@@ -29,6 +30,7 @@ const CopilotSidebar = lazy(() => import('./CopilotSidebar'));
 const NAV_ITEMS = [
   { label: 'Overview', path: '/', icon: LayoutDashboard },
   { label: 'Trades', path: '/trades', icon: History },
+  { label: 'Markets', path: '/markets', icon: Globe },
   { label: 'Scanner', path: '/scanner', icon: Scan },
   { label: 'Charts', path: '/charts', icon: BarChart3 },
   { label: 'Intelligence', path: '/intelligence', icon: BrainCircuit },

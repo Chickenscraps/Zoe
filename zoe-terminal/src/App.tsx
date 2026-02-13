@@ -16,6 +16,7 @@ import Scanner from './pages/Scanner';
 import Charts from './pages/Charts';
 import Intelligence from './pages/Intelligence';
 import Settings from './pages/Settings';
+import Markets from './pages/Markets';
 
 import ShareTrade from './pages/share/ShareTrade';
 import SharePnL from './pages/share/SharePnL';
@@ -50,6 +51,7 @@ function AppWithNotifications() {
           <Route path="/" element={<Overview />} />
           <Route path="/trades" element={<Trades />} />
           <Route path="/trades/:id" element={<TradeDetail />} />
+          <Route path="/markets" element={<Markets />} />
           <Route path="/scanner" element={<Scanner />} />
           <Route path="/charts" element={<Charts />} />
           <Route path="/intelligence" element={<Intelligence />} />
