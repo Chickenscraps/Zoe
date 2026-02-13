@@ -60,8 +60,8 @@ def _build_repository(config: EdgeFactoryConfig):
     supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
     if supabase_url and supabase_key:
-        logger.info("Using Supabase repository")
-        return SupabaseFeatureRepository()
+        logger.info("Using Supabase repository (mode=%s)", config.mode)
+        return SupabaseFeatureRepository(mode=config.mode)
 
     logger.warning("No Supabase credentials -- falling back to in-memory repository")
     return InMemoryFeatureRepository()
