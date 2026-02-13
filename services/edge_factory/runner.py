@@ -44,6 +44,16 @@ from .trade_intent import TradeIntentBuilder
 from services.local_store import LocalEventStore
 from services.flush_worker import FlushWorker
 
+# Highlander rule: process-level instance lock
+from services.instance_lock import InstanceLock, InstanceAlreadyRunning
+
+# Rate limiter for Robinhood API (100 RPM sustained)
+from services.rate_limiter import RateLimitManager
+
+# Circuit breakers + metrics
+from .circuit_breakers import CircuitBreakerManager
+from .metrics_collector import MetricsCollector
+
 logger = logging.getLogger("edge_factory")
 
 
@@ -203,7 +213,7 @@ async def _cleanup(orchestrator: EdgeFactoryOrchestrator) -> None:
             pass
 
 
-async def _run(dry_run: bool = False) -> None:
+async def _run(dry_run: bool = False, instance_lock: InstanceLock | None = None) -> None:
     """Main async entry point."""
     config = EdgeFactoryConfig()
 
@@ -229,7 +239,33 @@ async def _run(dry_run: bool = False) -> None:
             )
             return
 
+    # ── Rate limiter for Robinhood API ──────────────────────
+    rate_limiter = RateLimitManager(
+        rpm=int(os.getenv("RH_RATE_LIMIT_RPM", "100")),
+        burst=int(os.getenv("RH_RATE_LIMIT_BURST", "150")),
+        backoff_seconds=float(os.getenv("RH_RATE_LIMIT_BACKOFF", "30")),
+    )
+
     orchestrator = build_orchestrator(config)
+
+    # ── Circuit breakers ───────────────────────────────────
+    circuit_breakers = CircuitBreakerManager(
+        dd_soft_pct=float(os.getenv("CB_DD_SOFT_PCT", "5.0")),
+        dd_hard_pct=float(os.getenv("CB_DD_HARD_PCT", "20.0")),
+        max_consecutive_losses=int(os.getenv("CB_MAX_CONSEC_LOSSES", "5")),
+        loss_cooldown_hours=float(os.getenv("CB_LOSS_COOLDOWN_HOURS", "4.0")),
+        spread_blowout_pct=float(os.getenv("CB_SPREAD_BLOWOUT_PCT", "1.0")),
+    )
+
+    # ── Metrics collector ──────────────────────────────────
+    metrics_collector = MetricsCollector(
+        emit_interval_ticks=int(os.getenv("METRICS_EMIT_INTERVAL", "10")),
+    )
+
+    # Stash on orchestrator for access by sub-components
+    orchestrator._rate_limiter = rate_limiter  # type: ignore[attr-defined]
+    orchestrator._circuit_breakers = circuit_breakers  # type: ignore[attr-defined]
+    orchestrator._metrics = metrics_collector  # type: ignore[attr-defined]
 
     # ── Local-first event store + flush worker ─────────────
     local_store = None
@@ -300,7 +336,20 @@ def main() -> None:
     os.makedirs("logs", exist_ok=True)
 
     dry_run = "--dry-run" in sys.argv
-    asyncio.run(_run(dry_run=dry_run))
+
+    # ── Highlander Rule: only one bot instance ──────────────
+    lock_path = os.getenv("EF_LOCK_PATH", "data/edge_factory.lock")
+    instance_lock = InstanceLock(lock_path)
+    try:
+        instance_lock.acquire()
+    except InstanceAlreadyRunning as e:
+        logger.critical(str(e))
+        sys.exit(1)
+
+    try:
+        asyncio.run(_run(dry_run=dry_run, instance_lock=instance_lock))
+    finally:
+        instance_lock.release()
 
 
 if __name__ == "__main__":
