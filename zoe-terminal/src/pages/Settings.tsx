@@ -1,18 +1,23 @@
 import { useState, useEffect } from 'react';
 import type { Database } from '../lib/types';
-import { Download, Shield, Trash2, AlertTriangle } from 'lucide-react';
+import { Download, Shield, Trash2, AlertTriangle, Lock } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { MODE, isPaper } from '../lib/mode';
+import { useModeContext } from '../lib/mode';
 import { useDashboardData } from '../hooks/useDashboardData';
+import { useAuth } from '../lib/AuthContext';
 import { formatCurrency } from '../lib/utils';
 
 type Config = Database['public']['Tables']['config']['Row'];
 
 export default function Settings() {
+  const { mode, isPaper } = useModeContext();
+  const { isGuest } = useAuth();
   const [config, setConfig] = useState<Config[]>([]);
   const [loading, setLoading] = useState(true);
   const [killConfirm, setKillConfirm] = useState(false);
   const [cacheCleared, setCacheCleared] = useState(false);
+  const [pnlResetConfirm, setPnlResetConfirm] = useState(false);
+  const [pnlResetting, setPnlResetting] = useState(false);
 
   const { cryptoCash, dailyNotional, healthSummary, holdingsRows, cryptoOrders } = useDashboardData();
 
@@ -22,6 +27,7 @@ export default function Settings() {
           const { data, error } = await supabase
             .from('config')
             .select('*')
+            .eq('mode', mode)
             .order('key');
           if (error) throw error;
           if (data) setConfig(data);
@@ -32,11 +38,11 @@ export default function Settings() {
         }
       }
       fetchConfig();
-  }, []);
+  }, [mode]);
 
   const handleExport = () => {
     const exportData = {
-      mode: MODE,
+      mode,
       exported_at: new Date().toISOString(),
       cash: cryptoCash,
       holdings: holdingsRows,
@@ -47,7 +53,7 @@ export default function Settings() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `zoe-export-${MODE}-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `zoe-export-${mode}-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -90,7 +96,7 @@ export default function Settings() {
                    <div className="font-mono text-sm text-text-secondary">MODE</div>
                    <div className="md:col-span-2 font-mono text-sm">
                      <span className={isPaper ? "text-profit font-bold" : "text-loss font-bold"}>
-                       {MODE.toUpperCase()}
+                       {mode.toUpperCase()}
                      </span>
                    </div>
                </div>
@@ -114,7 +120,7 @@ export default function Settings() {
                <div className="grid grid-cols-1 md:grid-cols-3 px-6 py-4">
                    <div className="font-mono text-sm text-text-secondary">Daily Notional Used</div>
                    <div className="md:col-span-2 font-mono text-sm text-white">
-                     {formatCurrency((dailyNotional as any)?.notional_used ?? 0)} / {formatCurrency((dailyNotional as any)?.notional_limit ?? 50)}
+                     {formatCurrency(dailyNotional?.notional_used ?? 0)} / {formatCurrency(dailyNotional?.notional_limit ?? 50)}
                    </div>
                </div>
                <div className="grid grid-cols-1 md:grid-cols-3 px-6 py-4">
@@ -158,7 +164,13 @@ export default function Settings() {
 
        {/* Admin Actions */}
        <div className="bg-surface border border-border rounded-lg p-6">
-           <h3 className="font-medium text-sm mb-4 text-text-secondary">Admin Actions</h3>
+           <h3 className="font-medium text-sm mb-4 text-text-secondary flex items-center gap-2">
+             Admin Actions
+             {isGuest && <span className="inline-flex items-center gap-1 text-[10px] text-amber-500/70 font-bold"><Lock className="w-3 h-3" /> View Only</span>}
+           </h3>
+           {isGuest ? (
+             <div className="text-sm text-text-muted italic">Admin actions are disabled for guest access.</div>
+           ) : (
            <div className="flex gap-4 flex-wrap">
                {!killConfirm ? (
                  <button
@@ -173,7 +185,12 @@ export default function Settings() {
                    <button
                      onClick={async () => {
                        try {
-                         await (supabase.from('config') as any).upsert({ key: 'kill_switch', value: true });
+                         await supabase.from('config').upsert({
+                           key: 'kill_switch',
+                           value: true,
+                           instance_id: 'primary-v4-live',
+                           mode,
+                         });
                          setKillConfirm(false);
                          alert('Kill switch activated. Trading paused.');
                        } catch {
@@ -199,7 +216,45 @@ export default function Settings() {
                    <Trash2 className="w-4 h-4" />
                    {cacheCleared ? 'Cache Cleared!' : 'Clear Cache'}
                </button>
+               {!pnlResetConfirm ? (
+                 <button
+                   onClick={() => setPnlResetConfirm(true)}
+                   className="flex items-center gap-2 px-4 py-2 bg-orange-500/10 text-orange-400 border border-orange-500/20 rounded hover:bg-orange-500/20 transition-colors text-sm font-medium"
+                 >
+                   <Trash2 className="w-4 h-4" /> Reset P&L Data
+                 </button>
+               ) : (
+                 <div className="flex items-center gap-2">
+                   <span className="text-xs text-orange-400 font-bold">This clears all P&L history. Confirm?</span>
+                   <button
+                     onClick={async () => {
+                       setPnlResetting(true);
+                       try {
+                         await supabase.from('crypto_cash_snapshots').delete().eq('mode', mode);
+                         await supabase.from('pnl_daily').delete().eq('mode', mode);
+                         setPnlResetConfirm(false);
+                         window.location.reload();
+                       } catch {
+                         alert('Failed to reset P&L data.');
+                       } finally {
+                         setPnlResetting(false);
+                       }
+                     }}
+                     disabled={pnlResetting}
+                     className="px-3 py-1.5 bg-orange-500 text-white rounded text-sm font-bold disabled:opacity-50"
+                   >
+                     {pnlResetting ? 'Resetting...' : 'CONFIRM RESET'}
+                   </button>
+                   <button
+                     onClick={() => setPnlResetConfirm(false)}
+                     className="px-3 py-1.5 bg-surface-highlight text-text-secondary rounded text-sm"
+                   >
+                     Cancel
+                   </button>
+                 </div>
+               )}
            </div>
+           )}
        </div>
     </div>
   );

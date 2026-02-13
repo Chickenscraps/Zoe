@@ -93,11 +93,119 @@
 
 @layer components {
   .card-premium {
-    @apply bg-surface-base border border-border rounded-cards shadow-soft transition-all duration-150 hover:border-border-strong hover:-translate-y-px;
+    @apply bg-surface-base border border-border rounded-cards shadow-soft transition-all duration-200 hover:border-border-strong hover:-translate-y-px;
+  }
+  .card-glass {
+    background: rgba(15, 17, 22, 0.6);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius-cards);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .card-glass:hover {
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    transform: translateY(-1px);
   }
   .btn-premium {
     @apply bg-text-primary text-background px-6 py-2.5 rounded-btns font-bold shadow-crisp hover:opacity-[0.92] hover:scale-[0.99] active:scale-[0.98] transition-all duration-100;
   }
+  /* Profit/loss number glow */
+  .stat-glow-green {
+    text-shadow: 0 0 20px rgba(46, 229, 157, 0.25);
+  }
+  .stat-glow-red {
+    text-shadow: 0 0 20px rgba(255, 91, 110, 0.25);
+  }
+  /* Percentage change badges */
+  .badge-profit {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold tabular-nums;
+    background: rgba(46, 229, 157, 0.1);
+    color: var(--color-profit);
+    border: 1px solid rgba(46, 229, 157, 0.15);
+  }
+  .badge-loss {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold tabular-nums;
+    background: rgba(255, 91, 110, 0.1);
+    color: var(--color-loss);
+    border: 1px solid rgba(255, 91, 110, 0.15);
+  }
+  /* Bottom gradient shine on cards */
+  .card-shine::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+    pointer-events: none;
+  }
+}
+
+/* Paper theme glass card overrides */
+[data-theme="paper"] .card-glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px) saturate(180%);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+[data-theme="paper"] .card-glass:hover {
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+[data-theme="paper"] .stat-glow-green {
+  text-shadow: 0 0 16px rgba(13, 150, 104, 0.2);
+}
+[data-theme="paper"] .stat-glow-red {
+  text-shadow: 0 0 16px rgba(220, 38, 38, 0.2);
+}
+
+/* ============================================
+   DEEP SPACE BORDER (trading active glow)
+   ============================================ */
+
+@keyframes deepSpacePulse {
+  0%, 100% {
+    box-shadow:
+      inset 0 0 30px rgba(30, 64, 175, 0.3),
+      inset 0 0 60px rgba(88, 28, 135, 0.15),
+      0 0 15px rgba(30, 64, 175, 0.2),
+      0 0 30px rgba(88, 28, 135, 0.1);
+  }
+  33% {
+    box-shadow:
+      inset 0 0 30px rgba(88, 28, 135, 0.3),
+      inset 0 0 60px rgba(6, 182, 212, 0.15),
+      0 0 15px rgba(88, 28, 135, 0.2),
+      0 0 30px rgba(6, 182, 212, 0.1);
+  }
+  66% {
+    box-shadow:
+      inset 0 0 30px rgba(6, 182, 212, 0.25),
+      inset 0 0 60px rgba(30, 64, 175, 0.15),
+      0 0 15px rgba(6, 182, 212, 0.15),
+      0 0 30px rgba(30, 64, 175, 0.1);
+  }
+}
+
+.trading-active-border {
+  animation: deepSpacePulse 6s ease-in-out infinite;
+  border: 1px solid rgba(88, 28, 135, 0.2);
+  transition: all 0.5s ease;
+}
+
+.trading-active-border::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  border: 2px solid transparent;
+  border-image: linear-gradient(135deg, rgba(30, 64, 175, 0.3), rgba(88, 28, 135, 0.4), rgba(6, 182, 212, 0.3), rgba(30, 64, 175, 0.3)) 1;
+  animation: deepSpacePulse 6s ease-in-out infinite;
 }
 
 /* ============================================
@@ -205,6 +313,141 @@
   animation: skeletonShimmer 1.5s infinite;
 }
 
+/* ============================================
+   STAGGERED CARD ENTRANCE
+   ============================================ */
+@keyframes cardStaggerIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.card-stagger {
+  animation: cardStaggerIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--stagger-delay, 0ms);
+}
+
+/* ============================================
+   DIAGONAL SHIMMER SWEEP ON HOVER
+   ============================================ */
+@keyframes diagonalShimmer {
+  0% {
+    transform: translateX(-100%) translateY(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(200%) translateY(200%) rotate(45deg);
+  }
+}
+
+.card-shimmer-sweep {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-shimmer-sweep::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 50%;
+  height: 200%;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(255, 255, 255, 0.06) 50%,
+    transparent
+  );
+  transform: translateX(-100%) translateY(-100%) rotate(45deg);
+  transition: opacity 0.3s;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.card-shimmer-sweep:hover::after {
+  animation: diagonalShimmer 1s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 1;
+}
+
+/* ============================================
+   FROSTED DIVIDER
+   ============================================ */
+.divider-frost {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1) 20%,
+    rgba(255, 255, 255, 0.1) 80%,
+    transparent
+  );
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* ============================================
+   GRADIENT ACCENT TEXT
+   ============================================ */
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.text-gradient-accent {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #2ee59d 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  background-size: 200% 100%;
+  animation: gradientShift 4s ease infinite;
+}
+
+/* ============================================
+   LIVE INDICATOR PULSE
+   ============================================ */
+@keyframes livePulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.85);
+  }
+}
+
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-profit);
+  animation: livePulse 2s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(46, 229, 157, 0.4);
+}
+
+/* ============================================
+   SMOOTH NUMBER TICK
+   ============================================ */
+@keyframes numberTick {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.06); filter: brightness(1.2); }
+  100% { transform: scale(1); }
+}
+
+.number-tick {
+  display: inline-block;
+  animation: numberTick 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform;
+}
+
 /* Screenshot mode — disables noise/hover for share page captures */
 .screenshot-mode .noise-overlay,
 .screenshot-mode ::-webkit-scrollbar {
@@ -224,8 +467,13 @@
   .pnl-pulse-red,
   .warning-attention,
   .skeleton-shimmer,
-  .scanner-card-gold-promote,
-  .scanner-detail-enter {
+  .trading-active-border,
+  .trading-active-border::before,
+  .card-stagger,
+  .card-shimmer-sweep::after,
+  .text-gradient-accent,
+  .live-dot,
+  .number-tick {
     animation: none !important;
   }
 
@@ -256,6 +504,119 @@
 }
 .animate-slide-in {
   animation: slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ============================================
+   PAPER (LIGHT) THEME
+   ============================================ */
+[data-theme="paper"] {
+  --color-background: #f5f6f8;
+  --color-surface: #ffffff;
+  --color-surface-base: #eef0f4;
+  --color-surface-highlight: #e2e5eb;
+  --color-border: rgba(0, 0, 0, 0.10);
+  --color-border-strong: rgba(0, 0, 0, 0.18);
+
+  --color-profit: #0d9668;
+  --color-loss: #dc2626;
+  --color-warning: #d97706;
+
+  --color-text-primary: #1a1d23;
+  --color-text-secondary: rgba(26, 29, 35, 0.68);
+  --color-text-muted: rgba(26, 29, 35, 0.50);
+  --color-text-dim: rgba(26, 29, 35, 0.32);
+
+  --shadow-soft: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-crisp: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+  /* Remap 'white' so text-white, bg-white etc. become dark in paper mode */
+  --color-white: #1a1d23;
+  /* Keep black as true black for paper mode borders/text */
+  --color-black: #000000;
+}
+
+/* Paper theme: override body pseudo-elements */
+[data-theme="paper"] body::before {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+}
+
+[data-theme="paper"] body::after {
+  background: radial-gradient(circle at 50% 50%, transparent 30%, #f5f6f8 100%);
+  opacity: 0.4;
+}
+
+/* Paper theme: noise overlay lighter */
+[data-theme="paper"] .noise-overlay {
+  opacity: 0.01;
+}
+
+/* Paper theme: scrollbar */
+[data-theme="paper"] ::-webkit-scrollbar-thumb {
+  background-color: #d0d4db;
+  border-color: #f5f6f8;
+}
+[data-theme="paper"] ::-webkit-scrollbar-thumb:hover {
+  background-color: #b8bdc7;
+}
+
+/* Paper theme: focus ring */
+[data-theme="paper"] *:focus-visible {
+  outline-color: rgba(0, 0, 0, 0.25);
+}
+
+/* Paper theme: selection */
+[data-theme="paper"] body {
+  --tw-selection-bg: rgba(13, 150, 104, 0.2);
+}
+
+/* Paper theme: skeleton shimmer */
+[data-theme="paper"] .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-highlight) 25%,
+    rgba(0, 0, 0, 0.04) 50%,
+    var(--color-surface-highlight) 75%
+  );
+  background-size: 200% 100%;
+}
+
+/* Paper theme: shimmer sweep */
+[data-theme="paper"] .card-shimmer-sweep::after {
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(0, 0, 0, 0.03) 50%,
+    transparent
+  );
+}
+
+/* Paper theme: frosted divider */
+[data-theme="paper"] .divider-frost {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 0, 0, 0.08) 20%,
+    rgba(0, 0, 0, 0.08) 80%,
+    transparent
+  );
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Paper theme: live dot */
+[data-theme="paper"] .live-dot {
+  background: var(--color-profit);
+  box-shadow: 0 0 8px rgba(13, 150, 104, 0.3);
+}
+
+/* Paper theme: gradient text */
+[data-theme="paper"] .text-gradient-accent {
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #0d9668 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  background-size: 200% 100%;
 }
 
 /* ============================================
@@ -317,169 +678,4 @@
 select option {
   background-color: #141823;
   color: #f3f4f6;
-}
-
-/* ============================================
-   MOBILE RESPONSIVE FIXES
-   ============================================ */
-
-/* iOS safe area insets */
-@supports (padding: env(safe-area-inset-top)) {
-  .safe-top {
-    padding-top: env(safe-area-inset-top);
-  }
-  .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-  .safe-left {
-    padding-left: env(safe-area-inset-left);
-  }
-  .safe-right {
-    padding-right: env(safe-area-inset-right);
-  }
-}
-
-/* Mobile card — no hover lift on touch devices */
-@media (hover: none) {
-  .card-premium {
-    transform: none !important;
-  }
-  .card-premium:hover {
-    transform: none !important;
-  }
-}
-
-/* Prevent 300ms tap delay */
-html {
-  touch-action: manipulation;
-}
-
-/* Mobile horizontal scroll indicators */
-.mobile-scroll-fade {
-  position: relative;
-}
-.mobile-scroll-fade::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 32px;
-  background: linear-gradient(90deg, transparent, var(--color-surface-base));
-  pointer-events: none;
-  opacity: 0.9;
-}
-
-/* Smooth mobile scrolling */
-.scroll-smooth-mobile {
-  -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
-  scrollbar-width: none;
-}
-.scroll-smooth-mobile::-webkit-scrollbar {
-  display: none;
-}
-
-/* Mobile table card layout */
-@media (max-width: 767px) {
-  .mobile-card-table .table-row-card {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  }
-  .mobile-card-table .table-row-card:last-child {
-    border-bottom: none;
-  }
-}
-
-/* ============================================
-   DATA-ALIGNED MICRO-ANIMATIONS
-   ============================================ */
-
-/* Live price tick — subtle flash on update */
-@keyframes priceTick {
-  0% { opacity: 1; }
-  30% { opacity: 0.6; }
-  100% { opacity: 1; }
-}
-.price-tick {
-  animation: priceTick 300ms ease-out;
-}
-
-/* Score bar fill — animate width on load */
-@keyframes barFill {
-  from { width: 0; }
-}
-.bar-fill-animate {
-  animation: barFill 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-/* Status dot pulse — for "live" indicators */
-@keyframes statusPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-.status-pulse {
-  animation: statusPulse 2s ease-in-out infinite;
-}
-
-/* Gate pass flash — brief green flash when a gate passes */
-@keyframes gatePass {
-  0% { background-color: rgba(46, 229, 157, 0.15); }
-  100% { background-color: transparent; }
-}
-.gate-pass-flash {
-  animation: gatePass 600ms ease-out;
-}
-
-/* Scan refresh indicator */
-@keyframes scanRefresh {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-.scan-refresh-spin {
-  animation: scanRefresh 1s linear;
-}
-
-/* Number counter entrance */
-@keyframes countUp {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.count-enter {
-  animation: countUp 250ms ease-out both;
-}
-
-/* Equity curve draw-in */
-@keyframes drawIn {
-  from { clip-path: inset(0 100% 0 0); }
-  to { clip-path: inset(0 0 0 0); }
-}
-.chart-draw-in {
-  animation: drawIn 800ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-}
-
-/* Sidebar drawer — smoother mobile slide */
-@keyframes drawerSlideIn {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(0); }
-}
-.drawer-enter {
-  animation: drawerSlideIn 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-}
-
-/* Reduced motion: disable all new animations too */
-@media (prefers-reduced-motion: reduce) {
-  .price-tick,
-  .bar-fill-animate,
-  .status-pulse,
-  .gate-pass-flash,
-  .scan-refresh-spin,
-  .count-enter,
-  .chart-draw-in,
-  .drawer-enter {
-    animation: none !important;
-  }
 }

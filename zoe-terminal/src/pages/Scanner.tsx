@@ -7,7 +7,7 @@ import {
   Snowflake, AlertTriangle, Zap, Eye,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { MODE } from '../lib/mode';
+import { useModeContext } from '../lib/mode';
 import { cn } from '../lib/utils';
 import IndicatorPanel from '../components/IndicatorPanel';
 import {
@@ -78,6 +78,7 @@ interface EnrichedCandidate {
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function Scanner() {
+  const { mode } = useModeContext();
   const [candidates, setCandidates] = useState<CandidateScan[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortMode, setSortMode] = useState<SortMode>('consensus');
@@ -96,12 +97,12 @@ export default function Scanner() {
         const { data: latest } = await supabase
           .from('candidate_scans')
           .select('created_at')
-          .eq('mode', MODE)
+          .eq('mode', mode)
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
 
-        if (!(latest as any)?.created_at) {
+        if (!latest?.created_at) {
           setCandidates([]);
           return;
         }
@@ -109,8 +110,8 @@ export default function Scanner() {
         const { data, error } = await supabase
           .from('candidate_scans')
           .select('*')
-          .eq('mode', MODE)
-          .eq('created_at', (latest as any).created_at)
+          .eq('mode', mode)
+          .eq('created_at', latest.created_at)
           .order('score', { ascending: false });
 
         if (error) throw error;
@@ -125,7 +126,7 @@ export default function Scanner() {
     fetchCandidates();
     const interval = setInterval(fetchCandidates, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [mode]);
 
   // Compute heat scores for all candidates
   const enriched: EnrichedCandidate[] = useMemo(() => {
