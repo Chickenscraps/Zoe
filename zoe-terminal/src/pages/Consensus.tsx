@@ -7,7 +7,7 @@ import {
   AlertTriangle, Zap,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { MODE } from '../lib/mode';
+import { useModeContext } from '../lib/mode';
 import { cn } from '../lib/utils';
 
 type CandidateScan = Database['public']['Tables']['candidate_scans']['Row'];
@@ -32,6 +32,7 @@ const CONSENSUS_STYLES: Record<string, { bg: string; text: string; border: strin
 };
 
 export default function Consensus() {
+  const { mode } = useModeContext();
   const [candidates, setCandidates] = useState<CandidateScan[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -42,12 +43,12 @@ export default function Consensus() {
         const { data: latest } = await supabase
           .from('candidate_scans')
           .select('created_at')
-          .eq('mode', MODE)
+          .eq('mode', mode)
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
 
-        if (!(latest as any)?.created_at) {
+        if (!latest?.created_at) {
           setCandidates([]);
           return;
         }
@@ -55,8 +56,8 @@ export default function Consensus() {
         const { data, error } = await supabase
           .from('candidate_scans')
           .select('*')
-          .eq('mode', MODE)
-          .eq('created_at', (latest as any).created_at)
+          .eq('mode', mode)
+          .eq('created_at', latest.created_at)
           .order('score', { ascending: false });
 
         if (error) throw error;
@@ -71,22 +72,22 @@ export default function Consensus() {
     fetchData();
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [mode]);
 
   if (loading) {
     return <div className="text-text-secondary animate-pulse p-8">Loading consensus engine data...</div>;
   }
 
   return (
-    <div className="space-y-10">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end border-b border-border pb-4 sm:pb-8 gap-3">
+    <div className="space-y-6 sm:space-y-10">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-2 border-b border-border pb-4 sm:pb-8">
         <div>
           <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tighter">Consensus Engine</h2>
           <p className="text-xs sm:text-sm text-text-muted mt-1 sm:mt-2 font-medium tracking-tight">
-            7-gate validation framework. All gates must align.
+            7-gate validation framework with kill switch. All gates must align for trade execution.
           </p>
         </div>
-        <div className="bg-surface-highlight/50 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl border border-border text-[10px] font-black text-white uppercase tracking-[0.2em]">
+        <div className="bg-surface-highlight/50 px-3 py-1.5 rounded-xl border border-border text-[9px] sm:text-[10px] font-black text-white uppercase tracking-[0.15em] sm:tracking-[0.2em]">
           {candidates[0]?.created_at ? `Scan: ${new Date(candidates[0].created_at).toLocaleTimeString()}` : 'Waiting...'}
         </div>
       </div>
@@ -120,7 +121,7 @@ export default function Consensus() {
 
           if (!consensus) {
             return (
-              <div key={candidate.id} className="card-premium p-6 opacity-50">
+              <div key={candidate.id} className="card-premium p-4 sm:p-6 opacity-50">
                 <div className="flex items-center gap-3">
                   <h3 className="text-xl font-black text-white tracking-tighter">{candidate.symbol}</h3>
                   <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">No consensus data</span>
@@ -133,11 +134,11 @@ export default function Consensus() {
           const ResultIcon = style.icon;
 
           return (
-            <div key={candidate.id} className="card-premium p-6 space-y-4">
+            <div key={candidate.id} className="card-premium p-4 sm:p-6 space-y-4">
               {/* Header */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <h3 className="text-xl font-black text-white tracking-tighter">{candidate.symbol}</h3>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
+                  <h3 className="text-lg sm:text-xl font-black text-white tracking-tighter">{candidate.symbol}</h3>
                   {regime && (
                     <span className={cn(
                       'text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border',

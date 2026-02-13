@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import {
   createChart,
+  HistogramSeries,
+  LineSeries,
   type IChartApi,
   type HistogramData,
   type LineData,
@@ -141,7 +143,7 @@ export default function MACDChart({
     const histogram = macdLine.map((v, i) => v - signalLine[i]);
 
     // MACD histogram as colored bars
-    const histSeries = (newChart as any).addHistogramSeries({
+    const histSeries = newChart.addSeries(HistogramSeries, {
       priceLineVisible: false,
       lastValueVisible: false,
     });
@@ -156,7 +158,7 @@ export default function MACDChart({
     histSeries.setData(histData);
 
     // MACD line
-    const macdSeries = (newChart as any).addLineSeries({
+    const macdSeries = newChart.addSeries(LineSeries, {
       color: 'rgba(100, 149, 237, 0.9)',
       lineWidth: 1,
       priceLineVisible: false,
@@ -170,7 +172,7 @@ export default function MACDChart({
     macdSeries.setData(macdData);
 
     // Signal line
-    const signalSeries = (newChart as any).addLineSeries({
+    const signalSeries = newChart.addSeries(LineSeries, {
       color: 'rgba(255, 165, 0, 0.7)',
       lineWidth: 1,
       lineStyle: LineStyle.Dashed,

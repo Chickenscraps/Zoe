@@ -40,7 +40,7 @@ export default function ShareTrade() {
         const { data, error } = await supabase
           .from('trades')
           .select('*')
-          .eq('id', id)
+          .eq('trade_id', id)
           .single();
 
         if (error) throw error;

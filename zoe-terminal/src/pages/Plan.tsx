@@ -5,13 +5,14 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { cn, formatCurrency } from '../lib/utils';
 import { Lock, FileEdit, CheckCircle, Target, Zap, ShieldCheck, DollarSign, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { MODE } from '../lib/mode';
+import { useModeContext } from '../lib/mode';
 import { useDashboardData } from '../hooks/useDashboardData';
 
 type PlanItem = Database['public']['Tables']['daily_gameplan_items']['Row'];
 type CandidateScan = Database['public']['Tables']['candidate_scans']['Row'];
 
 export default function Plan() {
+  const { mode } = useModeContext();
   const [activeTab, setActiveTab] = useState<'draft' | 'refined' | 'locked'>('locked');
   const [planItems, setPlanItems] = useState<PlanItem[]>([]);
   const [candidates, setCandidates] = useState<CandidateScan[]>([]);
@@ -65,7 +66,7 @@ export default function Plan() {
           const { data: scans, error: scanError } = await supabase
             .from('candidate_scans')
             .select('*')
-            .eq('mode', MODE)
+            .eq('mode', mode)
             .order('created_at', { ascending: false })
             .limit(12);
 
@@ -80,7 +81,7 @@ export default function Plan() {
     };
 
     fetchPlan();
-  }, []);
+  }, [mode]);
 
   // Derive "plan rows" from scanner candidates when no curated plan exists
   const scannerRows = useMemo(() => {
@@ -107,7 +108,7 @@ export default function Plan() {
 
   const cashAvailable = cryptoCash?.cash_available ?? 0;
   const buyingPower = cryptoCash?.buying_power ?? 0;
-  const notionalUsed = (dailyNotional as any)?.notional_used ?? 0;
+  const notionalUsed = dailyNotional?.notional_used ?? 0;
 
   // Curated gameplan columns
   const planColumns: ColumnDef<PlanItem>[] = [
@@ -129,25 +130,25 @@ export default function Plan() {
   const isLoading = loading || dashLoading;
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6 sm:space-y-10">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end border-b border-border pb-4 sm:pb-8 gap-3">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-2 border-b border-border pb-4 sm:pb-8">
         <div>
           <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tighter">Autonomous Gameplan</h2>
           <p className="text-xs sm:text-sm text-text-muted mt-1 sm:mt-2 font-medium tracking-tight">
             {source === 'gameplan'
-              ? 'System-generated strategy.'
-              : 'Live scanner intelligence.'}
+              ? 'System-generated strategy for the current session.'
+              : 'Live strategy derived from scanner intelligence.'}
           </p>
         </div>
-        <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+        <div className="flex items-center gap-2 sm:gap-4">
           {source === 'scanner' && (
-            <span className="text-[10px] font-black text-profit uppercase tracking-[0.2em] bg-profit/10 px-3 py-1.5 rounded-full border border-profit/20">
+            <span className="text-[9px] sm:text-[10px] font-black text-profit uppercase tracking-[0.15em] sm:tracking-[0.2em] bg-profit/10 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-profit/20">
               Live Scanner
             </span>
           )}
-          <div className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">
-            {new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+          <div className="text-[9px] sm:text-[10px] font-black text-text-muted uppercase tracking-[0.15em] sm:tracking-[0.2em] hidden sm:block">
+            {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </div>
         </div>
       </div>
@@ -155,41 +156,41 @@ export default function Plan() {
       {/* KPI Strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="card-premium p-3 sm:p-5 flex items-center gap-3 sm:gap-4">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-profit/10 flex items-center justify-center shrink-0">
-            <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-profit" />
+          <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-xl bg-profit/10 flex items-center justify-center flex-shrink-0">
+            <DollarSign className="w-4 sm:w-5 h-4 sm:h-5 text-profit" />
           </div>
           <div className="min-w-0">
             <div className="text-[9px] sm:text-[10px] font-black text-text-muted uppercase tracking-[0.15em]">Cash</div>
             <div className="text-sm sm:text-lg font-black text-white tracking-tight tabular-nums truncate">{formatCurrency(cashAvailable)}</div>
           </div>
         </div>
-        <div className="card-premium p-5 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
-            <TrendingUp className="w-5 h-5 text-white/60" />
+        <div className="card-premium p-3 sm:p-5 flex items-center gap-3 sm:gap-4">
+          <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0">
+            <TrendingUp className="w-4 sm:w-5 h-4 sm:h-5 text-white/60" />
           </div>
-          <div>
-            <div className="text-[10px] font-black text-text-muted uppercase tracking-[0.15em]">Buying Power</div>
-            <div className="text-lg font-black text-white tracking-tight tabular-nums">{formatCurrency(buyingPower)}</div>
+          <div className="min-w-0">
+            <div className="text-[9px] sm:text-[10px] font-black text-text-muted uppercase tracking-[0.15em]">Buying Pwr</div>
+            <div className="text-sm sm:text-lg font-black text-white tracking-tight tabular-nums truncate">{formatCurrency(buyingPower)}</div>
           </div>
         </div>
-        <div className="card-premium p-5 flex items-center gap-4">
-          <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", realizedPnl >= 0 ? "bg-profit/10" : "bg-loss/10")}>
-            <DollarSign className={cn("w-5 h-5", realizedPnl >= 0 ? "text-profit" : "text-loss")} />
+        <div className="card-premium p-3 sm:p-5 flex items-center gap-3 sm:gap-4">
+          <div className={cn("w-8 sm:w-10 h-8 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0", realizedPnl >= 0 ? "bg-profit/10" : "bg-loss/10")}>
+            <DollarSign className={cn("w-4 sm:w-5 h-4 sm:h-5", realizedPnl >= 0 ? "text-profit" : "text-loss")} />
           </div>
-          <div>
-            <div className="text-[10px] font-black text-text-muted uppercase tracking-[0.15em]">Realized P&L</div>
-            <div className={cn("text-lg font-black tracking-tight tabular-nums", realizedPnl >= 0 ? "text-profit" : "text-loss")}>
+          <div className="min-w-0">
+            <div className="text-[9px] sm:text-[10px] font-black text-text-muted uppercase tracking-[0.15em]">P&L</div>
+            <div className={cn("text-sm sm:text-lg font-black tracking-tight tabular-nums truncate", realizedPnl >= 0 ? "text-profit" : "text-loss")}>
               {formatCurrency(realizedPnl)}
             </div>
           </div>
         </div>
-        <div className="card-premium p-5 flex items-center gap-4">
-          <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", healthSummary.status === 'LIVE' ? "bg-profit/10" : "bg-warning/10")}>
-            <ShieldCheck className={cn("w-5 h-5", healthSummary.status === 'LIVE' ? "text-profit" : "text-warning")} />
+        <div className="card-premium p-3 sm:p-5 flex items-center gap-3 sm:gap-4">
+          <div className={cn("w-8 sm:w-10 h-8 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0", healthSummary.status === 'LIVE' ? "bg-profit/10" : "bg-warning/10")}>
+            <ShieldCheck className={cn("w-4 sm:w-5 h-4 sm:h-5", healthSummary.status === 'LIVE' ? "text-profit" : "text-warning")} />
           </div>
-          <div>
-            <div className="text-[10px] font-black text-text-muted uppercase tracking-[0.15em]">System Status</div>
-            <div className={cn("text-lg font-black tracking-tight", healthSummary.status === 'LIVE' ? "text-profit" : "text-warning")}>
+          <div className="min-w-0">
+            <div className="text-[9px] sm:text-[10px] font-black text-text-muted uppercase tracking-[0.15em]">Status</div>
+            <div className={cn("text-sm sm:text-lg font-black tracking-tight truncate", healthSummary.status === 'LIVE' ? "text-profit" : "text-warning")}>
               {healthSummary.status}
             </div>
           </div>
@@ -197,7 +198,7 @@ export default function Plan() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-4 sm:gap-8 border-b border-border/50 overflow-x-auto scroll-smooth-mobile">
+      <div className="flex gap-4 sm:gap-8 border-b border-border/50 overflow-x-auto">
         {[
           { id: 'draft' as const, label: 'Draft', icon: FileEdit },
           { id: 'refined' as const, label: 'Refined', icon: CheckCircle },
@@ -207,11 +208,11 @@ export default function Plan() {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "pb-3 sm:pb-4 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 border-b-2 transition-all duration-300 whitespace-nowrap min-h-[44px]",
+              "pb-4 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 border-b-2 transition-all duration-300",
               activeTab === tab.id ? "border-profit text-white" : "border-transparent text-text-muted hover:text-text-secondary"
             )}
           >
-            <tab.icon className={cn("w-4 h-4 sm:w-3.5 sm:h-3.5", activeTab === tab.id ? "text-profit" : "")} /> {tab.label}
+            <tab.icon className={cn("w-3.5 h-3.5", activeTab === tab.id ? "text-profit" : "")} /> {tab.label}
           </button>
         ))}
       </div>

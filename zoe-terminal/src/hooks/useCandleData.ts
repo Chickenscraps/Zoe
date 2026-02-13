@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { MODE } from '../lib/mode';
+import { useModeContext } from '../lib/mode';
 import type { Database } from '../lib/types';
 
 type CandleRow = Database['public']['Tables']['crypto_candles']['Row'];
+type CandidateScan = Database['public']['Tables']['candidate_scans']['Row'];
 
 export interface CandleData {
   time: number; // Unix timestamp
@@ -98,8 +99,10 @@ export interface ChartAnalysis {
 }
 
 export function useCandleData(symbol: string, timeframe: string = '1h') {
+  const { mode } = useModeContext();
   const [candles, setCandles] = useState<CandleData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<ChartAnalysis>({
     patterns: [],
     mtfAlignment: null,
@@ -117,13 +120,14 @@ export function useCandleData(symbol: string, timeframe: string = '1h') {
 
   const fetchCandles = useCallback(async () => {
     try {
+      setError(null);
       // Fetch candles from Supabase
       const { data, error } = await supabase
         .from('crypto_candles')
         .select('*')
         .eq('symbol', symbol)
         .eq('timeframe', timeframe)
-        .eq('mode', MODE)
+        .eq('mode', mode)
         .order('open_time', { ascending: true })
         .limit(100);
 
@@ -146,13 +150,13 @@ export function useCandleData(symbol: string, timeframe: string = '1h') {
         .from('candidate_scans')
         .select('info')
         .eq('symbol', symbol)
-        .eq('mode', MODE)
+        .eq('mode', mode)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if ((scanData as any)?.info) {
-        const info = (scanData as any).info as any;
+      if (scanData?.info) {
+        const info = scanData.info as any;
         setAnalysis({
           patterns: info.patterns ?? [],
           mtfAlignment: info.mtf_alignment ?? null,
@@ -169,11 +173,13 @@ export function useCandleData(symbol: string, timeframe: string = '1h') {
         });
       }
     } catch (err) {
-      console.error('Error fetching candle data:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('Error fetching candle data:', msg);
+      setError(msg);
     } finally {
       setLoading(false);
     }
-  }, [symbol, timeframe]);
+  }, [symbol, timeframe, mode]);
 
   useEffect(() => {
     setLoading(true);
@@ -182,5 +188,5 @@ export function useCandleData(symbol: string, timeframe: string = '1h') {
     return () => clearInterval(interval);
   }, [fetchCandles]);
 
-  return { candles, loading, analysis, refetch: fetchCandles };
+  return { candles, loading, error, analysis, refetch: fetchCandles };
 }

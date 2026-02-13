@@ -1,9 +1,10 @@
-import { DataTable } from '../components/DataTable';
-import type { ColumnDef } from '@tanstack/react-table';
 import { useMemo } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
+import { DataTable } from './DataTable';
 import { formatCurrency, formatPercentage } from '../lib/utils';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { FEE_RATE_PER_SIDE } from '../lib/constants';
+import { Briefcase } from 'lucide-react';
 
 interface PositionRow {
   symbol: string;
@@ -15,7 +16,13 @@ interface PositionRow {
   unrealized_pnl: number;
 }
 
-export default function Positions() {
+interface PositionsTableProps {
+  /** Hide the section header — useful when embedding inside another card */
+  hideHeader?: boolean;
+  className?: string;
+}
+
+export function PositionsTable({ hideHeader, className }: PositionsTableProps) {
   const { holdingsRows, livePrices, cryptoFills } = useDashboardData();
 
   // Build position rows from holdings + live prices
@@ -83,9 +90,9 @@ export default function Positions() {
       cell: info => <span className="tabular-nums">{formatCurrency(info.getValue() as number)}</span>
     },
     {
-        header: 'Market Value',
-        accessorKey: 'market_value',
-        cell: info => <span className="text-text-primary font-medium tabular-nums">{formatCurrency(info.getValue() as number)}</span>
+      header: 'Market Value',
+      accessorKey: 'market_value',
+      cell: info => <span className="text-text-primary font-medium tabular-nums">{formatCurrency(info.getValue() as number)}</span>
     },
     {
       header: 'P&L (%)',
@@ -114,23 +121,28 @@ export default function Positions() {
   ], []);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-         <h2 className="text-xl font-semibold text-white">Open Positions</h2>
-         <div className="text-sm text-text-secondary">
-            {positions.length} active trade{positions.length !== 1 ? 's' : ''}
-         </div>
-      </div>
+    <div className={className}>
+      {!hideHeader && (
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+            <Briefcase className="w-3 h-3 text-profit" /> Open Positions
+          </h3>
+          <span className="text-[9px] font-bold text-text-dim uppercase tracking-widest">
+            {positions.length} active
+          </span>
+        </div>
+      )}
 
       {positions.length > 0 ? (
         <DataTable
           columns={columns}
           data={positions}
+          emptyMessage="No open positions"
         />
       ) : (
-        <div className="card-premium p-12 text-center">
-          <p className="text-text-dim text-sm">No open positions</p>
-          <p className="text-text-dim text-xs mt-1">Positions will appear when the bot executes trades</p>
+        <div className="card-premium p-8 text-center">
+          <p className="text-text-dim text-xs">No open positions</p>
+          <p className="text-text-dim/60 text-[9px] mt-1">Positions will appear when the bot executes trades</p>
         </div>
       )}
     </div>

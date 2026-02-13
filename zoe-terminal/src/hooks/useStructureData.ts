@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Database } from "../lib/types";
 import { supabase } from "../lib/supabaseClient";
+import { useModeContext } from "../lib/mode";
 
 type MarketPivot = Database["public"]["Tables"]["market_pivots"]["Row"];
 type TechnicalTrendline = Database["public"]["Tables"]["technical_trendlines"]["Row"];
@@ -25,6 +26,7 @@ export interface StructureFilters {
 }
 
 export function useStructureData(filters: StructureFilters = {}) {
+  const { mode } = useModeContext();
   const [pivots, setPivots] = useState<MarketPivot[]>([]);
   const [trendlines, setTrendlines] = useState<TechnicalTrendline[]>([]);
   const [levels, setLevels] = useState<TechnicalLevel[]>([]);
@@ -32,22 +34,26 @@ export function useStructureData(filters: StructureFilters = {}) {
   const [bounceEvents, setBounceEvents] = useState<BounceEvent[]>([]);
   const [bounceIntents, setBounceIntents] = useState<BounceIntent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchData = useCallback(async (isInitial = false) => {
     try {
       if (isInitial) setLoading(true);
+      setError(null);
 
-      // Build filtered queries
+      // Build filtered queries (always scoped to current mode)
       let pivotQuery = supabase
         .from("market_pivots")
         .select("*")
+        .eq("mode", mode)
         .order("timestamp", { ascending: false })
         .limit(100);
 
       let trendlineQuery = supabase
         .from("technical_trendlines")
         .select("*")
+        .eq("mode", mode)
         .eq("is_active", true)
         .order("score", { ascending: false })
         .limit(50);
@@ -55,6 +61,7 @@ export function useStructureData(filters: StructureFilters = {}) {
       let levelQuery = supabase
         .from("technical_levels")
         .select("*")
+        .eq("mode", mode)
         .eq("is_active", true)
         .order("score", { ascending: false })
         .limit(50);
@@ -62,18 +69,21 @@ export function useStructureData(filters: StructureFilters = {}) {
       let eventQuery = supabase
         .from("structure_events")
         .select("*")
+        .eq("mode", mode)
         .order("ts", { ascending: false })
         .limit(30);
 
       let bounceEventQuery = supabase
         .from("bounce_events")
         .select("*")
+        .eq("mode", mode)
         .order("ts", { ascending: false })
         .limit(30);
 
       let bounceIntentQuery = supabase
         .from("bounce_intents")
         .select("*")
+        .eq("mode", mode)
         .order("ts", { ascending: false })
         .limit(20);
 
@@ -117,12 +127,14 @@ export function useStructureData(filters: StructureFilters = {}) {
       setStructureEvents((eventRes.data ?? []) as StructureEvent[]);
       setBounceEvents((bounceEventRes.data ?? []) as BounceEvent[]);
       setBounceIntents((bounceIntentRes.data ?? []) as BounceIntent[]);
-    } catch (error) {
-      console.error("Error fetching structure data:", error);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("Error fetching structure data:", msg);
+      setError(msg);
     } finally {
       if (isInitial) setLoading(false);
     }
-  }, [filters.symbol, filters.timeframe]);
+  }, [filters.symbol, filters.timeframe, mode]);
 
   useEffect(() => {
     fetchData(true);
@@ -141,5 +153,6 @@ export function useStructureData(filters: StructureFilters = {}) {
     bounceEvents,
     bounceIntents,
     loading,
+    error,
   };
 }

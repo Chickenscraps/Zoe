@@ -83,7 +83,7 @@ function TradeToastItem({ toast, onDismiss, duration = 6000 }: TradeToastProps) 
   return (
     <div
       className={cn(
-        "relative w-80 border rounded-cards p-4 backdrop-blur-xl transition-all duration-300",
+        "relative w-[calc(100vw-2rem)] sm:w-80 border rounded-cards p-4 backdrop-blur-xl transition-all duration-300",
         "bg-surface/90",
         config.borderColor,
         config.glowColor,
@@ -187,7 +187,7 @@ export function TradeToastContainer({
   }, [apiRef, push]);
 
   return (
-    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 pointer-events-none">
+    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[9999] flex flex-col gap-3 pointer-events-none">
       {toasts.map((toast) => (
         <div key={toast.id} className="pointer-events-auto">
           <TradeToastItem toast={toast} onDismiss={dismiss} />

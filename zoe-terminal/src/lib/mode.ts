@@ -1,20 +1,26 @@
 /**
- * Build-time mode lock. Set via VITE_MODE_LOCK env var.
- * Paper = simulated data only. Live = real broker data.
- * There is no runtime toggle — mode is frozen at build time.
+ * Mode types and context re-exports.
+ *
+ * Runtime mode is managed by ModeContext (React context + localStorage).
+ * Use `useModeContext()` in components/hooks for reactive mode switching.
+ *
+ * Legacy: MODE/isPaper/isLive are kept as static defaults for non-React code
+ * (e.g. module-level initialization). They reflect the initial mode only
+ * and will NOT update when the user toggles mode at runtime.
  */
 
-export type TradingMode = 'paper' | 'live';
+export type { TradingMode } from './ModeContext';
+export { useModeContext, ModeProvider } from './ModeContext';
 
-const raw = import.meta.env.VITE_MODE_LOCK ?? 'paper';
-export const MODE: TradingMode = raw === 'live' ? 'live' : 'paper';
+// Static fallback for non-React contexts (initial value only, does not update)
+const raw = typeof localStorage !== 'undefined'
+  ? localStorage.getItem('zoe_mode')
+  : null;
+const envMode = import.meta.env.VITE_MODE_LOCK;
+
+export const MODE = (raw === 'live' || raw === 'paper')
+  ? raw
+  : (envMode === 'paper' ? 'paper' : 'live') as 'paper' | 'live';
 
 export const isPaper = MODE === 'paper';
 export const isLive = MODE === 'live';
-
-/** Guard: throws if mode is not paper (for dev/write operations). */
-export function requirePaperForWrite(): void {
-  if (!isPaper) {
-    throw new Error('Write operations are only allowed in paper mode');
-  }
-}

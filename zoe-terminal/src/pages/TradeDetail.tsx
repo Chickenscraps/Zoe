@@ -4,6 +4,7 @@ import { StatusChip } from '../components/StatusChip';
 import { formatCurrency, formatDate } from '../lib/utils';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { useModeContext } from '../lib/mode';
 
 interface TradeDetailData {
   trade_id: string;
@@ -25,6 +26,7 @@ interface TradeDetailData {
 export default function TradeDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { mode } = useModeContext();
   const [trade, setTrade] = useState<TradeDetailData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,6 +39,7 @@ export default function TradeDetail() {
           .from('trades')
           .select('*')
           .eq('trade_id', id)
+          .eq('mode', mode)
           .single();
 
         if (error) throw error;
@@ -66,7 +69,7 @@ export default function TradeDetail() {
       }
     }
     fetchTrade();
-  }, [id]);
+  }, [id, mode]);
 
   if (loading) {
     return <div className="text-text-secondary animate-pulse p-8">Loading trade...</div>;
@@ -95,11 +98,11 @@ export default function TradeDetail() {
       </button>
 
       {/* Header */}
-      <div className="bg-surface border border-border rounded-lg p-4 sm:p-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-3 min-w-0">
+      <div className="bg-surface border border-border rounded-lg p-6">
+        <div className="flex justify-between items-start min-w-0">
             <div>
                 <div className="flex items-center gap-3 mb-2">
-                    <h1 className="text-2xl sm:text-3xl font-semibold text-white">{trade.symbol}</h1>
+                    <h1 className="text-3xl font-semibold text-white">{trade.symbol}</h1>
                     <StatusChip status={trade.outcome === 'win' ? 'ok' : trade.outcome === 'loss' ? 'error' : 'neutral'} label={trade.outcome.toUpperCase()} />
                 </div>
                 <div className="flex gap-4 text-sm text-text-secondary">
@@ -107,8 +110,8 @@ export default function TradeDetail() {
                     <span>{formatDate(trade.opened_at)}</span>
                 </div>
             </div>
-            <div className="sm:text-right">
-                <div className={`text-2xl sm:text-3xl font-semibold ${trade.realized_pnl >= 0 ? 'text-profit' : 'text-loss'}`}>
+            <div className="text-right">
+                <div className={`text-3xl font-semibold ${trade.realized_pnl >= 0 ? 'text-profit' : 'text-loss'}`}>
                     {formatCurrency(trade.realized_pnl)}
                 </div>
                 <div className="text-sm text-text-secondary">Realized P&L</div>
@@ -116,15 +119,14 @@ export default function TradeDetail() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-          <div className="md:col-span-2 space-y-4 sm:space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-2 space-y-6">
               {trade.legs.length > 0 && (
               <div className="bg-surface border border-border rounded-lg overflow-hidden">
                   <div className="px-4 py-3 border-b border-border bg-surface-highlight/50">
                       <h3 className="font-medium text-sm">Legs</h3>
                   </div>
-                  <div className="overflow-x-auto scroll-smooth-mobile">
-                  <table className="w-full text-sm text-left min-w-[400px]">
+                  <table className="w-full text-sm text-left">
                       <thead className="text-xs text-text-secondary uppercase bg-surface-highlight/20">
                           <tr>
                               <th className="px-4 py-2">Type</th>
@@ -146,7 +148,6 @@ export default function TradeDetail() {
                           ))}
                       </tbody>
                   </table>
-                  </div>
               </div>
               )}
 
@@ -166,8 +167,8 @@ export default function TradeDetail() {
                   </h3>
                   <div className="space-y-4">
                       {trade.timeline.map((event: any, i: number) => (
-                          <div key={i} className="flex gap-3 sm:gap-4">
-                              <div className="w-16 sm:w-24 text-[10px] sm:text-xs text-text-secondary shrink-0 pt-1">
+                          <div key={i} className="flex gap-4">
+                              <div className="w-24 text-xs text-text-secondary shrink-0 pt-1">
                                   {event.time ? formatDate(event.time).split(',')[1] : ''}
                               </div>
                               <div className="flex-1 pb-4 border-l border-border pl-4 relative">

@@ -75,9 +75,19 @@ export default function IndicatorPanel({
   divergences,
   goldenDeathCross,
 }: IndicatorPanelProps) {
+  const hasAnyData = macd || bollinger || consensus || regime || goldenDeathCross || (divergences && divergences.length > 0);
+
   return (
-    <div className="card-premium p-6 space-y-4">
-      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Advanced Indicators</h3>
+    <div className="bg-surface border border-border rounded-xl overflow-hidden">
+      <div className="px-6 py-4 border-b border-border bg-surface-highlight/20 flex items-center gap-2">
+        <Activity className="w-4 h-4 text-text-muted" />
+        <h3 className="font-bold text-sm">Advanced Indicators</h3>
+      </div>
+      <div className="p-6 space-y-4">
+
+      {!hasAnyData && (
+        <p className="text-sm text-text-muted/60 italic">Indicator data not yet available. Candles need to accumulate.</p>
+      )}
 
       {/* MACD */}
       {macd && (
@@ -235,6 +245,7 @@ export default function IndicatorPanel({
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }
