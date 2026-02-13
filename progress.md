@@ -111,3 +111,44 @@
 - **Overview.tsx**: Integrated `<FocusPanel />` above legacy "Live Prices" section
 
 ---
+
+## Phase 3 — Accounting Overhaul
+**Status**: Complete
+**Date**: 2026-02-13
+
+### 3a — FIFO Cost-Basis Matcher (`services/accounting/fifo_matcher.py`)
+- `FIFOMatcher`: processes fills chronologically, maintains open lots per symbol
+- On sell: pops oldest buy lots (FIFO), computes `realized = (sell - buy) * qty - fees`
+- Methods: `get_realized_pnl()`, `get_unrealized_pnl(sym, mark)`, `get_cost_basis()`, `get_open_qty()`
+- `from_fills()` class method builds matcher from fill dicts
+
+### 3b — Equity Calculator (`services/accounting/equity_calculator.py`)
+- `EquityCalculator`: MTM portfolio valuation using focus snapshot marks
+- `compute()` returns `EquityBreakdown`: cash, crypto_value, total_equity, realized/unrealized P&L, fees
+- `PositionMark`: per-position detail (qty, cost_basis, mark_price, market_value, unrealized_pnl)
+- Falls back to exchange REST for marks not in focus snapshots
+
+### 3c — Fee Tracker + Cash Event Ledger
+- **fee_tracker.py**: `FeeTracker` — persists per-fill fees to `fee_ledger` table, queries by symbol/mode
+- **cash_event_ledger.py**: `CashEventLedger` — records deposits/withdrawals to `cash_events` table, net deposits calculation
+- **mark_to_market.py**: `MarkToMarket` — reads mark prices from focus snapshots with staleness detection
+
+### 3d — Database Migration (`migrations/20260213_accounting_tables.sql`)
+- Extended `crypto_fills`: +broker_fee, fee_currency, broker_fill_id, exchange columns
+- New `cash_events` table: deposits/withdrawals with event_type, amount, currency
+- New `fee_ledger` table: per-fill fee attribution with fill_id unique constraint
+- Extended `pnl_daily`: +fees_paid, gross_equity, net_equity, net_deposits, crypto_value, cash_usd
+
+### 3e — Backend Integration
+- **orchestrator.py** `_write_pnl_snapshot()`: now uses FIFOMatcher for realized P&L + focus snapshot marks for unrealized P&L
+- **account_state.py**: new `cash_usd`, `crypto_value` properties; `_fetch_crypto_mark_value()` reads focus snapshots; equity = cash + crypto MTM
+- **runner.py**: wires Supabase client into AccountState for mark-to-market lookups
+- **trader.py** `_write_pnl_snapshot()`: uses FIFOMatcher + focus marks for enriched pnl_daily rows
+- **repository.py** + **supabase_repository.py**: added `get_fills()` method
+
+### 3f — Dashboard Updates
+- **useDashboardData.ts**: sources realized/unrealized/fees from pnl_daily enriched columns; falls back to client-side FIFO; exports `unrealizedPnl`, `totalFees`
+- **types.ts**: extended pnl_daily (+fees_paid, crypto_value, cash_usd), crypto_fills (+broker_fee, exchange), added cash_events and fee_ledger types
+- **Overview.tsx**: new P&L breakdown row with Realized P&L, Unrealized P&L, and Fees Paid KPI cards
+
+---

@@ -44,6 +44,12 @@ export interface Database {
           realized_pnl: number;
           unrealized_pnl: number;
           mode: "paper" | "live";
+          fees_paid: number;
+          gross_equity: number | null;
+          net_equity: number | null;
+          net_deposits: number;
+          crypto_value: number;
+          cash_usd: number;
         };
       };
       candidate_scans: {
@@ -170,6 +176,10 @@ export interface Database {
           executed_at: string;
           raw_fill: Json;
           mode: "paper" | "live";
+          broker_fee: number;
+          fee_currency: string;
+          broker_fill_id: string | null;
+          exchange: string;
         };
       };
       crypto_holdings_snapshots: {
@@ -515,6 +525,31 @@ export interface Database {
           promoted_at: string;
           expires_at: string | null;
           metadata: Json;
+        };
+      };
+      cash_events: {
+        Row: {
+          id: string;
+          event_type: "deposit" | "withdrawal" | "transfer_in" | "transfer_out";
+          amount: number;
+          currency: string;
+          description: string;
+          external_ref: string;
+          created_at: string;
+          mode: "paper" | "live";
+        };
+      };
+      fee_ledger: {
+        Row: {
+          id: string;
+          fill_id: string;
+          order_id: string;
+          symbol: string;
+          fee_amount: number;
+          fee_currency: string;
+          fee_type: "trading" | "withdrawal" | "deposit" | "other";
+          created_at: string;
+          mode: "paper" | "live";
         };
       };
     };

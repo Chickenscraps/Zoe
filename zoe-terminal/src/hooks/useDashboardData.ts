@@ -116,7 +116,7 @@ export function useDashboardData(discordId: string = "292890243852664855") {
           .maybeSingle(),
         supabase
           .from("pnl_daily")
-          .select("date, equity, daily_pnl")
+          .select("date, equity, daily_pnl, realized_pnl, unrealized_pnl, fees_paid, crypto_value, cash_usd")
           .eq("mode", mode)
           .order("date", { ascending: true })
           .limit(90),
@@ -218,17 +218,27 @@ export function useDashboardData(discordId: string = "292890243852664855") {
     }));
   }, [cryptoHoldings]);
 
-  const realizedPnl = useMemo(() => {
-    // Compute realized P&L from matched buy→sell round-trips only.
-    // Build cost basis per symbol from buys, then calculate profit on sells.
+  // P&L: prefer backend FIFO-matched values from pnl_daily, fall back to client-side
+  const { realizedPnl, unrealizedPnl, totalFees } = useMemo(() => {
+    const latestPnl = pnlDaily.length > 0 ? pnlDaily[pnlDaily.length - 1] : null;
+    if (latestPnl && (latestPnl.realized_pnl !== 0 || latestPnl.unrealized_pnl !== 0)) {
+      return {
+        realizedPnl: latestPnl.realized_pnl,
+        unrealizedPnl: latestPnl.unrealized_pnl,
+        totalFees: latestPnl.fees_paid ?? 0,
+      };
+    }
+
+    // Fallback: client-side FIFO from fills
     const costBasis: Record<string, { totalCost: number; totalQty: number }> = {};
-    // Sort by executed_at ascending so we process buys before sells
     const sorted = [...cryptoFills].sort((a, b) =>
       (a.executed_at ?? "").localeCompare(b.executed_at ?? "")
     );
     let realized = 0;
+    let fees = 0;
     for (const fill of sorted) {
       const sym = fill.symbol;
+      fees += fill.fee;
       if (fill.side === "buy") {
         if (!costBasis[sym]) costBasis[sym] = { totalCost: 0, totalQty: 0 };
         costBasis[sym].totalCost += fill.qty * fill.price + fill.fee;
@@ -240,7 +250,6 @@ export function useDashboardData(discordId: string = "292890243852664855") {
           const sellProceeds = fill.qty * fill.price - fill.fee;
           const costOfSold = fill.qty * avgCost;
           realized += sellProceeds - costOfSold;
-          // Reduce basis by qty sold
           basis.totalCost -= costOfSold;
           basis.totalQty -= fill.qty;
           if (basis.totalQty <= 0) {
@@ -248,13 +257,12 @@ export function useDashboardData(discordId: string = "292890243852664855") {
             basis.totalQty = 0;
           }
         } else {
-          // No buy basis found — treat sell proceeds minus fee as pure realized
           realized += fill.qty * fill.price - fill.fee;
         }
       }
     }
-    return realized;
-  }, [cryptoFills]);
+    return { realizedPnl: realized, unrealizedPnl: 0, totalFees: fees };
+  }, [cryptoFills, pnlDaily]);
 
   // Build equity history from cash snapshots at 5-minute granularity.
   // Each snapshot keeps its full timestamp (bucketed to nearest 5 min).
@@ -329,6 +337,8 @@ export function useDashboardData(discordId: string = "292890243852664855") {
     dailyNotional,
     pnlDaily,
     realizedPnl,
+    unrealizedPnl,
+    totalFees,
     equityHistory,
     initialDeposit,
     livePrices,

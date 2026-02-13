@@ -1,4 +1,4 @@
-import { Coins, DollarSign, TrendingUp, Wallet } from "lucide-react";
+import { Coins, DollarSign, Receipt, TrendingUp, Wallet } from "lucide-react";
 import { EquityChart } from "../components/EquityChart";
 import FocusPanel from "../components/FocusPanel";
 import { KPICard } from "../components/KPICard";
@@ -16,6 +16,9 @@ export default function Overview() {
     livePrices,
     equityHistory,
     initialDeposit,
+    realizedPnl,
+    unrealizedPnl,
+    totalFees,
     loading,
   } = useDashboardData();
 
@@ -100,6 +103,42 @@ export default function Overview() {
           style={{ '--stagger-delay': '160ms' } as React.CSSProperties}
         />
       </div>
+
+      {/* P&L Breakdown */}
+      {(realizedPnl !== 0 || unrealizedPnl !== 0 || totalFees > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+          <KPICard
+            label="Realized P&L"
+            value={`${realizedPnl >= 0 ? '+' : ''}${formatCurrency(realizedPnl)}`}
+            subValue="Closed Positions (FIFO)"
+            trend={realizedPnl !== 0 ? (realizedPnl >= 0 ? "Profit" : "Loss") : "—"}
+            trendDir={realizedPnl >= 0 ? 'up' : 'down'}
+            icon={TrendingUp}
+            className="card-stagger"
+            style={{ '--stagger-delay': '0ms' } as React.CSSProperties}
+          />
+          <KPICard
+            label="Unrealized P&L"
+            value={`${unrealizedPnl >= 0 ? '+' : ''}${formatCurrency(unrealizedPnl)}`}
+            subValue="Open Positions (MTM)"
+            trend={unrealizedPnl !== 0 ? (unrealizedPnl >= 0 ? "Paper Gain" : "Paper Loss") : "—"}
+            trendDir={unrealizedPnl >= 0 ? 'up' : 'down'}
+            icon={Coins}
+            className="card-stagger"
+            style={{ '--stagger-delay': '80ms' } as React.CSSProperties}
+          />
+          <KPICard
+            label="Fees Paid"
+            value={formatCurrency(totalFees)}
+            subValue="Trading Fees"
+            trend={totalFees > 0 ? "Total Cost" : "—"}
+            trendDir="neutral"
+            icon={Receipt}
+            className="card-stagger"
+            style={{ '--stagger-delay': '160ms' } as React.CSSProperties}
+          />
+        </div>
+      )}
 
       {/* Open Positions */}
       <PositionsTable />

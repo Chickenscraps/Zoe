@@ -565,10 +565,10 @@ class EdgeFactoryOrchestrator:
             logger.warning("Holdings snapshot write failed: %s", e)
 
     async def _write_pnl_snapshot(self) -> None:
-        """Upsert daily P&L row to Supabase.
+        """Upsert daily P&L row to Supabase with FIFO-matched realized/unrealized P&L.
 
-        The dashboard reads pnl_daily as a fallback equity chart and
-        for the P&L panel. Without this, live mode shows no P&L data.
+        Uses FIFOMatcher for proper cost-basis tracking and mark-to-market
+        unrealized P&L from market_snapshot_focus prices.
         Writes every 10th tick (~10 min) since it's a daily-granularity upsert.
         """
         sb = getattr(self, '_supabase', None)
@@ -579,40 +579,69 @@ class EdgeFactoryOrchestrator:
         if self._tick_count != 1 and self._tick_count % 10 != 0:
             return
 
-        equity = (
+        from services.accounting.fifo_matcher import FIFOMatcher
+
+        cash_usd = (
             self.account_state.equity if self.account_state is not None
             else self.config.account_equity
         )
 
-        # Calculate realized P&L from fills
+        # Build FIFO matcher from all fills
         realized_pnl = 0.0
+        unrealized_pnl = 0.0
+        total_fees = 0.0
+        crypto_value = 0.0
         try:
-            resp = sb.table("crypto_fills").select("side, qty, price, fee").eq(
-                "mode", self.config.mode
-            ).execute()
-            for fill in (resp.data or []):
-                qty = float(fill.get("qty", 0))
-                price = float(fill.get("price", 0))
-                fee = float(fill.get("fee", 0))
-                gross = qty * price
-                realized_pnl += (gross if fill.get("side") == "sell" else -gross) - fee
+            resp = sb.table("crypto_fills").select(
+                "symbol, side, qty, price, fee, fill_id, executed_at"
+            ).eq("mode", self.config.mode).order("executed_at").execute()
+            fills = resp.data or []
+
+            matcher = FIFOMatcher.from_fills(fills)
+            realized_pnl = matcher.get_realized_pnl()
+            total_fees = matcher.get_total_fees()
+
+            # Compute unrealized P&L from focus marks
+            open_symbols = [s for s in matcher.get_all_symbols() if matcher.get_open_qty(s) > 1e-12]
+            if open_symbols:
+                try:
+                    mark_resp = sb.table("market_snapshot_focus").select(
+                        "symbol, mid"
+                    ).in_("symbol", open_symbols).execute()
+                    marks = {r["symbol"]: float(r["mid"]) for r in (mark_resp.data or []) if float(r.get("mid", 0)) > 0}
+                    for sym in open_symbols:
+                        mark = marks.get(sym, 0.0)
+                        if mark > 0:
+                            unrealized_pnl += matcher.get_unrealized_pnl(sym, mark)
+                            crypto_value += matcher.get_open_qty(sym) * mark
+                except Exception:
+                    pass
         except Exception:
             pass
+
+        total_equity = cash_usd + crypto_value
+        daily_pnl = realized_pnl + unrealized_pnl
 
         try:
             sb.table("pnl_daily").upsert({
                 "date": str(date.today()),
                 "instance_id": "default",
-                "equity": equity,
-                "daily_pnl": realized_pnl,
+                "equity": total_equity,
+                "daily_pnl": daily_pnl,
                 "drawdown": 0,
                 "cash_buffer_pct": 100,
                 "day_trades_used": 0,
                 "realized_pnl": realized_pnl,
-                "unrealized_pnl": 0,
+                "unrealized_pnl": unrealized_pnl,
+                "fees_paid": total_fees,
+                "crypto_value": crypto_value,
+                "cash_usd": cash_usd,
                 "mode": self.config.mode,
             }, on_conflict="date,instance_id,mode").execute()
-            logger.debug("P&L snapshot written: equity=%.2f pnl=%.4f", equity, realized_pnl)
+            logger.debug(
+                "P&L snapshot: equity=%.2f realized=%.4f unrealized=%.4f fees=%.4f crypto=%.2f",
+                total_equity, realized_pnl, unrealized_pnl, total_fees, crypto_value,
+            )
         except Exception as e:
             logger.warning("P&L snapshot write failed: %s", e)
 

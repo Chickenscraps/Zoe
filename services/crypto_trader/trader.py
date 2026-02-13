@@ -319,18 +319,56 @@ class CryptoTraderService:
                 pass
 
     def _write_pnl_snapshot(self, equity: float) -> None:
-        realized = self.repo.get_realized_pnl(self.mode)
+        """Write enriched P&L snapshot with FIFO-matched realized/unrealized."""
+        from services.accounting.fifo_matcher import FIFOMatcher
+
+        realized = 0.0
+        unrealized = 0.0
+        total_fees = 0.0
+        crypto_value = 0.0
+        cash_usd = equity  # Start with equity as cash estimate
+
+        try:
+            fills = self.repo.get_fills(self.mode)
+            if fills:
+                matcher = FIFOMatcher.from_fills(fills)
+                realized = matcher.get_realized_pnl()
+                total_fees = matcher.get_total_fees()
+
+                # Get marks from focus snapshots for unrealized P&L
+                open_symbols = [s for s in matcher.get_all_symbols() if matcher.get_open_qty(s) > 1e-12]
+                if open_symbols and hasattr(self.repo, 'sb'):
+                    try:
+                        resp = self.repo.sb.table("market_snapshot_focus").select(
+                            "symbol, mid"
+                        ).in_("symbol", open_symbols).execute()
+                        marks = {r["symbol"]: float(r["mid"]) for r in (resp.data or []) if float(r.get("mid", 0)) > 0}
+                        for sym in open_symbols:
+                            mark = marks.get(sym, 0.0)
+                            if mark > 0:
+                                unrealized += matcher.get_unrealized_pnl(sym, mark)
+                                crypto_value += matcher.get_open_qty(sym) * mark
+                    except Exception:
+                        pass
+        except Exception:
+            realized = self.repo.get_realized_pnl(self.mode)
+
+        total_equity = cash_usd + crypto_value
+
         try:
             self.repo.upsert_pnl_daily({
                 "date": str(date.today()),
                 "instance_id": "default",
-                "equity": equity,
-                "daily_pnl": realized,
+                "equity": total_equity,
+                "daily_pnl": realized + unrealized,
                 "drawdown": 0,
                 "cash_buffer_pct": 100,
                 "day_trades_used": 0,
                 "realized_pnl": realized,
-                "unrealized_pnl": 0,
+                "unrealized_pnl": unrealized,
+                "fees_paid": total_fees,
+                "crypto_value": crypto_value,
+                "cash_usd": cash_usd,
                 "mode": self.mode,
             })
         except Exception as e:

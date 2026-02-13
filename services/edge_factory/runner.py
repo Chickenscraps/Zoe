@@ -309,7 +309,12 @@ async def _run(dry_run: bool = False, instance_lock: InstanceLock | None = None)
     orchestrator._flush_worker = flush_worker  # type: ignore[attr-defined]
 
     # Stash Supabase client on orchestrator for health heartbeats
-    orchestrator._supabase = getattr(flush_worker, 'sb', None) if flush_worker else None  # type: ignore[attr-defined]
+    sb_client = getattr(flush_worker, 'sb', None) if flush_worker else None
+    orchestrator._supabase = sb_client  # type: ignore[attr-defined]
+
+    # Wire Supabase client into AccountState for mark-to-market lookups
+    if sb_client and hasattr(orchestrator, 'account_state') and orchestrator.account_state is not None:
+        orchestrator.account_state._sb = sb_client  # type: ignore[attr-defined]
 
     # C3: Stash metrics + local_store on executor for IS tracking
     executor = orchestrator.executor
