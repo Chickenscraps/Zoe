@@ -16,7 +16,7 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
-from .local_store import LocalEventStore
+from services.local_store import LocalEventStore
 
 logger = logging.getLogger(__name__)
 

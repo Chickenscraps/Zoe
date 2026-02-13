@@ -39,6 +39,10 @@ from .repository import InMemoryFeatureRepository, SupabaseFeatureRepository
 from .signal_generator import SignalGenerator
 from .trade_intent import TradeIntentBuilder
 
+# Local-first event store + flush worker
+from services.local_store import LocalEventStore
+from services.flush_worker import FlushWorker
+
 logger = logging.getLogger("edge_factory")
 
 
@@ -226,6 +230,33 @@ async def _run(dry_run: bool = False) -> None:
 
     orchestrator = build_orchestrator(config)
 
+    # ── Local-first event store + flush worker ─────────────
+    local_store = None
+    flush_task = None
+    try:
+        store_path = os.getenv("LOCAL_STORE_PATH", "data/local_events.db")
+        local_store = LocalEventStore(store_path)
+        logger.info("Local event store initialized: %s", store_path)
+
+        # Create Supabase client for flush worker
+        supabase_url = os.getenv("SUPABASE_URL", "")
+        supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+        if supabase_url and supabase_key:
+            from supabase import create_client
+            flush_sb = create_client(supabase_url, supabase_key)
+            flush_worker = FlushWorker(local_store, flush_sb, mode=config.mode)
+            logger.info("Flush worker created (mode=%s)", config.mode)
+        else:
+            flush_worker = None
+            logger.warning("No Supabase credentials — flush worker disabled")
+    except Exception as e:
+        logger.warning("Failed to init local store / flush worker: %s", e)
+        flush_worker = None
+
+    # Stash local_store on orchestrator for event emission
+    orchestrator._local_store = local_store  # type: ignore[attr-defined]
+    orchestrator._flush_worker = flush_worker  # type: ignore[attr-defined]
+
     try:
         if dry_run:
             logger.info("Dry-run: running one tick...")
@@ -234,6 +265,11 @@ async def _run(dry_run: bool = False) -> None:
             logger.info("Dry-run complete. Wiring OK.")
             return
 
+        # Start flush worker alongside the trading loop
+        if flush_worker is not None:
+            flush_task = asyncio.create_task(flush_worker.run_forever())
+            logger.info("Flush worker started as background task")
+
         logger.info("Starting run_forever loop...")
         await orchestrator.run_forever()
     except KeyboardInterrupt:
@@ -241,6 +277,18 @@ async def _run(dry_run: bool = False) -> None:
     except Exception as e:
         logger.error("Fatal error: %s", e, exc_info=True)
     finally:
+        # Cancel flush worker gracefully
+        if flush_task is not None:
+            flush_task.cancel()
+            try:
+                await flush_task
+            except asyncio.CancelledError:
+                pass
+
+        # Close local store
+        if local_store is not None:
+            local_store.close()
+
         await _cleanup(orchestrator)
 
 
