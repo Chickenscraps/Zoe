@@ -15,10 +15,12 @@ import {
 } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { useDashboardData } from '../hooks/useDashboardData';
+import { useSystemHealth } from '../hooks/useSystemHealth';
 import { useModeContext } from '../lib/mode';
 import { useAuth } from '../lib/AuthContext';
 import { useCopilotContext } from '../lib/CopilotContext';
 import { ErrorBoundary } from './ErrorBoundary';
+import { HealthCluster, CircuitBreakerBanner } from './SystemHealthIndicators';
 import { supabase } from '../lib/supabaseClient';
 
 const Starfield = lazy(() => import('./Starfield'));
@@ -43,6 +45,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { mode, setMode, isPaper, isLive } = useModeContext();
   const { isGuest, logout } = useAuth();
   const { isOpen: copilotOpen, toggle: toggleCopilot } = useCopilotContext();
+  const systemHealth = useSystemHealth();
 
   // Compute total portfolio value (cash + crypto)
   const cashValue = cryptoCash?.buying_power ?? cryptoCash?.cash_available ?? accountOverview?.equity ?? 0;
@@ -161,6 +164,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
+      {/* Circuit Breaker Banner */}
+      <CircuitBreakerBanner health={systemHealth} />
+
       <div className="flex flex-1 relative overflow-hidden">
       {/* Desktop sidebar spacer (sidebar itself is fixed, rendered at root level) */}
       <div className="hidden lg:block w-64 shrink-0" />
@@ -253,6 +259,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                  </button>
                </div>
                {/* Kill switch is now in top-left */}
+               {/* Health Indicators */}
+               <div className="hidden sm:block">
+                 <HealthCluster health={systemHealth} />
+               </div>
                {/* Copilot Toggle */}
                <button
                  onClick={toggleCopilot}

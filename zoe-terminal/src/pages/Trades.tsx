@@ -1,9 +1,12 @@
 import { useDashboardData } from '../hooks/useDashboardData';
+import { useSystemHealth } from '../hooks/useSystemHealth';
 import { PositionsTable } from '../components/PositionsTable';
+import { FillQualityCard } from '../components/FillQualityCard';
 import { formatCurrency, formatDate } from '../lib/utils';
 
 export default function Trades() {
   const { cryptoOrders, cryptoFills, loading } = useDashboardData();
+  const { fillQuality } = useSystemHealth();
 
   if (loading) return <div className="text-text-secondary animate-pulse">Loading trades...</div>;
 
@@ -11,6 +14,9 @@ export default function Trades() {
     <div className="space-y-8">
       {/* Open Positions */}
       <PositionsTable />
+
+      {/* Fill Quality (IS Tracking) */}
+      <FillQualityCard fillQuality={fillQuality} />
 
       {/* Recent Orders */}
       <div>
