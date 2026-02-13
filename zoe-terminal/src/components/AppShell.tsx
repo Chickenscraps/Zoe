@@ -78,7 +78,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       if (data) {
         for (const row of data) {
           if (row.key === 'kill_switch') {
-            setTradingActive(row.value === false || !row);
+            setTradingActive(row.value === false || row.value === 'false' || !row);
           } else if (row.key === 'active_preset') {
             setActivePreset(row.value as string);
           } else if (row.key === 'current_regime') {
