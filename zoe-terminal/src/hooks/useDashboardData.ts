@@ -127,19 +127,19 @@ export function useDashboardData(discordId: string = "292890243852664855") {
             .order("created_at", { ascending: false })
             .limit(1)
             .maybeSingle();
-          if (!latest?.created_at) return { data: [], error: null };
+          if (!(latest as any)?.created_at) return { data: [], error: null };
           return supabase
             .from("candidate_scans")
             .select("*")
             .eq("mode", MODE)
-            .eq("created_at", latest.created_at)
+            .eq("created_at", (latest as any).created_at)
             .order("score", { ascending: false });
         })(),
       ]);
 
-      if (overviewRes.data && overviewRes.data.length > 0)
-        setAccountOverview(overviewRes.data[0] as AccountOverview);
-      if (feedRes.data) setRecentEvents(feedRes.data as ActivityFeedItem[]);
+      if ((overviewRes as any).data && (overviewRes as any).data.length > 0)
+        setAccountOverview((overviewRes as any).data[0] as AccountOverview);
+      if ((feedRes as any).data) setRecentEvents((feedRes as any).data as ActivityFeedItem[]);
       if (healthRes.data) setHealthStatus(healthRes.data as HealthHeartbeat[]);
       setCryptoCash((cashRes.data ?? null) as CryptoCashSnapshot | null);
       setCashHistory((cashHistoryRes.data ?? []) as CryptoCashSnapshot[]);

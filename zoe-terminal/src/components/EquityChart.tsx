@@ -20,13 +20,13 @@ export function EquityChart({ data, height = 300, className }: EquityChartProps)
   const totalChangePct = startEquity > 0 ? (totalChange / startEquity) * 100 : 0;
 
   return (
-    <div className={cn("card-premium p-8", className)}>
-      <div className="flex items-center justify-between mb-6">
+    <div className={cn("card-premium p-4 sm:p-8", className)}>
+      <div className="flex items-center justify-between mb-4 sm:mb-6 flex-wrap gap-2">
         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">
           Equity Curve
         </h3>
         {hasData && (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <span className="text-xs font-mono text-text-secondary">
               {formatCurrency(endEquity)}
             </span>
@@ -103,7 +103,7 @@ export function EquityChart({ data, height = 300, className }: EquityChartProps)
                   fontSize: '11px',
                 }}
                 itemStyle={{ color: '#f3f4f6' }}
-                formatter={(value: number) => [formatCurrency(value), 'Equity']}
+                formatter={((value: any) => [formatCurrency(value ?? 0), 'Equity']) as any}
                 labelFormatter={(label) => formatDate(label as string)}
               />
               <Area

@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 import math
 from typing import Any
 
 from ..models import FeatureSnapshot
 from .base import BaseFeature
+
+logger = logging.getLogger(__name__)
 
 
 class ExpectedMovePct(BaseFeature):
@@ -18,6 +21,10 @@ class ExpectedMovePct(BaseFeature):
     Clamped to [0.3%, 15%] to handle edge cases.
 
     Source: polygon (uses bars_daily for GK vol computation)
+
+    Fallback: if bars_daily is empty/stale (Polygon rate-limited), reuses
+    the last successfully computed value from feature history so that
+    TradeIntentBuilder isn't permanently blocked.
     """
 
     name = "expected_move_pct"
@@ -27,15 +34,42 @@ class ExpectedMovePct(BaseFeature):
     MIN_MOVE = 0.003   # 0.3%
     MAX_MOVE = 0.15    # 15%
 
+    # Conservative default for crypto when Polygon is completely unavailable.
+    # 4% 48h expected move is typical for BTC/ETH in normal conditions.
+    # This allows trading while being conservative on position sizing.
+    DEFAULT_MOVE = 0.04  # 4%
+
     def compute(
         self,
         raw_data: dict[str, Any],
         history: list[FeatureSnapshot] | None = None,
     ) -> float | None:
         bars = raw_data.get("bars_daily", [])
-        if len(bars) < 10:
-            return None
+        if len(bars) >= 10:
+            result = self._compute_from_bars(bars)
+            if result is not None:
+                return result
 
+        # Bars insufficient — fall back to last known good value from history
+        if history:
+            last = history[0]  # most recent snapshot
+            if last.value is not None and last.value > 0:
+                logger.debug(
+                    "expected_move_pct: using cached value %.4f (bars=%d, stale Polygon data)",
+                    last.value, len(bars),
+                )
+                return last.value
+
+        # No bars AND no history — use conservative default so trading isn't
+        # permanently blocked by Polygon rate limits / outages
+        logger.info(
+            "expected_move_pct: no bars (%d) and no history, using default %.1f%%",
+            len(bars), self.DEFAULT_MOVE * 100,
+        )
+        return self.DEFAULT_MOVE
+
+    def _compute_from_bars(self, bars: list[dict]) -> float | None:
+        """Compute GK volatility from daily OHLCV bars."""
         window = bars[-30:]
         gk_sum = 0.0
         count = 0

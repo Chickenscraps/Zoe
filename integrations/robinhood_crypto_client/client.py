@@ -243,18 +243,50 @@ class RobinhoodCryptoClient:
         return await self._request("GET", "/api/v1/crypto/trading/holdings/")
 
     async def place_order(self, *, symbol: str, side: str, order_type: str, client_order_id: str, notional: float | None = None, qty: float | None = None, limit_price: float | None = None) -> dict[str, Any]:
+        """Place a crypto order via RH API v1.
+
+        The v1 API requires order configuration in a nested
+        ``{type}_order_config`` object rather than flat fields.
+        """
         payload: dict[str, Any] = {
             "symbol": symbol,
             "side": side,
-            "order_type": order_type,
+            "type": order_type,
             "client_order_id": client_order_id,
         }
-        if notional is not None:
-            payload["notional"] = str(notional)
-        if qty is not None:
-            payload["quantity"] = str(qty)
-        if limit_price is not None:
-            payload["limit_price"] = str(limit_price)
+
+        # Build the order-type-specific config object
+        config_key = f"{order_type}_order_config"
+        order_config: dict[str, Any] = {}
+
+        # RH requires prices rounded to nearest $0.01
+        rounded_price = f"{limit_price:.2f}" if limit_price is not None else None
+        rounded_notional = f"{notional:.2f}" if notional is not None else None
+
+        if order_type == "limit":
+            if rounded_price is not None:
+                order_config["limit_price"] = rounded_price
+            order_config["time_in_force"] = "gtc"
+            if rounded_notional is not None:
+                order_config["quote_amount"] = rounded_notional
+            elif qty is not None:
+                order_config["asset_quantity"] = str(qty)
+        elif order_type == "market":
+            if qty is not None:
+                order_config["asset_quantity"] = str(qty)
+            elif rounded_notional is not None:
+                order_config["quote_amount"] = rounded_notional
+        else:
+            # stop_limit / stop_loss — pass through for future use
+            if rounded_price is not None:
+                order_config["limit_price"] = rounded_price
+            order_config["time_in_force"] = "gtc"
+            if qty is not None:
+                order_config["asset_quantity"] = str(qty)
+            elif rounded_notional is not None:
+                order_config["quote_amount"] = rounded_notional
+
+        payload[config_key] = order_config
         return await self._request("POST", "/api/v1/crypto/trading/orders/", payload=payload)
 
     async def get_order(self, order_id: str) -> dict[str, Any]:

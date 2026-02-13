@@ -11,11 +11,7 @@ export default function Overview() {
     recentEvents,
     healthStatus,
     cryptoCash,
-    holdingsRows,
-    healthSummary,
-    dailyNotional,
     realizedPnl,
-    cryptoOrders,
     livePrices,
     equityHistory,
     loading,
@@ -44,8 +40,8 @@ export default function Overview() {
   }
 
   return (
-    <div className="space-y-10">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="space-y-6 sm:space-y-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
         <KPICard
           label="Net Equity"
           value={formatCurrency(equity)}
@@ -74,8 +70,8 @@ export default function Overview() {
 
       {/* Live Crypto Prices */}
       {livePrices.length > 0 && (
-        <div className="card-premium p-6">
-          <div className="flex items-center justify-between mb-5">
+        <div className="card-premium p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-4 sm:mb-5">
             <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
               <TrendingUp className="w-3 h-3 text-profit" /> Live Prices
             </h3>
@@ -83,14 +79,14 @@ export default function Overview() {
               {livePrices[0]?.created_at ? new Date(livePrices[0].created_at).toLocaleTimeString([], { hour12: false }) : ''}
             </span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-4">
             {livePrices.slice(0, 10).map((scan) => {
               const info = scan.info as any ?? {};
               const mid = info.mid ?? 0;
               const momShort = info.momentum_short;
               const isUp = momShort != null ? momShort >= 0 : true;
               return (
-                <div key={scan.symbol} className="flex flex-col items-center p-3 bg-background/50 border border-border rounded-xl hover:border-white/10 transition-colors">
+                <div key={scan.symbol} className="flex flex-col items-center p-2 sm:p-3 bg-background/50 border border-border rounded-xl hover:border-white/10 transition-colors">
                   <span className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">
                     {scan.symbol.replace('-USD', '')}
                   </span>
@@ -112,23 +108,23 @@ export default function Overview() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-          <EquityChart data={equityHistory} height={400} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+        <div className="lg:col-span-2 space-y-6 sm:space-y-8">
+          <EquityChart data={equityHistory} height={window.innerWidth < 640 ? 250 : 400} />
 
-          <div className="card-premium p-8">
-             <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-muted mb-6">Account Architecture</h3>
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-                <div className="p-6 bg-background/50 border border-border rounded-xl">
-                  <p className="text-[10px] uppercase font-medium tracking-widest text-text-dim mb-2">Buying Power</p>
-                  <p className="text-xl font-semibold text-white tabular-nums">{formatCurrency(equity)}</p>
+          <div className="card-premium p-4 sm:p-8">
+             <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-muted mb-4 sm:mb-6">Account Architecture</h3>
+             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 text-center">
+                <div className="p-4 sm:p-6 bg-background/50 border border-border rounded-xl">
+                  <p className="text-[10px] uppercase font-medium tracking-widest text-text-dim mb-1 sm:mb-2">Buying Power</p>
+                  <p className="text-lg sm:text-xl font-semibold text-white tabular-nums">{formatCurrency(equity)}</p>
                 </div>
-                <div className="p-6 bg-background/50 border border-border rounded-xl">
-                  <p className="text-[10px] uppercase font-medium tracking-widest text-text-dim mb-2">Settled Balance</p>
-                  <p className="text-xl font-semibold text-white tabular-nums">{formatCurrency(equity)}</p>
+                <div className="p-4 sm:p-6 bg-background/50 border border-border rounded-xl">
+                  <p className="text-[10px] uppercase font-medium tracking-widest text-text-dim mb-1 sm:mb-2">Settled Balance</p>
+                  <p className="text-lg sm:text-xl font-semibold text-white tabular-nums">{formatCurrency(equity)}</p>
                 </div>
-                <div className="p-6 bg-background/50 border border-border rounded-xl">
-                  <p className="text-[10px] uppercase font-medium tracking-widest text-text-dim mb-2">Sync Status</p>
+                <div className="p-4 sm:p-6 bg-background/50 border border-border rounded-xl">
+                  <p className="text-[10px] uppercase font-medium tracking-widest text-text-dim mb-1 sm:mb-2">Sync Status</p>
                   <p className="text-xs font-mono font-medium text-text-muted uppercase tracking-tighter mt-1">
                     {cryptoCash?.taken_at ? new Date(cryptoCash.taken_at).toLocaleTimeString([], { hour12: false }) : 'DISCONNECTED'}
                   </p>
@@ -162,7 +158,7 @@ export default function Overview() {
            {/* Activity Feed */}
            <div className="card-premium p-6">
              <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-muted mb-6">Omniscient Feed</h3>
-             <div className="space-y-6 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
+             <div className="space-y-6 max-h-[300px] sm:max-h-[450px] overflow-y-auto pr-2 scroll-smooth-mobile">
                {recentEvents.length > 0 ? recentEvents.map((e, idx) => (
                  <div key={idx} className="flex gap-4 group min-w-0">
                    <div className={cn(

@@ -47,7 +47,7 @@ export default function Consensus() {
           .limit(1)
           .maybeSingle();
 
-        if (!latest?.created_at) {
+        if (!(latest as any)?.created_at) {
           setCandidates([]);
           return;
         }
@@ -56,7 +56,7 @@ export default function Consensus() {
           .from('candidate_scans')
           .select('*')
           .eq('mode', MODE)
-          .eq('created_at', latest.created_at)
+          .eq('created_at', (latest as any).created_at)
           .order('score', { ascending: false });
 
         if (error) throw error;
@@ -79,20 +79,20 @@ export default function Consensus() {
 
   return (
     <div className="space-y-10">
-      <div className="flex justify-between items-end border-b border-border pb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end border-b border-border pb-4 sm:pb-8 gap-3">
         <div>
-          <h2 className="text-3xl font-black text-white tracking-tighter">Consensus Engine</h2>
-          <p className="text-sm text-text-muted mt-2 font-medium tracking-tight">
-            7-gate validation framework with kill switch. All gates must align for trade execution.
+          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tighter">Consensus Engine</h2>
+          <p className="text-xs sm:text-sm text-text-muted mt-1 sm:mt-2 font-medium tracking-tight">
+            7-gate validation framework. All gates must align.
           </p>
         </div>
-        <div className="bg-surface-highlight/50 px-4 py-2 rounded-xl border border-border text-[10px] font-black text-white uppercase tracking-[0.2em]">
-          {candidates[0]?.created_at ? `Last scan: ${new Date(candidates[0].created_at).toLocaleTimeString()}` : 'Waiting...'}
+        <div className="bg-surface-highlight/50 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl border border-border text-[10px] font-black text-white uppercase tracking-[0.2em]">
+          {candidates[0]?.created_at ? `Scan: ${new Date(candidates[0].created_at).toLocaleTimeString()}` : 'Waiting...'}
         </div>
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {(() => {
           const results = candidates.map(c => (c.info as any)?.consensus?.result).filter(Boolean);
           const blocked = results.filter(r => r === 'blocked').length;
@@ -112,7 +112,7 @@ export default function Consensus() {
       </div>
 
       {/* Per-Symbol Consensus Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {candidates.length > 0 ? candidates.map(candidate => {
           const info = candidate.info as any ?? {};
           const consensus = info.consensus;

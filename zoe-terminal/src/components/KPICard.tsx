@@ -13,14 +13,14 @@ interface KPICardProps {
 
 export function KPICard({ label, value, trend, trendDir, icon: Icon, subValue, className }: KPICardProps) {
   return (
-    <div className={cn("card-premium p-6", className)}>
-      <div className="flex justify-between items-start mb-3">
+    <div className={cn("card-premium p-4 sm:p-6", className)}>
+      <div className="flex justify-between items-start mb-2 sm:mb-3">
         <span className="text-text-muted text-[10px] font-semibold uppercase tracking-[0.1em]">{label}</span>
-        {Icon && <Icon className="w-4 h-4 text-text-muted/50" />}
+        {Icon && <Icon className="w-4 h-4 text-text-muted/50 hidden sm:block" />}
       </div>
-      
-      <div className="flex items-baseline gap-2">
-        <span className="text-3xl font-bold text-white tracking-tighter tabular-nums">{value}</span>
+
+      <div className="flex items-baseline gap-2 flex-wrap">
+        <span className="text-xl sm:text-3xl font-bold text-white tracking-tighter tabular-nums">{value}</span>
         {trend && (
           <span className={cn(
             "text-[10px] font-semibold px-2 py-0.5 rounded-full tracking-wider uppercase",

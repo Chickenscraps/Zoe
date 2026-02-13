@@ -107,7 +107,7 @@ export default function Plan() {
 
   const cashAvailable = cryptoCash?.cash_available ?? 0;
   const buyingPower = cryptoCash?.buying_power ?? 0;
-  const notionalUsed = dailyNotional?.notional_used ?? 0;
+  const notionalUsed = (dailyNotional as any)?.notional_used ?? 0;
 
   // Curated gameplan columns
   const planColumns: ColumnDef<PlanItem>[] = [
@@ -131,36 +131,36 @@ export default function Plan() {
   return (
     <div className="space-y-10">
       {/* Header */}
-      <div className="flex justify-between items-end border-b border-border pb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end border-b border-border pb-4 sm:pb-8 gap-3">
         <div>
-          <h2 className="text-3xl font-black text-white tracking-tighter">Autonomous Gameplan</h2>
-          <p className="text-sm text-text-muted mt-2 font-medium tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tighter">Autonomous Gameplan</h2>
+          <p className="text-xs sm:text-sm text-text-muted mt-1 sm:mt-2 font-medium tracking-tight">
             {source === 'gameplan'
-              ? 'System-generated strategy for the current session.'
-              : 'Live strategy derived from scanner intelligence.'}
+              ? 'System-generated strategy.'
+              : 'Live scanner intelligence.'}
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
           {source === 'scanner' && (
             <span className="text-[10px] font-black text-profit uppercase tracking-[0.2em] bg-profit/10 px-3 py-1.5 rounded-full border border-profit/20">
               Live Scanner
             </span>
           )}
           <div className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">
-            {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            {new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
           </div>
         </div>
       </div>
 
       {/* KPI Strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="card-premium p-5 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-profit/10 flex items-center justify-center">
-            <DollarSign className="w-5 h-5 text-profit" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="card-premium p-3 sm:p-5 flex items-center gap-3 sm:gap-4">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-profit/10 flex items-center justify-center shrink-0">
+            <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-profit" />
           </div>
-          <div>
-            <div className="text-[10px] font-black text-text-muted uppercase tracking-[0.15em]">Cash Available</div>
-            <div className="text-lg font-black text-white tracking-tight tabular-nums">{formatCurrency(cashAvailable)}</div>
+          <div className="min-w-0">
+            <div className="text-[9px] sm:text-[10px] font-black text-text-muted uppercase tracking-[0.15em]">Cash</div>
+            <div className="text-sm sm:text-lg font-black text-white tracking-tight tabular-nums truncate">{formatCurrency(cashAvailable)}</div>
           </div>
         </div>
         <div className="card-premium p-5 flex items-center gap-4">
@@ -197,7 +197,7 @@ export default function Plan() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-8 border-b border-border/50">
+      <div className="flex gap-4 sm:gap-8 border-b border-border/50 overflow-x-auto scroll-smooth-mobile">
         {[
           { id: 'draft' as const, label: 'Draft', icon: FileEdit },
           { id: 'refined' as const, label: 'Refined', icon: CheckCircle },
@@ -207,11 +207,11 @@ export default function Plan() {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "pb-4 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 border-b-2 transition-all duration-300",
+              "pb-3 sm:pb-4 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 border-b-2 transition-all duration-300 whitespace-nowrap min-h-[44px]",
               activeTab === tab.id ? "border-profit text-white" : "border-transparent text-text-muted hover:text-text-secondary"
             )}
           >
-            <tab.icon className={cn("w-3.5 h-3.5", activeTab === tab.id ? "text-profit" : "")} /> {tab.label}
+            <tab.icon className={cn("w-4 h-4 sm:w-3.5 sm:h-3.5", activeTab === tab.id ? "text-profit" : "")} /> {tab.label}
           </button>
         ))}
       </div>

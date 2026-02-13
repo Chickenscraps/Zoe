@@ -44,6 +44,11 @@ class MarketData:
         self._crypto_bar_cache: Dict[Tuple[str, str], Dict] = {}
         self._crypto_bar_cache_ttl = 60  # seconds
 
+        # Daily history cache: (symbol, timespan, multiplier) -> {"bars": [...], "fetched_at": float}
+        # Daily bars change at most once per day, so 30-min TTL avoids Polygon rate limits
+        self._history_cache: Dict[Tuple[str, str, int], Dict] = {}
+        self._history_cache_ttl = 1800  # 30 minutes
+
     def get_price(self, symbol: str) -> float:
         """Get real-time price for a symbol."""
         if not self.client: return 0.0
@@ -69,18 +74,21 @@ class MarketData:
             return 0.0
 
     def get_history(self, symbol: str, timespan: str = 'day', multiplier: int = 1, limit: int = 100) -> List[Dict]:
-        """Fetch historical bars (aggregates) for TA."""
+        """Fetch historical bars (aggregates) for TA.
+
+        Caches daily bars for 30 min to stay within Polygon free-tier rate limits
+        (5 req/min). Edge Factory calls this every 60s × 4 symbols = 4 req/min
+        without caching, which exhausts the quota and causes 429 errors.
+        """
         if not self.client: return []
-        
+
+        # Check cache (keyed on symbol + timespan + multiplier)
+        cache_key = (symbol, timespan, multiplier)
+        cached = self._history_cache.get(cache_key)
+        if cached and (time.time() - cached["fetched_at"] < self._history_cache_ttl):
+            return cached["bars"]
+
         try:
-            # Calculate from/to dates?
-            # client.list_aggs(...)
-            # For simplicity, we just ask for last N days
-            # Note: Polygon-api-client wrapper handles date logic if we use list_aggs
-            # But let's use a simpler approach if possible
-            # We need to construct from_date/to_date
-            
-            # Using defaults for now (standard daily bars)
             aggs = []
             for a in self.client.list_aggs(symbol, multiplier, timespan, "2024-01-01", "2026-12-31", limit=limit, sort='desc'):
                 aggs.append({
@@ -92,9 +100,21 @@ class MarketData:
                     'volume': a.volume
                 })
             # Reverse to be chronological (oldest first) for TA lib
-            return aggs[::-1]
+            bars = aggs[::-1]
+
+            # Cache the result (even empty — avoids hammering a broken endpoint)
+            if bars:
+                self._history_cache[cache_key] = {
+                    "bars": bars,
+                    "fetched_at": time.time(),
+                }
+
+            return bars
         except Exception as e:
             print(f"[ERR] History Fetch Error ({symbol}): {e}")
+            # Return last cached bars if available (stale > empty)
+            if cached:
+                return cached["bars"]
             return []
 
     def get_option_chain_snapshot(self, symbol: str) -> List[Dict]:
