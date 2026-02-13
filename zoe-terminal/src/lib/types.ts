@@ -552,6 +552,49 @@ export interface Database {
           mode: "paper" | "live";
         };
       };
+      order_intents: {
+        Row: {
+          id: string;
+          idempotency_key: string;
+          symbol: string;
+          side: "buy" | "sell";
+          order_type: "limit" | "market";
+          qty: number | null;
+          notional: number | null;
+          limit_price: number | null;
+          engine: string;
+          mode: "paper" | "live";
+          status: "created" | "submitted" | "acked" | "partial_fill" | "cancel_requested" | "cancelled" | "replaced" | "filled" | "rejected" | "expired" | "error";
+          broker_order_id: string | null;
+          fill_price: number | null;
+          fill_qty: number | null;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+        };
+      };
+      order_events: {
+        Row: {
+          id: string;
+          intent_id: string;
+          event_type: string;
+          broker_order_id: string | null;
+          fill_price: number | null;
+          fill_qty: number | null;
+          fee: number | null;
+          metadata: Json;
+          created_at: string;
+        };
+      };
+      trade_locks: {
+        Row: {
+          symbol: string;
+          engine: string;
+          mode: "paper" | "live";
+          locked_at: string;
+          lock_holder: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;

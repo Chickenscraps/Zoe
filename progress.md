@@ -152,3 +152,51 @@
 - **Overview.tsx**: new P&L breakdown row with Realized P&L, Unrealized P&L, and Fees Paid KPI cards
 
 ---
+
+## Phase 4 — Order Lifecycle + Repositioning
+**Status**: Complete
+**Date**: 2026-02-13
+
+### 4a — Order Intent System (`services/order_lifecycle/intent.py`)
+- `OrderIntent` dataclass with full state machine (11 states, valid transitions enforced)
+- `IntentManager`: creates/updates intents in Supabase with idempotency_key dedup
+- States: created → submitted → acked → partial_fill → filled / cancelled / replaced / rejected / expired / error
+- Terminal states: filled, cancelled, replaced, rejected, expired
+
+### 4b — Order Event Log (`services/order_lifecycle/event_log.py`)
+- `OrderEventLog`: append-only audit trail per intent
+- Records: event_type, broker_order_id, fill_price, fill_qty, fee, metadata
+- Query by intent_id or recent events across all intents
+
+### 4c — Repositioner (`services/order_lifecycle/repositioner.py`)
+- `Repositioner`: async loop checking for stale orders every 30s
+- TTL-based staleness: configurable order_ttl_sec (default 120s)
+- On stale: cancel on exchange → fetch fresh mark → widen limit by chase_step_pct → create replacement intent
+- Max reposition attempts (default 3) before final cancellation
+- Handles partial fills (repositions only remaining_qty)
+- Configurable via env vars: REPO_CHECK_INTERVAL_SEC, REPO_ORDER_TTL_SEC, REPO_CHASE_STEP_PCT, REPO_MAX_ATTEMPTS
+
+### 4d — Trade Lock (`services/order_lifecycle/trade_lock.py`)
+- `TradeLock`: distributed locking via Supabase trade_locks table
+- PK on (symbol, engine, mode) for INSERT ON CONFLICT DO NOTHING pattern
+- acquire/release with holder_id verification
+- Prevents Edge Factory and CryptoTrader from trading same symbol simultaneously
+
+### 4e — Safe Mode (`services/order_lifecycle/safe_mode.py`)
+- `SafeMode`: monitors market data staleness + API error rate
+- Market data check: focus snapshot age > 60s → halt entries
+- API health: 3+ errors in 5 min → halt entries, allow exits only
+- Auto-recovery when conditions clear
+- Publishes status to health_heartbeat for dashboard alerts
+
+### 4f — Database Migration (`migrations/20260213_order_lifecycle_tables.sql`)
+- `order_intents`: idempotency_key unique, status enum, broker_order_id, fill data, metadata
+- `order_events`: FK to intents, append-only, event_type + execution data
+- `trade_locks`: PK (symbol, engine, mode), lock_holder for ownership
+- Partial index on active intents for fast queries
+- RLS policies for dashboard read access
+
+### 4g — Dashboard Types
+- **types.ts**: added order_intents, order_events, trade_locks table types
+
+---
