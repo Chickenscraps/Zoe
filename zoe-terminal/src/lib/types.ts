@@ -147,12 +147,20 @@ export interface Database {
           order_type: "market" | "limit";
           qty: number | null;
           notional: number | null;
-          status: "new" | "submitted" | "partially_filled" | "filled" | "canceled" | "rejected";
+          limit_price: number | null;
+          status: "new" | "submitted" | "partially_filled" | "filled" | "canceled" | "rejected" | "cancel_pending" | "working";
           requested_at: string;
           submitted_at: string | null;
           updated_at: string;
           raw_response: Json;
           mode: string;
+          intent_group_id: string | null;
+          replace_count: number;
+          cancel_reason_code: string | null;
+          remaining_qty: number | null;
+          ttl_seconds: number | null;
+          next_action_at: string | null;
+          parent_order_id: string | null;
         };
       };
       crypto_tickers: {
@@ -593,6 +601,8 @@ export interface Database {
           mode: string;
           locked_at: string;
           lock_holder: string;
+          ttl_seconds: number;
+          instance_id: string;
         };
       };
     };

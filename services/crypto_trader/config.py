@@ -28,6 +28,9 @@ class CryptoTraderConfig:
     starting_equity: float = float(os.getenv("STARTING_EQUITY", "2000"))
     reconcile_interval_seconds: int = int(os.getenv("RECONCILE_INTERVAL_SECONDS", "60"))
     order_poll_interval_seconds: int = int(os.getenv("ORDER_POLL_INTERVAL_SECONDS", "5"))
+    reconcile_cash_tolerance: float = float(os.getenv("RECONCILE_CASH_TOLERANCE", "2.0"))
+    reconcile_qty_tolerance: float = float(os.getenv("RECONCILE_QTY_TOLERANCE", "0.000001"))
+    safe_mode_empty_scan_threshold: int = int(os.getenv("SAFE_MODE_EMPTY_SCAN_THRESHOLD", "3"))
 
     def live_ready(self) -> bool:
         return self.live_trading and self.live_confirm == CONFIRM_PHRASE

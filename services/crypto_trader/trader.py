@@ -54,6 +54,7 @@ class CryptoTraderService:
         self._safe_mode_until: float = 0.0
         self._cycle_count: int = 0
         self._next_historical_refresh: float = 0.0
+        self._consecutive_empty_scans: int = 0
 
     def _require_admin(self, initiator_id: str) -> None:
         if initiator_id != self.cfg.admin_user_id:
@@ -145,7 +146,7 @@ class CryptoTraderService:
         start_cash = float((self.repo.latest_cash_snapshot(self.mode) or {}).get("cash_available", 0.0))
         local_cash = start_cash
         holdings: dict[str, float] = {}
-        for fill in getattr(self.repo, "fills", []):
+        for fill in self.repo.recent_fills(self.mode, limit=500):
             qty = float(fill.get("qty", 0))
             px = float(fill.get("price", 0))
             fee = float(fill.get("fee", 0))
@@ -178,12 +179,12 @@ class CryptoTraderService:
         holding_diff = {
             sym: local_holdings.get(sym, 0.0) - exchange_holdings.get(sym, 0.0)
             for sym in sorted(set(local_holdings) | set(exchange_holdings))
-            if abs(local_holdings.get(sym, 0.0) - exchange_holdings.get(sym, 0.0)) > 0.0000001
+            if abs(local_holdings.get(sym, 0.0) - exchange_holdings.get(sym, 0.0)) > self.cfg.reconcile_qty_tolerance
         }
 
         status = "ok"
         reason = ""
-        if abs(cash_diff) > 1 or holding_diff:
+        if abs(cash_diff) > self.cfg.reconcile_cash_tolerance or holding_diff:
             status = "degraded"
             reason = "Mismatch between local ledger and exchange snapshots"
 
@@ -356,7 +357,16 @@ class CryptoTraderService:
             # Phase 1: Scan — fetch prices, update cache, score (with chart analysis)
             candidates = await scan_candidates(self.client, self.price_cache, self.candle_manager)
             if not candidates:
+                self._consecutive_empty_scans += 1
+                if self._consecutive_empty_scans >= self.cfg.safe_mode_empty_scan_threshold:
+                    self._safe_mode_until = time.time() + 300  # 5-minute safe mode
+                    self._write_thought(
+                        f"Safe mode activated: {self._consecutive_empty_scans} consecutive empty scans",
+                        thought_type="health",
+                    )
+                    print(f"[ZOE] SAFE MODE: {self._consecutive_empty_scans} consecutive empty scans")
                 return
+            self._consecutive_empty_scans = 0  # Reset on successful scan
 
             # Persist scan results to dashboard
             rows = [
@@ -727,7 +737,15 @@ class CryptoTraderService:
                 self._write_heartbeats(health)
 
                 cash_snap = self.repo.latest_cash_snapshot(self.mode)
-                equity = float((cash_snap or {}).get("buying_power", 0))
+                cash_value = float((cash_snap or {}).get("buying_power", 0))
+                # Equity = cash + market value of holdings
+                holdings = (self.repo.latest_holdings_snapshot(self.mode) or {}).get("holdings", {})
+                holdings_value = 0.0
+                for sym, qty in holdings.items():
+                    snap = self.price_cache.snapshot(sym)
+                    mid = snap.get("mid", 0) if snap else 0
+                    holdings_value += float(qty) * mid
+                equity = cash_value + holdings_value
                 self._write_pnl_snapshot(equity)
 
                 # Full scan + signal pipeline

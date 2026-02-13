@@ -266,7 +266,7 @@ async def scan_candidates(
         vol_score = _score_volatility(snap["volatility"], snap["spread_volatility"], snap.get("bollinger"))
         trend_score = _score_trend(snap["trend_strength"], snap["trend_direction"], snap["rsi"])
 
-        total = round(liq_score + mom_score + vol_score + trend_score, 1)
+        total = round(min(100.0, liq_score + mom_score + vol_score + trend_score), 1)
         strategy = _pick_strategy(snap)
 
         # Chart analysis: patterns + multi-timeframe (if candle_manager available)
