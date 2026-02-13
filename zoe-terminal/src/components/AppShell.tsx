@@ -14,6 +14,8 @@ import {
   Layers,
   BarChart3,
   Shield,
+  ChevronDown,
+  Wrench,
 } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { useDashboardData } from '../hooks/useDashboardData';
@@ -28,6 +30,10 @@ const NAV_ITEMS = [
   { label: 'Charts', path: '/charts', icon: BarChart3 },
   { label: 'Consensus', path: '/consensus', icon: Shield },
   { label: 'Plan', path: '/plan', icon: Map },
+];
+
+/** Items hidden behind a collapsible "System" menu on mobile */
+const SYSTEM_ITEMS = [
   { label: 'Thoughts', path: '/thoughts', icon: BrainCircuit },
   { label: 'Health', path: '/health', icon: Activity },
   { label: 'Settings', path: '/settings', icon: Settings },
@@ -35,8 +41,15 @@ const NAV_ITEMS = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [systemMenuOpen, setSystemMenuOpen] = useState(false);
   const location = useLocation();
   const { cryptoCash, accountOverview, healthSummary } = useDashboardData();
+
+  // Auto-expand system menu if user is on a system page
+  const isOnSystemPage = SYSTEM_ITEMS.some(item => location.pathname === item.path);
+  useEffect(() => {
+    if (isOnSystemPage) setSystemMenuOpen(true);
+  }, [isOnSystemPage]);
 
   const equity = cryptoCash?.buying_power ?? cryptoCash?.cash_available ?? accountOverview?.equity ?? 0;
 
@@ -120,6 +133,68 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+
+          {/* Desktop: show system items flat */}
+          <div className="hidden lg:block">
+            {SYSTEM_ITEMS.map((item) => {
+              const isActive = location.pathname === item.path;
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={closeSidebar}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-2.5 rounded-btns text-sm font-semibold transition-all duration-200 min-h-[44px]",
+                    isActive
+                      ? "bg-surface-highlight text-white shadow-soft border-l-[3px] border-l-white/30"
+                      : "text-text-secondary hover:text-white hover:bg-white/[0.03] border-l-[3px] border-l-transparent"
+                  )}
+                >
+                  <Icon className={cn("w-4 h-4 shrink-0", isActive ? "text-profit" : "")} />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Mobile: collapsible system menu */}
+          <div className="lg:hidden pt-2 mt-2 border-t border-border/40">
+            <button
+              onClick={() => setSystemMenuOpen(!systemMenuOpen)}
+              className="flex items-center justify-between w-full px-4 py-3 rounded-btns text-sm font-semibold transition-all duration-200 min-h-[44px] text-text-secondary hover:text-white hover:bg-white/[0.03] border-l-[3px] border-l-transparent"
+            >
+              <div className="flex items-center gap-3">
+                <Wrench className="w-[18px] h-[18px] shrink-0" />
+                System
+              </div>
+              <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", systemMenuOpen && "rotate-180")} />
+            </button>
+            {systemMenuOpen && (
+              <div className="pl-3 space-y-0.5 mt-0.5">
+                {SYSTEM_ITEMS.map((item) => {
+                  const isActive = location.pathname === item.path;
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={closeSidebar}
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-3 rounded-btns text-sm font-semibold transition-all duration-200 min-h-[44px]",
+                        isActive
+                          ? "bg-surface-highlight text-white shadow-soft border-l-[3px] border-l-white/30"
+                          : "text-text-secondary hover:text-white hover:bg-white/[0.03] border-l-[3px] border-l-transparent"
+                      )}
+                    >
+                      <Icon className={cn("w-[18px] h-[18px] shrink-0", isActive ? "text-profit" : "")} />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </nav>
 
         <div className="absolute bottom-4 sm:bottom-6 left-4 sm:left-6 right-4 sm:right-6 safe-bottom">
