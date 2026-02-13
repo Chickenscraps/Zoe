@@ -11,7 +11,6 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { useModeContext } from '../lib/mode';
 
 export interface FillQualityData {
   avgIsBps: number;
@@ -78,7 +77,6 @@ const DEFAULT_CB: CircuitBreakerStatus = {
 };
 
 export function useSystemHealth(): SystemHealth {
-  const { mode } = useModeContext();
   const [fillQuality, setFillQuality] = useState<FillQualityData>(DEFAULT_FILL_QUALITY);
   const [metrics, setMetrics] = useState<MetricsSnapshot>(DEFAULT_METRICS);
   const [circuitBreakers, setCircuitBreakers] = useState<CircuitBreakerStatus>(DEFAULT_CB);
@@ -90,15 +88,14 @@ export function useSystemHealth(): SystemHealth {
       // Fetch FILL_QUALITY events (last 50)
       const { data: fillEvents } = await supabase
         .from('zoe_events')
-        .select('id, created_at, meta_json, body')
-        .eq('type', 'FILL_QUALITY')
-        .eq('mode', mode)
+        .select('id, created_at, metadata, body')
+        .eq('subtype', 'FILL_QUALITY')
         .order('created_at', { ascending: false })
         .limit(50);
 
       if (fillEvents && fillEvents.length > 0) {
         const fills = fillEvents.map((e: any) => {
-          const meta = typeof e.meta_json === 'string' ? JSON.parse(e.meta_json) : (e.meta_json || {});
+          const meta = typeof e.metadata === 'string' ? JSON.parse(e.metadata) : (e.metadata || {});
           return {
             symbol: meta.symbol || '',
             side: meta.side || '',
@@ -125,16 +122,15 @@ export function useSystemHealth(): SystemHealth {
       // Fetch latest METRIC event
       const { data: metricEvents } = await supabase
         .from('zoe_events')
-        .select('id, created_at, meta_json')
-        .eq('type', 'METRIC')
-        .eq('mode', mode)
+        .select('id, created_at, metadata')
+        .eq('subtype', 'METRIC')
         .order('created_at', { ascending: false })
         .limit(1);
 
       if (metricEvents && metricEvents.length > 0) {
-        const meta = typeof metricEvents[0].meta_json === 'string'
-          ? JSON.parse(metricEvents[0].meta_json)
-          : (metricEvents[0].meta_json || {});
+        const meta = typeof metricEvents[0].metadata === 'string'
+          ? JSON.parse(metricEvents[0].metadata as string)
+          : (metricEvents[0].metadata || {});
 
         setMetrics({
           staleQuoteRate: meta.stale_quote_rate ?? 0,
@@ -153,16 +149,15 @@ export function useSystemHealth(): SystemHealth {
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
       const { data: cbEvents } = await supabase
         .from('zoe_events')
-        .select('id, created_at, meta_json, body')
-        .eq('type', 'CIRCUIT_BREAKER')
-        .eq('mode', mode)
+        .select('id, created_at, metadata, body')
+        .eq('subtype', 'CIRCUIT_BREAKER')
         .gte('created_at', oneHourAgo)
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (cbEvents && cbEvents.length > 0) {
         const breakers = cbEvents.map((e: any) => {
-          const meta = typeof e.meta_json === 'string' ? JSON.parse(e.meta_json) : (e.meta_json || {});
+          const meta = typeof e.metadata === 'string' ? JSON.parse(e.metadata) : (e.metadata || {});
           return {
             name: meta.breaker_name || meta.name || 'Unknown',
             severity: meta.severity || 'warning',
@@ -185,7 +180,7 @@ export function useSystemHealth(): SystemHealth {
     } finally {
       setLoading(false);
     }
-  }, [mode]);
+  }, []);
 
   useEffect(() => {
     fetchHealth();

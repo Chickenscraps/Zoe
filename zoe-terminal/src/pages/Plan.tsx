@@ -5,14 +5,13 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { cn, formatCurrency } from '../lib/utils';
 import { Lock, FileEdit, CheckCircle, Target, Zap, ShieldCheck, DollarSign, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { useModeContext } from '../lib/mode';
+
 import { useDashboardData } from '../hooks/useDashboardData';
 
 type PlanItem = Database['public']['Tables']['daily_gameplan_items']['Row'];
 type CandidateScan = Database['public']['Tables']['candidate_scans']['Row'];
 
 export default function Plan() {
-  const { mode } = useModeContext();
   const [activeTab, setActiveTab] = useState<'draft' | 'refined' | 'locked'>('locked');
   const [planItems, setPlanItems] = useState<PlanItem[]>([]);
   const [candidates, setCandidates] = useState<CandidateScan[]>([]);
@@ -66,7 +65,6 @@ export default function Plan() {
           const { data: scans, error: scanError } = await supabase
             .from('candidate_scans')
             .select('*')
-            .eq('mode', mode)
             .order('created_at', { ascending: false })
             .limit(12);
 
@@ -81,7 +79,7 @@ export default function Plan() {
     };
 
     fetchPlan();
-  }, [mode]);
+  }, []);
 
   // Derive "plan rows" from scanner candidates when no curated plan exists
   const scannerRows = useMemo(() => {

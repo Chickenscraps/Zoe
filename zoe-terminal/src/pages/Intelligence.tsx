@@ -12,7 +12,7 @@ import {
   BrainCircuit, Filter, AlertTriangle, Map, Layers, SearchX, CheckCircle2 as CheckCircle,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { useModeContext } from '../lib/mode';
+
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useStructureData, type BounceIntent } from '../hooks/useStructureData';
 import { formatCurrency, formatDate, cn } from '../lib/utils';
@@ -89,7 +89,6 @@ const TIMEFRAMES = ['All', '15m', '1h', '4h', '1d'];
 // ═══════════════════════════════════════════════════════════════════════
 
 export default function Intelligence() {
-  const { mode } = useModeContext();
   const [activeSection, setActiveSection] = useState<Section>('plan');
 
   // ── Plan state ────────────────────────────────────────────────────
@@ -131,7 +130,6 @@ export default function Intelligence() {
         const { data: scans } = await supabase
           .from('candidate_scans')
           .select('*')
-          .eq('mode', mode)
           .order('created_at', { ascending: false })
           .limit(12);
         if (scans) setCandidates(scans);
@@ -144,7 +142,7 @@ export default function Intelligence() {
     fetchCandidates();
     const interval = setInterval(fetchCandidates, 30000);
     return () => clearInterval(interval);
-  }, [mode]);
+  }, []);
 
   // ── Fetch consensus data ──────────────────────────────────────────
   useEffect(() => {
@@ -154,7 +152,6 @@ export default function Intelligence() {
         const { data: latest } = await supabase
           .from('candidate_scans')
           .select('created_at')
-          .eq('mode', mode)
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -164,7 +161,6 @@ export default function Intelligence() {
         const { data } = await supabase
           .from('candidate_scans')
           .select('*')
-          .eq('mode', mode)
           .eq('created_at', latest.created_at)
           .order('score', { ascending: false });
         if (data) setConsensusCandidates(data);
@@ -177,7 +173,7 @@ export default function Intelligence() {
     fetchConsensus();
     const interval = setInterval(fetchConsensus, 30000);
     return () => clearInterval(interval);
-  }, [mode]);
+  }, []);
 
   // ── Fetch thoughts ────────────────────────────────────────────────
   useEffect(() => {
@@ -187,7 +183,6 @@ export default function Intelligence() {
         const { data } = await supabase
           .from('thoughts')
           .select('*')
-          .eq('mode', mode)
           .order('created_at', { ascending: false })
           .limit(50);
         if (data) setThoughts(data);
@@ -200,7 +195,7 @@ export default function Intelligence() {
     fetchThoughts();
     const interval = setInterval(fetchThoughts, 15000);
     return () => clearInterval(interval);
-  }, [mode]);
+  }, []);
 
   // ── Derived data ──────────────────────────────────────────────────
   const scannerRows = useMemo(() => {
@@ -854,7 +849,7 @@ function EmptyRow({ text }: { text: string }) {
   return <div className="flex items-center justify-center py-8 text-text-muted/60 text-xs italic">{text}</div>;
 }
 
-function EmptyPanel({ icon: Icon, text, sub }: { icon: typeof Lock; text: string; sub: string }) {
+function EmptyPanel({ icon: Icon, text, sub }: { icon: React.ComponentType<{ className?: string }>; text: string; sub: string }) {
   return (
     <div className="flex flex-col items-center justify-center h-64 text-text-muted card-premium space-y-4 bg-surface/30 col-span-full">
       <Icon className="w-8 h-8 opacity-20" />

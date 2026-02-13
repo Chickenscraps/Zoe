@@ -1,7 +1,7 @@
 import { Coins, DollarSign, TrendingUp, Wallet } from "lucide-react";
 import { EquityChart } from "../components/EquityChart";
 import { KPICard } from "../components/KPICard";
-import { OpenOrdersTable } from "../components/OpenOrdersTable";
+
 import { PositionsTable } from "../components/PositionsTable";
 import { Skeleton } from "../components/Skeleton";
 import { useDashboardData } from "../hooks/useDashboardData";
@@ -81,7 +81,7 @@ export default function Overview() {
         <KPICard
           label="Cash"
           value={formatCurrency(cashValue)}
-          subValue="Available Buying Power"
+          subValue="Available Balance"
           trend={totalValue > 0 ? ((cashValue / totalValue) * 100).toFixed(1) + "% of total" : "—"}
           trendDir="neutral"
           icon={Wallet}
@@ -102,9 +102,6 @@ export default function Overview() {
 
       {/* Open Positions */}
       <PositionsTable />
-
-      {/* Open Orders */}
-      <OpenOrdersTable />
 
       {/* Equity Curve with Day + Overall P&L */}
       <EquityChart

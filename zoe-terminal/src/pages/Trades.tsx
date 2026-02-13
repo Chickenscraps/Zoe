@@ -1,12 +1,9 @@
 import { useDashboardData } from '../hooks/useDashboardData';
-import { useSystemHealth } from '../hooks/useSystemHealth';
 import { PositionsTable } from '../components/PositionsTable';
-import { FillQualityCard } from '../components/FillQualityCard';
 import { formatCurrency, formatDate } from '../lib/utils';
 
 export default function Trades() {
   const { cryptoOrders, cryptoFills, loading } = useDashboardData();
-  const { fillQuality } = useSystemHealth();
 
   if (loading) return <div className="text-text-secondary animate-pulse">Loading trades...</div>;
 
@@ -14,9 +11,6 @@ export default function Trades() {
     <div className="space-y-8">
       {/* Open Positions */}
       <PositionsTable />
-
-      {/* Fill Quality (IS Tracking) */}
-      <FillQualityCard fillQuality={fillQuality} />
 
       {/* Recent Orders */}
       <div>
@@ -62,8 +56,8 @@ export default function Trades() {
                     <td className="px-4 py-3">
                       <span className={`uppercase text-[10px] font-bold px-2 py-0.5 rounded-full ${
                         order.status === 'filled' ? 'bg-profit/15 text-profit' :
-                        order.status === 'submitted' || order.status === 'open' ? 'bg-yellow-500/15 text-yellow-400' :
-                        order.status === 'canceled' || order.status === 'rejected' || order.status === 'failed' ? 'bg-loss/15 text-loss' :
+                        order.status === 'submitted' || order.status === 'new' ? 'bg-yellow-500/15 text-yellow-400' :
+                        order.status === 'canceled' || order.status === 'rejected' ? 'bg-loss/15 text-loss' :
                         'bg-white/10 text-text-muted'
                       }`}>
                         {order.status}

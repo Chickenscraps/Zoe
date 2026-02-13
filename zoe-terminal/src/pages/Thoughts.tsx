@@ -3,7 +3,7 @@ import type { Database } from '../lib/types';
 import { formatDate } from '../lib/utils';
 import { BrainCircuit, Filter } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { useModeContext } from '../lib/mode';
+
 
 type Thought = Database['public']['Tables']['thoughts']['Row'];
 
@@ -20,7 +20,6 @@ const TYPE_CONFIG: Record<string, { bg: string; text: string; label: string }> =
 };
 
 export default function Thoughts() {
-  const { mode } = useModeContext();
   const [thoughts, setThoughts] = useState<Thought[]>([]);
   const [filterType, setFilterType] = useState<string>('all');
   const [loading, setLoading] = useState(true);
@@ -32,7 +31,7 @@ export default function Thoughts() {
             const { data, error } = await supabase
                 .from('thoughts')
                 .select('*')
-                .eq('mode', mode)
+
                 .order('created_at', { ascending: false })
                 .limit(50);
 
@@ -48,7 +47,7 @@ export default function Thoughts() {
     fetchThoughts();
     const interval = setInterval(fetchThoughts, 15000); // refresh every 15s
     return () => clearInterval(interval);
-  }, [mode]);
+  }, []);
 
   const filteredThoughts = filterType === 'all'
     ? thoughts

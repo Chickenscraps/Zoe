@@ -7,7 +7,7 @@ import {
   AlertTriangle, Zap,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { useModeContext } from '../lib/mode';
+
 import { cn } from '../lib/utils';
 
 type CandidateScan = Database['public']['Tables']['candidate_scans']['Row'];
@@ -32,7 +32,6 @@ const CONSENSUS_STYLES: Record<string, { bg: string; text: string; border: strin
 };
 
 export default function Consensus() {
-  const { mode } = useModeContext();
   const [candidates, setCandidates] = useState<CandidateScan[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -43,7 +42,6 @@ export default function Consensus() {
         const { data: latest } = await supabase
           .from('candidate_scans')
           .select('created_at')
-          .eq('mode', mode)
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -56,7 +54,6 @@ export default function Consensus() {
         const { data, error } = await supabase
           .from('candidate_scans')
           .select('*')
-          .eq('mode', mode)
           .eq('created_at', latest.created_at)
           .order('score', { ascending: false });
 
@@ -72,7 +69,7 @@ export default function Consensus() {
     fetchData();
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
-  }, [mode]);
+  }, []);
 
   if (loading) {
     return <div className="text-text-secondary animate-pulse p-8">Loading consensus engine data...</div>;

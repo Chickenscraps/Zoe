@@ -6,7 +6,7 @@ import IndicatorPanel from '../components/IndicatorPanel';
 import MACDChart from '../components/MACDChart';
 import { useCandleData, type PatternInfo, type MTFDetail } from '../hooks/useCandleData';
 import { supabase } from '../lib/supabaseClient';
-import { useModeContext } from '../lib/mode';
+
 import { cn } from '../lib/utils';
 
 const SYMBOLS = [
@@ -17,7 +17,6 @@ const SYMBOLS = [
 const TIMEFRAMES = ['15m', '1h', '4h'] as const;
 
 export default function Charts() {
-  const { mode } = useModeContext();
   const [selectedSymbol, setSelectedSymbol] = useState('BTC-USD');
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>('1h');
   const [symbolPrices, setSymbolPrices] = useState<Record<string, number>>({});
@@ -55,7 +54,6 @@ export default function Charts() {
         const { data } = await supabase
           .from('candidate_scans')
           .select('symbol, info')
-          .eq('mode', mode)
           .order('created_at', { ascending: false })
           .limit(10);
 
@@ -72,7 +70,7 @@ export default function Charts() {
       } catch { /* non-critical */ }
     }
     fetchPrices();
-  }, [mode]);
+  }, []);
 
   const trendIcon = (trend: string) => {
     if (trend === 'bullish') return <TrendingUp className="w-4 h-4 text-profit" />;

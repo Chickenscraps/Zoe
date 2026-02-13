@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { useModeContext } from '../lib/mode';
 import type { Database } from '../lib/types';
 
 type Trade = Database['public']['Tables']['trades']['Row'];
 
 export function useTrades(instanceId: string = 'primary-v4-live') {
-  const { mode } = useModeContext();
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +18,6 @@ export function useTrades(instanceId: string = 'primary-v4-live') {
           .from('trades')
           .select('*')
           .eq('instance_id', instanceId)
-          .eq('mode', mode)
           .order('closed_at', { ascending: false });
 
         if (error) throw error;
@@ -35,7 +32,7 @@ export function useTrades(instanceId: string = 'primary-v4-live') {
     }
 
     fetchTrades();
-  }, [instanceId, mode]);
+  }, [instanceId]);
 
   return { trades, loading, error };
 }

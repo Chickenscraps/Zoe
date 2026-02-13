@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { Json } from '../lib/types';
 import { supabase } from '../lib/supabaseClient';
-import { useModeContext } from '../lib/mode';
 
 export interface DialConfig {
   key: string;
@@ -21,7 +21,6 @@ const DIAL_DEFS: DialConfig[] = [
 ];
 
 export function useDials() {
-  const { mode } = useModeContext();
   /** Saved values from Supabase (source of truth) */
   const [savedValues, setSavedValues] = useState<Record<string, unknown>>({});
   /** Local draft values (may differ from saved) */
@@ -53,7 +52,7 @@ export function useDials() {
       }
     }
     load();
-  }, [mode]);
+  }, []);
 
   /** Update a draft value locally (does NOT save to DB) */
   const setValue = useCallback((key: string, value: unknown) => {
@@ -73,7 +72,7 @@ export function useDials() {
     try {
       const upserts = changedKeys.map(key => ({
         key,
-        value: draftValues[key],
+        value: draftValues[key] as Json,
       }));
       const { error } = await supabase.from('config').upsert(upserts);
       if (error) throw error;
@@ -81,8 +80,8 @@ export function useDials() {
       // Audit log for each changed dial
       const auditRows = changedKeys.map(key => ({
         event_type: 'config_change',
-        details: `Dial ${key} set to ${JSON.stringify(draftValues[key])} (mode=${mode})`,
-        metadata: { key, value: draftValues[key], mode, source: 'copilot_dials' },
+        message: `Dial ${key} set to ${JSON.stringify(draftValues[key])}`,
+        metadata: { key, value: draftValues[key] as Json, source: 'copilot_dials' },
       }));
       await supabase.from('audit_log').insert(auditRows);
 
@@ -101,7 +100,7 @@ export function useDials() {
     } finally {
       setApplying(false);
     }
-  }, [changedKeys, draftValues, savedValues, mode]);
+  }, [changedKeys, draftValues, savedValues]);
 
   /** Discard pending changes and revert to saved values */
   const discardChanges = useCallback(() => {

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Database } from '../lib/types';
 import { Download, Shield, Trash2, AlertTriangle, Lock } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { useModeContext } from '../lib/mode';
+
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useAuth } from '../lib/AuthContext';
 import { formatCurrency } from '../lib/utils';
@@ -10,7 +10,6 @@ import { formatCurrency } from '../lib/utils';
 type Config = Database['public']['Tables']['config']['Row'];
 
 export default function Settings() {
-  const { mode, isPaper } = useModeContext();
   const { isGuest } = useAuth();
   const [config, setConfig] = useState<Config[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +26,6 @@ export default function Settings() {
           const { data, error } = await supabase
             .from('config')
             .select('*')
-            .eq('mode', mode)
             .order('key');
           if (error) throw error;
           if (data) setConfig(data);
@@ -38,11 +36,10 @@ export default function Settings() {
         }
       }
       fetchConfig();
-  }, [mode]);
+  }, []);
 
   const handleExport = () => {
     const exportData = {
-      mode,
       exported_at: new Date().toISOString(),
       cash: cryptoCash,
       holdings: holdingsRows,
@@ -53,7 +50,7 @@ export default function Settings() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `zoe-export-${mode}-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `zoe-export-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -71,7 +68,7 @@ export default function Settings() {
           <div>
             <h2 className="text-xl font-semibold text-white">Settings</h2>
             <p className="text-sm text-text-secondary">
-              System configuration &mdash; {isPaper ? 'Paper' : 'Live'} mode (read only)
+              System configuration (read only)
             </p>
           </div>
           <div className="flex gap-2">
@@ -92,14 +89,6 @@ export default function Settings() {
                </h3>
            </div>
            <div className="divide-y divide-border">
-               <div className="grid grid-cols-1 md:grid-cols-3 px-6 py-4">
-                   <div className="font-mono text-sm text-text-secondary">MODE</div>
-                   <div className="md:col-span-2 font-mono text-sm">
-                     <span className={isPaper ? "text-profit font-bold" : "text-loss font-bold"}>
-                       {mode.toUpperCase()}
-                     </span>
-                   </div>
-               </div>
                <div className="grid grid-cols-1 md:grid-cols-3 px-6 py-4">
                    <div className="font-mono text-sm text-text-secondary">System Status</div>
                    <div className="md:col-span-2 font-mono text-sm">
@@ -189,7 +178,6 @@ export default function Settings() {
                            key: 'kill_switch',
                            value: true,
                            instance_id: 'primary-v4-live',
-                           mode,
                          });
                          setKillConfirm(false);
                          alert('Kill switch activated. Trading paused.');
@@ -230,8 +218,8 @@ export default function Settings() {
                      onClick={async () => {
                        setPnlResetting(true);
                        try {
-                         await supabase.from('crypto_cash_snapshots').delete().eq('mode', mode);
-                         await supabase.from('pnl_daily').delete().eq('mode', mode);
+                         await supabase.from('crypto_cash_snapshots').delete().neq('id', '0');
+                         await supabase.from('pnl_daily').delete().neq('date', '');
                          setPnlResetConfirm(false);
                          window.location.reload();
                        } catch {

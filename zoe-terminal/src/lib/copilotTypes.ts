@@ -9,7 +9,6 @@ export interface FeedItem {
   symbol: string | null;
   color_hint: string | null;
   metadata: Record<string, unknown>;
-  mode: 'paper' | 'live';
   created_at: string;
 }
 

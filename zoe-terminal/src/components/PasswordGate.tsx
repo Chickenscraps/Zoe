@@ -25,7 +25,7 @@ function resolveRole(hash: string): Role | null {
 }
 
 export default function PasswordGate({ children }: { children: React.ReactNode }) {
-  const { login, isAdmin, isGuest, role } = useAuth();
+  const { login } = useAuth();
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [input, setInput] = useState('');
   const [error, setError] = useState(false);
