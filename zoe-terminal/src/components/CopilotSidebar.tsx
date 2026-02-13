@@ -30,11 +30,10 @@ export default function CopilotSidebar() {
         />
       )}
 
-      {/* Sidebar panel — always visible on lg+, toggle on mobile */}
+      {/* Sidebar panel — fixed at root level, always above content */}
       <aside className={cn(
         "fixed right-0 top-0 bottom-0 z-[70] w-80 bg-surface border-l border-border flex flex-col shadow-soft transition-transform duration-200 ease-in-out",
-        "lg:relative lg:z-auto lg:translate-x-0 lg:h-full",
-        !isOpen && "translate-x-full",
+        isOpen ? "translate-x-0" : "translate-x-full",
       )}>
         {/* Header */}
         <div className="h-14 flex items-center justify-between px-4 border-b border-border">
@@ -43,7 +42,7 @@ export default function CopilotSidebar() {
           </h2>
           <button
             onClick={() => setOpen(false)}
-            className="lg:hidden p-1 text-text-muted hover:text-text-primary transition-colors"
+            className="p-1 text-text-muted hover:text-text-primary transition-colors"
           >
             <X className="w-4 h-4" />
           </button>

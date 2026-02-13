@@ -288,12 +288,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
-      {/* Copilot Sidebar */}
+      {/* Desktop copilot spacer — reserves space when copilot is open */}
+      {copilotOpen && <div className="hidden lg:block w-80 shrink-0" />}
+
+      </div>
+
+      {/* Copilot Sidebar — at root level so z-index works globally */}
       <Suspense fallback={null}>
         <CopilotSidebar />
       </Suspense>
-
-      </div>
 
       {/* Sidebar — at root level so z-index works globally */}
       <aside
