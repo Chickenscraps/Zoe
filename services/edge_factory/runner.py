@@ -18,10 +18,11 @@ import logging
 import os
 import sys
 
-# Load .env before any config reads
+# Load .env + .env.secrets before any config reads
 from dotenv import load_dotenv
 
 load_dotenv()
+load_dotenv(".env.secrets", override=True)
 
 from .account_state import AccountState
 from .config import CONFIRM_PHRASE, EdgeFactoryConfig
