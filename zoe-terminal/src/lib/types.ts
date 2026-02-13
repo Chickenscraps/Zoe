@@ -141,12 +141,20 @@ export interface Database {
           order_type: "market" | "limit";
           qty: number | null;
           notional: number | null;
-          status: "new" | "submitted" | "partially_filled" | "filled" | "canceled" | "rejected";
+          limit_price: number | null;
+          status: "new" | "submitted" | "partially_filled" | "filled" | "canceled" | "rejected" | "cancel_pending" | "working";
           requested_at: string;
           submitted_at: string | null;
           updated_at: string;
           raw_response: Json;
           mode: "paper" | "live";
+          intent_group_id: string | null;
+          replace_count: number;
+          cancel_reason_code: string | null;
+          remaining_qty: number | null;
+          ttl_seconds: number | null;
+          next_action_at: string | null;
+          parent_order_id: string | null;
         };
       };
       crypto_tickers: {
@@ -442,6 +450,53 @@ export interface Database {
           context_page: string | null;
           mode: "paper" | "live";
           created_at: string;
+        };
+      };
+      order_events: {
+        Row: {
+          id: string;
+          order_id: string;
+          intent_group_id: string | null;
+          event_type: string;
+          from_status: string | null;
+          to_status: string;
+          limit_price: number | null;
+          filled_qty: number | null;
+          filled_price: number | null;
+          reason: string | null;
+          metadata: Json;
+          trace_id: string | null;
+          mode: "paper" | "live";
+          ts: string;
+        };
+      };
+      order_intents: {
+        Row: {
+          id: string;
+          symbol: string;
+          side: "buy" | "sell";
+          purpose: "entry" | "exit" | "flatten";
+          target_notional: number;
+          signal_confidence: number | null;
+          strategy: string | null;
+          status: string;
+          max_reprices: number;
+          reprice_step_bps: number;
+          ttl_per_attempt_sec: number;
+          mode: "paper" | "live";
+          created_at: string;
+          completed_at: string | null;
+          trace_id: string | null;
+        };
+      };
+      trade_locks: {
+        Row: {
+          symbol: string;
+          mode: "paper" | "live";
+          engine: string;
+          locked_at: string;
+          ttl_seconds: number;
+          instance_id: string;
         };
       };
     };

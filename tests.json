@@ -1,0 +1,85 @@
+{
+  "tests": [
+    {
+      "id": "fe-build",
+      "name": "Frontend TypeCheck + Build",
+      "type": "build",
+      "command": "cd zoe-terminal && npx vite build",
+      "status": "passed",
+      "lastRun": "2026-02-13",
+      "expectedOutput": "Build completes without errors"
+    },
+    {
+      "id": "pnl-fix",
+      "name": "P&L includes pending order notional",
+      "type": "manual",
+      "command": "Verify in UI: submit buy order -> totalValue stays constant",
+      "status": "implemented",
+      "lastRun": null,
+      "expectedOutput": "totalValue = cashValue + cryptoValue + pendingBuyNotional"
+    },
+    {
+      "id": "realtime",
+      "name": "Supabase Realtime subscriptions fire",
+      "type": "manual",
+      "command": "Insert row in crypto_orders via Supabase -> dashboard updates within 1s",
+      "status": "implemented",
+      "lastRun": null,
+      "expectedOutput": "OpenOrdersTable updates without manual refresh"
+    },
+    {
+      "id": "paper-fills",
+      "name": "Paper mode creates fills on entry/exit",
+      "type": "unit",
+      "command": "pytest services/crypto_trader/test_paper_lifecycle.py -v",
+      "status": "implemented",
+      "lastRun": null,
+      "expectedOutput": "All tests pass"
+    },
+    {
+      "id": "order-state-machine",
+      "name": "Order state machine transitions",
+      "type": "unit",
+      "command": "pytest services/crypto_trader/test_order_state_machine.py -v",
+      "status": "implemented",
+      "lastRun": null,
+      "expectedOutput": "All tests pass"
+    },
+    {
+      "id": "reposition-policy",
+      "name": "Reposition policy decisions",
+      "type": "unit",
+      "command": "pytest services/crypto_trader/test_reposition_policy.py -v",
+      "status": "implemented",
+      "lastRun": null,
+      "expectedOutput": "All tests pass"
+    },
+    {
+      "id": "scanner-score",
+      "name": "Scanner score clamped to 100",
+      "type": "unit",
+      "command": "pytest services/crypto_trader/test_paper_lifecycle.py::TestScannerScoreClamped -v",
+      "status": "implemented",
+      "lastRun": null,
+      "expectedOutput": "Score never exceeds 100"
+    },
+    {
+      "id": "alert-banners",
+      "name": "AlertBanner shows stuck orders and degraded state",
+      "type": "manual",
+      "command": "Create order with replace_count >= 3 and age > 5min -> verify alert banner appears",
+      "status": "implemented",
+      "lastRun": null,
+      "expectedOutput": "Red alert banner with stuck order warning"
+    },
+    {
+      "id": "safe-mode",
+      "name": "Safe mode activates on consecutive empty scans",
+      "type": "manual",
+      "command": "Set SAFE_MODE_EMPTY_SCAN_THRESHOLD=1, run scan with no results -> verify safe_mode_until is set",
+      "status": "implemented",
+      "lastRun": null,
+      "expectedOutput": "Trading blocked for 5 minutes"
+    }
+  ]
+}

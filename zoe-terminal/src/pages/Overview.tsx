@@ -1,4 +1,5 @@
-import { Coins, DollarSign, TrendingUp, Wallet } from "lucide-react";
+import { Coins, DollarSign, ShoppingCart, TrendingUp, Wallet } from "lucide-react";
+import { AlertBanner } from "../components/AlertBanner";
 import { EquityChart } from "../components/EquityChart";
 import { KPICard } from "../components/KPICard";
 import { OpenOrdersTable } from "../components/OpenOrdersTable";
@@ -11,6 +12,7 @@ import { useMemo } from "react";
 export default function Overview() {
   const {
     cryptoCash,
+    cryptoOrders,
     holdingsRows,
     livePrices,
     equityHistory,
@@ -34,7 +36,15 @@ export default function Overview() {
     return total;
   }, [holdingsRows, livePrices]);
 
-  const totalValue = cashValue + cryptoValue;
+  // Money allocated to pending buy orders (reserved by broker, not in buying_power)
+  const pendingBuyNotional = useMemo(() => {
+    if (!cryptoOrders?.length) return 0;
+    return cryptoOrders
+      .filter(o => ['new', 'submitted', 'partially_filled'].includes(o.status) && o.side === 'buy')
+      .reduce((sum, o) => sum + (o.notional ?? 0), 0);
+  }, [cryptoOrders]);
+
+  const totalValue = cashValue + cryptoValue + pendingBuyNotional;
 
   // P&L calculations
   const allTimePnl = initialDeposit > 0 ? totalValue - initialDeposit : 0;
@@ -66,8 +76,11 @@ export default function Overview() {
 
   return (
     <div className="space-y-8">
+      {/* Alert Banners */}
+      <AlertBanner />
+
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
         <KPICard
           label="Crypto"
           value={formatCurrency(cryptoValue)}
@@ -79,6 +92,16 @@ export default function Overview() {
           style={{ '--stagger-delay': '0ms' } as React.CSSProperties}
         />
         <KPICard
+          label="In Orders"
+          value={formatCurrency(pendingBuyNotional)}
+          subValue={pendingBuyNotional > 0 ? "Allocated to open orders" : "No pending orders"}
+          trend={pendingBuyNotional > 0 ? "Pending fill" : "—"}
+          trendDir={pendingBuyNotional > 0 ? 'neutral' : 'neutral'}
+          icon={ShoppingCart}
+          className="card-stagger"
+          style={{ '--stagger-delay': '60ms' } as React.CSSProperties}
+        />
+        <KPICard
           label="Cash"
           value={formatCurrency(cashValue)}
           subValue="Available Buying Power"
@@ -86,7 +109,7 @@ export default function Overview() {
           trendDir="neutral"
           icon={Wallet}
           className="card-stagger"
-          style={{ '--stagger-delay': '80ms' } as React.CSSProperties}
+          style={{ '--stagger-delay': '120ms' } as React.CSSProperties}
         />
         <KPICard
           label="Total"
@@ -96,7 +119,7 @@ export default function Overview() {
           trendDir={allTimePnl >= 0 ? 'up' : 'down'}
           icon={DollarSign}
           className="card-stagger"
-          style={{ '--stagger-delay': '160ms' } as React.CSSProperties}
+          style={{ '--stagger-delay': '180ms' } as React.CSSProperties}
         />
       </div>
 
