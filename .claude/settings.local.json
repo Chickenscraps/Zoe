@@ -5,7 +5,9 @@
       "Bash(npx vite build)",
       "Bash(npx netlify:*)",
       "Bash(npx netlify-cli:*)",
-      "WebFetch(domain:clawdbot-zoe-dash.netlify.app)"
+      "WebFetch(domain:clawdbot-zoe-dash.netlify.app)",
+      "Bash(find:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }

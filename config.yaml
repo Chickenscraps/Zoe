@@ -41,15 +41,6 @@ idle:
   quiet_hours_start: "23:00"                       # No idle posts after this
   quiet_hours_end: "07:00"                         # No idle posts before this
 
-# ─── Paper Trading ───
-trading:
-  paper_only: true
-  starting_equity: 2000
-  max_risk_per_trade: 100
-  pdt_simulation: true
-  pdt_max_day_trades: 3
-  pdt_rolling_days: 5
-
 # ─── Trendlines + Key Levels ───
 trendlines:
   enabled: true
