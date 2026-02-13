@@ -4,6 +4,11 @@ Clawdbot: 4th member of the Goblins group chat
 """
 import os
 import sys
+
+# Force UTF-8 stdout/stderr on Windows to prevent emoji UnicodeEncodeError
+if sys.platform == "win32" and os.environ.get("PYTHONIOENCODING") is None:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 import json
 import asyncio
 import uuid
@@ -256,8 +261,8 @@ async def on_ready():
 
             crypto_trader = CryptoTraderService(trader_config, rh_repo)
 
-            # Start the async loop
-            await crypto_trader.start()
+            # Start the async loop (background task — run_forever is infinite)
+            asyncio.create_task(crypto_trader.run_forever())
 
             print("   🪙 Crypto Trader active (Async + Supabase)")
         else:
