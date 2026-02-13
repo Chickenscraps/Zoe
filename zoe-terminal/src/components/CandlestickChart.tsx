@@ -37,6 +37,7 @@ export default function CandlestickChart({
 }: CandlestickChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const disposedRef = useRef(false);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const bbUpperRef = useRef<ISeriesApi<'Line'> | null>(null);
   const bbMiddleRef = useRef<ISeriesApi<'Line'> | null>(null);
@@ -45,6 +46,7 @@ export default function CandlestickChart({
   // Initialize chart
   useEffect(() => {
     if (!chartContainerRef.current) return;
+    disposedRef.current = false;
 
     const chart = createChart(chartContainerRef.current, {
       layout: {
@@ -124,7 +126,7 @@ export default function CandlestickChart({
 
     // Handle resize
     const handleResize = () => {
-      if (chartContainerRef.current) {
+      if (chartContainerRef.current && !disposedRef.current) {
         chart.applyOptions({ width: chartContainerRef.current.clientWidth });
       }
     };
@@ -132,6 +134,7 @@ export default function CandlestickChart({
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      disposedRef.current = true;
       chart.remove();
       chartRef.current = null;
       candleSeriesRef.current = null;
@@ -143,6 +146,7 @@ export default function CandlestickChart({
 
   // Update candle data
   useEffect(() => {
+    if (disposedRef.current) return;
     if (!candleSeriesRef.current || candles.length === 0) return;
 
     const chartData: CandlestickData<Time>[] = candles.map((c) => ({
@@ -163,6 +167,7 @@ export default function CandlestickChart({
 
   // Update Bollinger Band overlay
   useEffect(() => {
+    if (disposedRef.current) return;
     if (!bbUpperRef.current || !bbMiddleRef.current || !bbLowerRef.current) return;
     if (!bollingerOverlay || candles.length === 0) {
       bbUpperRef.current.setData([]);
@@ -188,6 +193,7 @@ export default function CandlestickChart({
 
   // Draw S/R levels as price lines
   useEffect(() => {
+    if (disposedRef.current) return;
     if (!candleSeriesRef.current || candles.length === 0) return;
 
     // Remove existing price lines (recreate approach)
