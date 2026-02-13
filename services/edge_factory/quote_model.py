@@ -28,7 +28,7 @@ class QuoteModel:
     """
     BBO cache with rolling history and staleness detection.
 
-    Wraps RobinhoodCryptoClient.get_best_bid_ask() with:
+    Wraps exchange client get_best_bid_ask() with:
     - Per-symbol rolling deque of recent quotes
     - Staleness detection (configurable threshold)
     - Average spread calculation for execution policy decisions
@@ -37,18 +37,18 @@ class QuoteModel:
 
     def __init__(
         self,
-        rh_client: Any,
+        exchange_client: Any,
         config: EdgeFactoryConfig,
         max_history: int = 100,
     ):
-        self.rh = rh_client
+        self.exchange = exchange_client
         self.config = config
         self._cache: dict[str, deque[Quote]] = {}
         self._max_history = max_history
 
     async def refresh(self, symbol: str) -> Quote:
         """Fetch fresh BBO from RH, cache it, return Quote."""
-        data = await self.rh.get_best_bid_ask(symbol)
+        data = await self.exchange.get_best_bid_ask(symbol)
         results = data.get("results", [])
 
         if not results:

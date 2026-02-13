@@ -1,6 +1,7 @@
-import { Coins, DollarSign, ShoppingCart, TrendingUp, Wallet } from "lucide-react";
+import { Coins, DollarSign, Receipt, ShoppingCart, TrendingUp, Wallet } from "lucide-react";
 import { AlertBanner } from "../components/AlertBanner";
 import { EquityChart } from "../components/EquityChart";
+import FocusPanel from "../components/FocusPanel";
 import { KPICard } from "../components/KPICard";
 import { OpenOrdersTable } from "../components/OpenOrdersTable";
 import { PositionsTable } from "../components/PositionsTable";
@@ -17,6 +18,9 @@ export default function Overview() {
     livePrices,
     equityHistory,
     initialDeposit,
+    realizedPnl,
+    unrealizedPnl,
+    totalFees,
     loading,
   } = useDashboardData();
 
@@ -123,6 +127,42 @@ export default function Overview() {
         />
       </div>
 
+      {/* P&L Breakdown */}
+      {(realizedPnl !== 0 || unrealizedPnl !== 0 || totalFees > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+          <KPICard
+            label="Realized P&L"
+            value={`${realizedPnl >= 0 ? '+' : ''}${formatCurrency(realizedPnl)}`}
+            subValue="Closed Positions (FIFO)"
+            trend={realizedPnl !== 0 ? (realizedPnl >= 0 ? "Profit" : "Loss") : "—"}
+            trendDir={realizedPnl >= 0 ? 'up' : 'down'}
+            icon={TrendingUp}
+            className="card-stagger"
+            style={{ '--stagger-delay': '0ms' } as React.CSSProperties}
+          />
+          <KPICard
+            label="Unrealized P&L"
+            value={`${unrealizedPnl >= 0 ? '+' : ''}${formatCurrency(unrealizedPnl)}`}
+            subValue="Open Positions (MTM)"
+            trend={unrealizedPnl !== 0 ? (unrealizedPnl >= 0 ? "Paper Gain" : "Paper Loss") : "—"}
+            trendDir={unrealizedPnl >= 0 ? 'up' : 'down'}
+            icon={Coins}
+            className="card-stagger"
+            style={{ '--stagger-delay': '80ms' } as React.CSSProperties}
+          />
+          <KPICard
+            label="Fees Paid"
+            value={formatCurrency(totalFees)}
+            subValue="Trading Fees"
+            trend={totalFees > 0 ? "Total Cost" : "—"}
+            trendDir="neutral"
+            icon={Receipt}
+            className="card-stagger"
+            style={{ '--stagger-delay': '160ms' } as React.CSSProperties}
+          />
+        </div>
+      )}
+
       {/* Open Positions */}
       <PositionsTable />
 
@@ -138,7 +178,10 @@ export default function Overview() {
         height={280}
       />
 
-      {/* Live Crypto Prices */}
+      {/* Focus Universe Live Prices (from market_data_ws service) */}
+      <FocusPanel />
+
+      {/* Legacy Live Crypto Prices (from candidate_scans polling) */}
       {livePrices.length > 0 && (
         <div className="card-premium card-shimmer-sweep p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">

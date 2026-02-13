@@ -43,7 +43,13 @@ export interface Database {
           day_trades_used: number;
           realized_pnl: number;
           unrealized_pnl: number;
-          mode: "paper" | "live";
+          mode: string;
+          fees_paid: number;
+          gross_equity: number | null;
+          net_equity: number | null;
+          net_deposits: number;
+          crypto_value: number;
+          cash_usd: number;
         };
       };
       candidate_scans: {
@@ -56,7 +62,7 @@ export interface Database {
           info: Json;
           recommended_strategy: string;
           created_at: string;
-          mode: "paper" | "live";
+          mode: string;
         };
       };
       thoughts: {
@@ -68,7 +74,7 @@ export interface Database {
           symbol: string | null;
           created_at: string;
           metadata: Json;
-          mode: "paper" | "live";
+          mode: string;
         };
       };
       health_heartbeat: {
@@ -79,7 +85,7 @@ export interface Database {
           status: "ok" | "warning" | "error" | "down";
           last_heartbeat: string;
           details: Json;
-          mode: "paper" | "live";
+          mode: string;
         };
       };
       daily_gameplans: {
@@ -147,7 +153,7 @@ export interface Database {
           submitted_at: string | null;
           updated_at: string;
           raw_response: Json;
-          mode: "paper" | "live";
+          mode: string;
           intent_group_id: string | null;
           replace_count: number;
           cancel_reason_code: string | null;
@@ -177,7 +183,11 @@ export interface Database {
           fee: number;
           executed_at: string;
           raw_fill: Json;
-          mode: "paper" | "live";
+          mode: string;
+          broker_fee: number;
+          fee_currency: string;
+          broker_fill_id: string | null;
+          exchange: string;
         };
       };
       crypto_holdings_snapshots: {
@@ -186,8 +196,8 @@ export interface Database {
           taken_at: string;
           holdings: Json;
           total_crypto_value: number;
-          source: "robinhood";
-          mode: "paper" | "live";
+          source: string;
+          mode: string;
         };
       };
       crypto_cash_snapshots: {
@@ -196,8 +206,8 @@ export interface Database {
           taken_at: string;
           cash_available: number;
           buying_power: number;
-          source: "robinhood";
-          mode: "paper" | "live";
+          source: string;
+          mode: string;
         };
       };
       crypto_reconciliation_events: {
@@ -212,7 +222,7 @@ export interface Database {
           holdings_diff: Json;
           status: "ok" | "degraded";
           reason: string | null;
-          mode: "paper" | "live";
+          mode: string;
         };
       };
       daily_notional: {
@@ -221,13 +231,13 @@ export interface Database {
           amount: number;
           notional_used: number;
           notional_limit: number;
-          mode: "paper" | "live";
+          mode: string;
         };
       };
       agent_state: {
         Row: {
           id: string;
-          mode: "paper" | "live";
+          mode: string;
           instance_id: string;
           state: Json;
           updated_at: string;
@@ -245,7 +255,7 @@ export interface Database {
           close: number;
           volume: number;
           patterns: Json;
-          mode: "paper" | "live";
+          mode: string;
           created_at: string;
         };
       };
@@ -253,7 +263,7 @@ export interface Database {
         Row: {
           id: string;
           run_id: string;
-          mode: "paper" | "live";
+          mode: string;
           instance_id: string;
           started_at: string;
           finished_at: string | null;
@@ -336,7 +346,7 @@ export interface Database {
           source: "wick" | "body";
           atr_snapshot: number | null;
           confirmed: boolean;
-          mode: "paper" | "live";
+          mode: string;
           created_at: string;
         };
       };
@@ -354,7 +364,7 @@ export interface Database {
           score: number;
           metadata: Json;
           is_active: boolean;
-          mode: "paper" | "live";
+          mode: string;
           created_at: string;
           updated_at: string;
         };
@@ -374,7 +384,7 @@ export interface Database {
           last_tested: string | null;
           is_active: boolean;
           metadata: Json;
-          mode: "paper" | "live";
+          mode: string;
           created_at: string;
           updated_at: string;
         };
@@ -391,7 +401,7 @@ export interface Database {
           confirmed: boolean;
           confirm_count: number;
           reason_json: Json;
-          mode: "paper" | "live";
+          mode: string;
           ts: string;
         };
       };
@@ -404,7 +414,7 @@ export interface Database {
           state: string;
           score: number | null;
           reason_json: Json;
-          mode: "paper" | "live";
+          mode: string;
         };
       };
       bounce_intents: {
@@ -423,7 +433,7 @@ export interface Database {
           blocked_reason: string | null;
           executed: boolean;
           reason_json: Json;
-          mode: "paper" | "live";
+          mode: string;
         };
       };
       zoe_events: {
@@ -437,7 +447,7 @@ export interface Database {
           symbol: string | null;
           color_hint: string | null;
           metadata: Json;
-          mode: "paper" | "live";
+          mode: string;
           created_at: string;
         };
       };
@@ -448,53 +458,149 @@ export interface Database {
           role: "user" | "assistant";
           content: string;
           context_page: string | null;
-          mode: "paper" | "live";
+          mode: string;
           created_at: string;
         };
       };
-      order_events: {
+      market_catalog: {
+        Row: {
+          symbol: string;
+          exchange_symbol: string;
+          ws_symbol: string | null;
+          base: string;
+          quote: string;
+          exchange: string;
+          status: "active" | "delisted" | "halted";
+          min_qty: number;
+          lot_size: number;
+          tick_size: number;
+          fee_maker_pct: number;
+          fee_taker_pct: number;
+          ordermin: number;
+          metadata: Json;
+          discovered_at: string;
+          updated_at: string;
+        };
+      };
+      market_snapshot_focus: {
+        Row: {
+          symbol: string;
+          bid: number;
+          ask: number;
+          mid: number;
+          spread_pct: number;
+          volume_24h: number;
+          change_24h_pct: number;
+          vwap: number;
+          high_24h: number;
+          low_24h: number;
+          updated_at: string;
+        };
+      };
+      market_snapshot_scout: {
+        Row: {
+          symbol: string;
+          bid: number;
+          ask: number;
+          mid: number;
+          volume_24h: number;
+          change_24h_pct: number;
+          updated_at: string;
+        };
+      };
+      market_sparkline_points: {
+        Row: {
+          symbol: string;
+          ts: string;
+          price: number;
+        };
+      };
+      mover_events: {
         Row: {
           id: string;
-          order_id: string;
-          intent_group_id: string | null;
+          symbol: string;
           event_type: string;
-          from_status: string | null;
-          to_status: string;
-          limit_price: number | null;
-          filled_qty: number | null;
-          filled_price: number | null;
-          reason: string | null;
+          magnitude: number;
+          direction: "up" | "down";
           metadata: Json;
-          trace_id: string | null;
-          mode: "paper" | "live";
-          ts: string;
+          detected_at: string;
+        };
+      };
+      market_focus_config: {
+        Row: {
+          symbol: string;
+          reason: string;
+          promoted_at: string;
+          expires_at: string | null;
+          metadata: Json;
+        };
+      };
+      cash_events: {
+        Row: {
+          id: string;
+          event_type: "deposit" | "withdrawal" | "transfer_in" | "transfer_out";
+          amount: number;
+          currency: string;
+          description: string;
+          external_ref: string;
+          created_at: string;
+          mode: string;
+        };
+      };
+      fee_ledger: {
+        Row: {
+          id: string;
+          fill_id: string;
+          order_id: string;
+          symbol: string;
+          fee_amount: number;
+          fee_currency: string;
+          fee_type: "trading" | "withdrawal" | "deposit" | "other";
+          created_at: string;
+          mode: string;
         };
       };
       order_intents: {
         Row: {
           id: string;
+          idempotency_key: string;
           symbol: string;
           side: "buy" | "sell";
-          purpose: "entry" | "exit" | "flatten";
-          target_notional: number;
-          signal_confidence: number | null;
-          strategy: string | null;
-          status: string;
-          max_reprices: number;
-          reprice_step_bps: number;
-          ttl_per_attempt_sec: number;
-          mode: "paper" | "live";
+          order_type: "limit" | "market";
+          qty: number | null;
+          notional: number | null;
+          limit_price: number | null;
+          engine: string;
+          mode: string;
+          status: "created" | "submitted" | "acked" | "partial_fill" | "cancel_requested" | "cancelled" | "replaced" | "filled" | "rejected" | "expired" | "error";
+          broker_order_id: string | null;
+          fill_price: number | null;
+          fill_qty: number | null;
+          metadata: Json;
           created_at: string;
-          completed_at: string | null;
-          trace_id: string | null;
+          updated_at: string;
+        };
+      };
+      order_events: {
+        Row: {
+          id: string;
+          intent_id: string;
+          event_type: string;
+          broker_order_id: string | null;
+          fill_price: number | null;
+          fill_qty: number | null;
+          fee: number | null;
+          metadata: Json;
+          created_at: string;
         };
       };
       trade_locks: {
         Row: {
           symbol: string;
-          mode: "paper" | "live";
           engine: string;
+          mode: string;
           locked_at: string;
+          lock_holder: string;
           ttl_seconds: number;
           instance_id: string;
         };

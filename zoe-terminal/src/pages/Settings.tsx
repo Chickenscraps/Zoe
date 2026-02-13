@@ -10,7 +10,7 @@ import { formatCurrency } from '../lib/utils';
 type Config = Database['public']['Tables']['config']['Row'];
 
 export default function Settings() {
-  const { mode, isPaper } = useModeContext();
+  const { mode } = useModeContext();
   const { isGuest } = useAuth();
   const [config, setConfig] = useState<Config[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,7 +71,7 @@ export default function Settings() {
           <div>
             <h2 className="text-xl font-semibold text-white">Settings</h2>
             <p className="text-sm text-text-secondary">
-              System configuration &mdash; {isPaper ? 'Paper' : 'Live'} mode (read only)
+              System configuration (read only)
             </p>
           </div>
           <div className="flex gap-2">
@@ -95,7 +95,7 @@ export default function Settings() {
                <div className="grid grid-cols-1 md:grid-cols-3 px-6 py-4">
                    <div className="font-mono text-sm text-text-secondary">MODE</div>
                    <div className="md:col-span-2 font-mono text-sm">
-                     <span className={isPaper ? "text-profit font-bold" : "text-loss font-bold"}>
+                     <span className="text-loss font-bold">
                        {mode.toUpperCase()}
                      </span>
                    </div>

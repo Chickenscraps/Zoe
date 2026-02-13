@@ -97,7 +97,7 @@ function pickNudge(
       subtype: 'STATUS_UPDATE',
       severity: 'info',
       title: `Current buying power: $${Number(equity).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      body: mode === 'paper' ? 'Paper mode — no real funds at risk.' : 'Live funds.',
+      body: 'Live funds.',
       metadata: { equity },
     });
   }

@@ -1,6 +1,6 @@
 """Crypto candidate scanner.
 
-Fetches bid/ask for all watchlist symbols via Robinhood batch API,
+Fetches bid/ask for all watchlist symbols via exchange batch API,
 feeds ticks into the PriceCache, then scores each symbol using
 real technical indicators (momentum, volatility, trend, RSI, EMA).
 
@@ -13,7 +13,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any, TYPE_CHECKING
 
-from integrations.robinhood_crypto_client import RobinhoodCryptoClient
+from typing import Any as _ExchangeClient
 from .price_cache import PriceCache
 
 if TYPE_CHECKING:
@@ -208,7 +208,7 @@ def _pick_strategy(snapshot: dict[str, Any]) -> str:
 # ── Main scanner ─────────────────────────────────────────────────
 
 async def scan_candidates(
-    client: RobinhoodCryptoClient,
+    client: Any,
     price_cache: PriceCache,
     candle_manager: CandleManager | None = None,
 ) -> list[CandidateScan]:

@@ -69,11 +69,11 @@ class OrderManager:
 
     def __init__(
         self,
-        rh_client: Any,
+        exchange_client: Any,
         quote_model: QuoteModel,
         config: EdgeFactoryConfig,
     ):
-        self.rh = rh_client
+        self.exchange = exchange_client
         self.quotes = quote_model
         self.config = config
         self.slippage_history: deque[SlippageRecord] = deque(maxlen=100)
@@ -141,7 +141,7 @@ class OrderManager:
                 qty = ticket.size_usd / ticket.limit_price if ticket.limit_price > 0 else 0
                 order_kwargs["qty"] = qty
 
-            order = await self.rh.place_order(**order_kwargs)
+            order = await self.exchange.place_order(**order_kwargs)
             ticket.order_id = order.get("id", ticket.client_order_id)
             ticket.status = "submitted"
             ticket.submitted_at = datetime.now(timezone.utc)
@@ -167,11 +167,11 @@ class OrderManager:
 
             while elapsed < ticket.ttl_seconds:
                 try:
-                    order = await self.rh.get_order(ticket.order_id)
+                    order = await self.exchange.get_order(ticket.order_id)
                     status = order.get("status", "")
 
                     if status == "filled":
-                        fills = await self.rh.get_order_fills(ticket.order_id)
+                        fills = await self.exchange.get_order_fills(ticket.order_id)
                         fill_list = fills.get("results", [])
                         if fill_list:
                             ticket.fill_price = float(fill_list[0].get("price", ticket.limit_price))
@@ -188,7 +188,7 @@ class OrderManager:
                     if status == "partially_filled":
                         # Accept partial for small account — don't chase remainder
                         # Sum ALL fills (not just the first) for correct VWAP
-                        fills = await self.rh.get_order_fills(ticket.order_id)
+                        fills = await self.exchange.get_order_fills(ticket.order_id)
                         fill_list = fills.get("results", [])
                         total_qty = 0.0
                         total_cost = 0.0

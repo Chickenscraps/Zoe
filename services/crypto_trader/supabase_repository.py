@@ -48,6 +48,12 @@ class SupabaseCryptoRepository:
     def upsert_fill(self, fill: dict[str, Any]) -> None:
         self.sb.table("crypto_fills").upsert(fill, on_conflict="fill_id").execute()
 
+    def get_fills(self, mode: str) -> list[dict[str, Any]]:
+        resp = self.sb.table("crypto_fills").select(
+            "symbol, side, qty, price, fee, fill_id, executed_at"
+        ).eq("mode", mode).order("executed_at").execute()
+        return resp.data or []
+
     # ── Snapshots ──
 
     def insert_holdings_snapshot(self, holdings: dict[str, Any], total_value: float, **kwargs: Any) -> None:

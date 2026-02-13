@@ -105,13 +105,13 @@ export default function Admin() {
                 <span className="text-sm text-text-secondary">Trading Mode</span>
                 <StatusChip 
                   status={healthSummary.status === "LIVE" ? "ok" : "warning"} 
-                  label={healthSummary.status === "LIVE" ? "LIVE TRADING" : "PAPER (SIMULATION)"} 
+                  label={healthSummary.status === "LIVE" ? "LIVE TRADING" : "INITIALIZING"}
                 /> 
              </div>
              <div className="flex items-center justify-between border-b border-border/40 pb-3">
                 <span className="text-sm text-text-secondary">Data Source</span>
                 <div className="flex items-center gap-2 text-xs text-white">
-                    <CheckCircle className="w-3 h-3 text-profit" /> Robinhood Crypto
+                    <CheckCircle className="w-3 h-3 text-profit" /> Kraken
                 </div>
              </div>
              <div className="flex items-center justify-between border-b border-border/40 pb-3">
@@ -141,8 +141,8 @@ export default function Admin() {
                <span className="text-sm font-bold text-white group-hover:text-brand-primary transition-colors">Netlify Hosting</span>
                <ExternalLink className="w-4 h-4 text-text-muted" />
             </a>
-            <a href="https://robinhood.com/crypto" target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 bg-background/50 border border-border rounded hover:border-brand-primary/50 transition-colors group">
-               <span className="text-sm font-bold text-white group-hover:text-brand-primary transition-colors">Robinhood Account</span>
+            <a href="https://pro.kraken.com" target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 bg-background/50 border border-border rounded hover:border-brand-primary/50 transition-colors group">
+               <span className="text-sm font-bold text-white group-hover:text-brand-primary transition-colors">Kraken Account</span>
                <ExternalLink className="w-4 h-4 text-text-muted" />
             </a>
           </div>
@@ -165,9 +165,9 @@ export default function Admin() {
 
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center border-b border-border/40 pb-4">
-            <div className="text-sm font-bold text-text-secondary">Robinhood API Key</div>
+            <div className="text-sm font-bold text-text-secondary">Kraken API Key</div>
             <div className="col-span-2 font-mono text-xs bg-black/40 p-2 rounded border border-border/50 text-text-dim break-all">
-              {showSecrets ? (import.meta.env.VITE_RH_API_KEY_HINT || "Key not exposed to client bundle") : "••••••••-••••-••••-••••-••••••••••••"}
+              {showSecrets ? "Key not exposed to client bundle" : "••••••••-••••-••••-••••-••••••••••••"}
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">

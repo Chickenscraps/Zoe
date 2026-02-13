@@ -5,8 +5,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, List, Optional
 from dataclasses import dataclass
 
-from integrations.robinhood_crypto_client import RobinhoodCryptoClient
-
 # Simple in-memory cache for candles to reduce calls
 # Key: (symbol, timeframe) -> (timestamp, candles)
 
@@ -23,7 +21,7 @@ class Candle:
     is_final: bool
 
 class MarketDataProvider:
-    def __init__(self, client: RobinhoodCryptoClient, repo: Any = None):
+    def __init__(self, client: Any, repo: Any = None):
         self.client = client
         self.repo = repo  # SupabaseCryptoRepository
         self._cache = {}

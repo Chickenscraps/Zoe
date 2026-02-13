@@ -1,85 +1,121 @@
 {
-  "tests": [
-    {
-      "id": "fe-build",
-      "name": "Frontend TypeCheck + Build",
-      "type": "build",
-      "command": "cd zoe-terminal && npx vite build",
-      "status": "passed",
-      "lastRun": "2026-02-13",
-      "expectedOutput": "Build completes without errors"
+  "version": "1.0",
+  "description": "Test commands and expected outputs for Kraken migration phases",
+  "tests": {
+    "phase_0": {
+      "description": "Baseline — repo builds and lints",
+      "commands": [
+        {
+          "name": "typecheck_dashboard",
+          "command": "cd zoe-terminal && npx tsc --noEmit",
+          "expected": "No errors",
+          "last_run": null,
+          "status": "not_run"
+        }
+      ]
     },
-    {
-      "id": "pnl-fix",
-      "name": "P&L includes pending order notional",
-      "type": "manual",
-      "command": "Verify in UI: submit buy order -> totalValue stays constant",
-      "status": "implemented",
-      "lastRun": null,
-      "expectedOutput": "totalValue = cashValue + cryptoValue + pendingBuyNotional"
+    "phase_1": {
+      "description": "Kraken credentials wiring + connectivity smoke tests",
+      "commands": [
+        {
+          "name": "kraken_system_status",
+          "command": "python -m integrations.kraken_client.test_connectivity system_status",
+          "expected": "Kraken system status: online",
+          "last_run": null,
+          "status": "not_run"
+        },
+        {
+          "name": "kraken_tradable_pairs",
+          "command": "python -m integrations.kraken_client.test_connectivity tradable_pairs",
+          "expected": "Found N tradable pairs",
+          "last_run": null,
+          "status": "not_run"
+        },
+        {
+          "name": "kraken_balance",
+          "command": "python -m integrations.kraken_client.test_connectivity balance",
+          "expected": "Balance retrieved successfully (N assets)",
+          "last_run": null,
+          "status": "not_run"
+        },
+        {
+          "name": "kraken_open_orders",
+          "command": "python -m integrations.kraken_client.test_connectivity open_orders",
+          "expected": "Open orders retrieved (N orders)",
+          "last_run": null,
+          "status": "not_run"
+        },
+        {
+          "name": "kraken_ws_public",
+          "command": "python -m integrations.kraken_client.test_connectivity ws_public",
+          "expected": "WS public ticker received for BTC/USD",
+          "last_run": null,
+          "status": "not_run"
+        },
+        {
+          "name": "kraken_ws_private",
+          "command": "python -m integrations.kraken_client.test_connectivity ws_private",
+          "expected": "WS private auth token obtained, subscribed to executions",
+          "last_run": null,
+          "status": "not_run"
+        }
+      ]
     },
-    {
-      "id": "realtime",
-      "name": "Supabase Realtime subscriptions fire",
-      "type": "manual",
-      "command": "Insert row in crypto_orders via Supabase -> dashboard updates within 1s",
-      "status": "implemented",
-      "lastRun": null,
-      "expectedOutput": "OpenOrdersTable updates without manual refresh"
+    "phase_2": {
+      "description": "Market catalog + adaptive market watch",
+      "commands": []
     },
-    {
-      "id": "paper-fills",
-      "name": "Paper mode creates fills on entry/exit",
-      "type": "unit",
-      "command": "pytest services/crypto_trader/test_paper_lifecycle.py -v",
-      "status": "implemented",
-      "lastRun": null,
-      "expectedOutput": "All tests pass"
+    "phase_3": {
+      "description": "Accounting overhaul",
+      "commands": []
     },
-    {
-      "id": "order-state-machine",
-      "name": "Order state machine transitions",
-      "type": "unit",
-      "command": "pytest services/crypto_trader/test_order_state_machine.py -v",
-      "status": "implemented",
-      "lastRun": null,
-      "expectedOutput": "All tests pass"
+    "phase_4": {
+      "description": "Order lifecycle + repositioning",
+      "commands": []
     },
-    {
-      "id": "reposition-policy",
-      "name": "Reposition policy decisions",
-      "type": "unit",
-      "command": "pytest services/crypto_trader/test_reposition_policy.py -v",
-      "status": "implemented",
-      "lastRun": null,
-      "expectedOutput": "All tests pass"
+    "phase_5": {
+      "description": "Performance + reliability hardening",
+      "commands": []
     },
-    {
-      "id": "scanner-score",
-      "name": "Scanner score clamped to 100",
-      "type": "unit",
-      "command": "pytest services/crypto_trader/test_paper_lifecycle.py::TestScannerScoreClamped -v",
-      "status": "implemented",
-      "lastRun": null,
-      "expectedOutput": "Score never exceeds 100"
-    },
-    {
-      "id": "alert-banners",
-      "name": "AlertBanner shows stuck orders and degraded state",
-      "type": "manual",
-      "command": "Create order with replace_count >= 3 and age > 5min -> verify alert banner appears",
-      "status": "implemented",
-      "lastRun": null,
-      "expectedOutput": "Red alert banner with stuck order warning"
-    },
-    {
-      "id": "safe-mode",
-      "name": "Safe mode activates on consecutive empty scans",
-      "type": "manual",
-      "command": "Set SAFE_MODE_EMPTY_SCAN_THRESHOLD=1, run scan with no results -> verify safe_mode_until is set",
-      "status": "implemented",
-      "lastRun": null,
-      "expectedOutput": "Trading blocked for 5 minutes"
+    "phase_6": {
+      "description": "Tests + gating",
+      "commands": [
+        {
+          "name": "all_unit_tests",
+          "command": "python -m pytest tests/test_fifo_matcher.py tests/test_order_intent.py tests/test_coalescer.py tests/test_symbol_normalization.py -v",
+          "expected": "66 passed",
+          "last_run": "2026-02-13",
+          "status": "pass"
+        },
+        {
+          "name": "fifo_matcher_tests",
+          "command": "python -m pytest tests/test_fifo_matcher.py -v",
+          "expected": "12 passed — FIFO cost-basis matching",
+          "last_run": "2026-02-13",
+          "status": "pass"
+        },
+        {
+          "name": "order_intent_tests",
+          "command": "python -m pytest tests/test_order_intent.py -v",
+          "expected": "9 passed — order lifecycle state machine",
+          "last_run": "2026-02-13",
+          "status": "pass"
+        },
+        {
+          "name": "coalescer_tests",
+          "command": "python -m pytest tests/test_coalescer.py -v",
+          "expected": "8 passed — market data coalescer",
+          "last_run": "2026-02-13",
+          "status": "pass"
+        },
+        {
+          "name": "symbol_normalization_tests",
+          "command": "python -m pytest tests/test_symbol_normalization.py -v",
+          "expected": "37 passed — Kraken symbol normalization + round-trip",
+          "last_run": "2026-02-13",
+          "status": "pass"
+        }
+      ]
     }
-  ]
+  }
 }

@@ -7,8 +7,10 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from typing import Any
 
-from integrations.robinhood_crypto_client import RobinhoodCryptoClient
-from integrations.robinhood_crypto_client.client import _sanitize
+def _sanitize(d: dict) -> dict:
+    """Strip sensitive keys from order responses."""
+    sensitive = {"api_key", "secret", "token", "password"}
+    return {k: v for k, v in d.items() if k.lower() not in sensitive} if isinstance(d, dict) else d
 
 from .candle_manager import CandleManager
 from .config import CONFIRM_PHRASE, CryptoTraderConfig
@@ -32,7 +34,7 @@ class HealthState:
 
 
 class CryptoTraderService:
-    def __init__(self, client: RobinhoodCryptoClient, repository: CryptoRepository, config: CryptoTraderConfig | None = None):
+    def __init__(self, client: Any, repository: CryptoRepository, config: CryptoTraderConfig | None = None):
         self.client = client
         self.repo = repository
         self.cfg = config or CryptoTraderConfig()
@@ -62,8 +64,8 @@ class CryptoTraderService:
         self._require_admin(initiator_id)
         if enabled and confirmation != CONFIRM_PHRASE:
             raise ValueError("Live mode denied: missing exact confirmation phrase")
-        self.cfg.rh_live_trading = enabled
-        self.cfg.rh_live_confirm = confirmation if enabled else ""
+        self.cfg.live_trading = enabled
+        self.cfg.live_confirm = confirmation if enabled else ""
         self.audit.write("crypto_live_mode", enabled=enabled)
         return "LIVE ON" if enabled else "LIVE OFF"
 
@@ -82,7 +84,7 @@ class CryptoTraderService:
     def _validate_symbol(self, symbol: str) -> str:
         normalized = symbol.strip().upper()
         if not normalized.endswith("-USD"):
-            raise ValueError("Only Robinhood crypto USD pairs are allowed")
+            raise ValueError("Only crypto USD pairs are allowed")
         return normalized
 
     def _enforce_trade_limits(self, *, notional: float, symbol: str) -> None:
@@ -157,77 +159,45 @@ class CryptoTraderService:
         return local_cash, holdings
 
     async def reconcile(self) -> HealthState:
-        if self.mode == "paper":
-            return await self._reconcile_paper()
-        return await self._reconcile_live()
-
-    async def _reconcile_paper(self) -> HealthState:
-        """Paper mode: use local ledger only, no Robinhood API calls."""
-        local_cash, local_holdings = self._compute_local_ledger()
-        # If no fills yet, use starting equity from config
-        if local_cash == 0.0 and not local_holdings:
-            local_cash = float(getattr(self.cfg, "starting_equity", 2000.0))
-
-        total_value = 0.0  # Paper mode doesn't track market value
-        self.repo.insert_cash_snapshot(cash_available=local_cash, buying_power=local_cash, mode=self.mode)
-        self.repo.insert_holdings_snapshot(holdings=local_holdings, total_value=total_value, mode=self.mode)
-        self.repo.insert_reconciliation_event(
-            {
-                "taken_at": datetime.now(timezone.utc).isoformat(),
-                "local_cash": local_cash,
-                "rh_cash": local_cash,
-                "cash_diff": 0.0,
-                "local_holdings": local_holdings,
-                "rh_holdings": local_holdings,
-                "status": "ok",
-                "reason": "paper mode - local ledger only",
-                "mode": self.mode,
-            }
-        )
-        notional = self.repo.get_daily_notional(date.today(), self.mode)
-        return HealthState(
-            status="ok",
-            reason="paper mode",
-            last_reconcile_at=datetime.now(timezone.utc).isoformat(),
-            daily_notional_used=notional,
-            live_enabled=False,
-            open_orders=0,
-        )
-
-    async def _reconcile_live(self) -> HealthState:
-        """Live mode: reconcile against real Robinhood API."""
+        """Reconcile against Kraken exchange API."""
         balances = await self.client.get_account_balances()
         holdings_resp = await self.client.get_holdings()
 
-        rh_cash = float(balances.get("cash_available") or balances.get("cash") or 0.0)
-        rh_buying_power = float(balances.get("buying_power") or rh_cash)
-        rh_holdings = {item["symbol"]: float(item.get("quantity", 0.0)) for item in holdings_resp.get("results", holdings_resp if isinstance(holdings_resp, list) else [])}
+        exchange_cash = float(
+            balances.get("ZUSD")
+            or balances.get("USD")
+            or balances.get("cash_available")
+            or balances.get("cash")
+            or 0.0
+        )
+        exchange_buying_power = float(balances.get("buying_power") or exchange_cash)
+        exchange_holdings = {item["symbol"]: float(item.get("quantity", 0.0)) for item in holdings_resp.get("results", holdings_resp if isinstance(holdings_resp, list) else [])}
         total_value = sum(float(item.get("market_value", 0.0)) for item in holdings_resp.get("results", [])) if isinstance(holdings_resp, dict) else 0.0
 
         local_cash, local_holdings = self._compute_local_ledger()
-        cash_diff = local_cash - rh_cash
+        cash_diff = local_cash - exchange_cash
         holding_diff = {
-            sym: local_holdings.get(sym, 0.0) - rh_holdings.get(sym, 0.0)
-            for sym in sorted(set(local_holdings) | set(rh_holdings))
-            if abs(local_holdings.get(sym, 0.0) - rh_holdings.get(sym, 0.0)) > self.cfg.reconcile_qty_tolerance
+            sym: local_holdings.get(sym, 0.0) - exchange_holdings.get(sym, 0.0)
+            for sym in sorted(set(local_holdings) | set(exchange_holdings))
+            if abs(local_holdings.get(sym, 0.0) - exchange_holdings.get(sym, 0.0)) > self.cfg.reconcile_qty_tolerance
         }
 
         status = "ok"
         reason = ""
         if abs(cash_diff) > self.cfg.reconcile_cash_tolerance or holding_diff:
             status = "degraded"
-            reason = "Mismatch between local ledger and Robinhood snapshots"
+            reason = "Mismatch between local ledger and exchange snapshots"
 
-        self.repo.insert_cash_snapshot(cash_available=rh_cash, buying_power=rh_buying_power, mode=self.mode)
-        self.repo.insert_holdings_snapshot(holdings=rh_holdings, total_value=total_value, mode=self.mode)
+        self.repo.insert_cash_snapshot(cash_available=exchange_cash, buying_power=exchange_buying_power, mode=self.mode)
+        self.repo.insert_holdings_snapshot(holdings=exchange_holdings, total_value=total_value, mode=self.mode)
         self.repo.insert_reconciliation_event(
             {
                 "taken_at": datetime.now(timezone.utc).isoformat(),
                 "local_cash": local_cash,
-                "rh_cash": rh_cash,
+                "exchange_cash": exchange_cash,
                 "cash_diff": cash_diff,
                 "local_holdings": local_holdings,
-                "rh_holdings": rh_holdings,
+                "exchange_holdings": exchange_holdings,
                 "holdings_diff": holding_diff,
                 "status": status,
                 "reason": reason,
@@ -286,7 +256,7 @@ class CryptoTraderService:
     def _write_heartbeats(self, health: HealthState) -> None:
         now_iso = datetime.now(timezone.utc).isoformat()
         components = [
-            ("robinhood_api", "ok" if not self._degraded else "warning"),
+            ("exchange_api", "ok" if not self._degraded else "warning"),
             ("reconciliation_engine", "ok" if health.status == "LIVE" else "warning"),
             ("snapshot_store", "ok"),
             ("discord_control", "ok"),
@@ -305,18 +275,56 @@ class CryptoTraderService:
                 pass
 
     def _write_pnl_snapshot(self, equity: float) -> None:
-        realized = self.repo.get_realized_pnl(self.mode)
+        """Write enriched P&L snapshot with FIFO-matched realized/unrealized."""
+        from services.accounting.fifo_matcher import FIFOMatcher
+
+        realized = 0.0
+        unrealized = 0.0
+        total_fees = 0.0
+        crypto_value = 0.0
+        cash_usd = equity  # Start with equity as cash estimate
+
+        try:
+            fills = self.repo.get_fills(self.mode)
+            if fills:
+                matcher = FIFOMatcher.from_fills(fills)
+                realized = matcher.get_realized_pnl()
+                total_fees = matcher.get_total_fees()
+
+                # Get marks from focus snapshots for unrealized P&L
+                open_symbols = [s for s in matcher.get_all_symbols() if matcher.get_open_qty(s) > 1e-12]
+                if open_symbols and hasattr(self.repo, 'sb'):
+                    try:
+                        resp = self.repo.sb.table("market_snapshot_focus").select(
+                            "symbol, mid"
+                        ).in_("symbol", open_symbols).execute()
+                        marks = {r["symbol"]: float(r["mid"]) for r in (resp.data or []) if float(r.get("mid", 0)) > 0}
+                        for sym in open_symbols:
+                            mark = marks.get(sym, 0.0)
+                            if mark > 0:
+                                unrealized += matcher.get_unrealized_pnl(sym, mark)
+                                crypto_value += matcher.get_open_qty(sym) * mark
+                    except Exception:
+                        pass
+        except Exception:
+            realized = self.repo.get_realized_pnl(self.mode)
+
+        total_equity = cash_usd + crypto_value
+
         try:
             self.repo.upsert_pnl_daily({
                 "date": str(date.today()),
                 "instance_id": "default",
-                "equity": equity,
-                "daily_pnl": realized,
+                "equity": total_equity,
+                "daily_pnl": realized + unrealized,
                 "drawdown": 0,
                 "cash_buffer_pct": 100,
                 "day_trades_used": 0,
                 "realized_pnl": realized,
-                "unrealized_pnl": 0,
+                "unrealized_pnl": unrealized,
+                "fees_paid": total_fees,
+                "crypto_value": crypto_value,
+                "cash_usd": cash_usd,
                 "mode": self.mode,
             })
         except Exception as e:
@@ -424,7 +432,6 @@ class CryptoTraderService:
     async def _execute_signal(self, signal: Signal) -> None:
         """Execute a single signal — place order if all checks pass.
 
-        In paper mode: simulates by logging + recording the order intent.
         Guards: paused, safe_mode, degraded, notional limits.
         """
         sym = signal.symbol
@@ -471,101 +478,13 @@ class CryptoTraderService:
         )
         print(f"[ZOE] SIGNAL: {action} {sym} ${notional:.2f} (conf={signal.confidence:.0%}) -- {signal.reason}")
 
-        # Only place real orders if live_ready
         if not self.cfg.live_ready():
-            # Paper mode: simulate fill + update holdings/cash
-            snap = self.price_cache.snapshot(sym)
-            mid = snap.get("mid", 0)
-            if mid <= 0:
-                print(f"[ZOE] PAPER TRADE skipped {sym}: no price available")
-                return
-
-            # Pessimistic fill: buy at ask, sell at bid
-            if side == "buy":
-                fill_price = snap.get("ask", mid)
-                fill_qty = notional / fill_price if fill_price > 0 else 0
-            else:
-                fill_price = snap.get("bid", mid)
-                fill_qty = notional / fill_price if fill_price > 0 else 0
-
-            if fill_qty <= 0:
-                return
-
-            paper_fee = notional * 0.001  # simulated 10bps fee
-
-            # Record order
-            paper_order_id = f"paper-{uuid.uuid4()}"
-            self.repo.insert_order({
-                "id": paper_order_id,
-                "client_order_id": paper_order_id,
-                "symbol": sym,
-                "side": side,
-                "order_type": "market",
-                "qty": fill_qty,
-                "notional": notional,
-                "status": "filled",
-                "raw_response": {"paper": True},
-                "mode": self.mode,
-            })
-
-            # Record fill
-            self.repo.upsert_fill({
-                "order_id": paper_order_id,
-                "fill_id": f"paper-fill-{uuid.uuid4()}",
-                "symbol": sym,
-                "side": side,
-                "qty": fill_qty,
-                "price": fill_price,
-                "fee": paper_fee,
-                "executed_at": datetime.now(timezone.utc).isoformat(),
-                "mode": self.mode,
-            })
-
-            # Update holdings
-            holdings = dict((self.repo.latest_holdings_snapshot(self.mode) or {}).get("holdings", {}))
-            current_qty = float(holdings.get(sym, 0))
-            if side == "buy":
-                holdings[sym] = current_qty + fill_qty
-            else:
-                holdings[sym] = max(0, current_qty - fill_qty)
-                if holdings[sym] == 0:
-                    del holdings[sym]
-            self.repo.insert_holdings_snapshot(holdings=holdings, total_value=0, mode=self.mode)
-
-            # Update cash
-            cash_snap = self.repo.latest_cash_snapshot(self.mode)
-            current_cash = float((cash_snap or {}).get("buying_power", 0))
-            if side == "buy":
-                new_cash = current_cash - notional - paper_fee
-            else:
-                new_cash = current_cash + (fill_qty * fill_price) - paper_fee
-            self.repo.insert_cash_snapshot(cash_available=new_cash, buying_power=new_cash, mode=self.mode)
-
             self._write_thought(
-                f"PAPER {action} {sym}: ${notional:.2f} filled @ ${fill_price:.6f} (qty={fill_qty:.8f}, fee=${paper_fee:.4f})",
-                thought_type="paper_trade",
-                symbol=sym,
-                metadata={**signal.to_dict(), "fill_price": fill_price, "fill_qty": fill_qty, "fee": paper_fee},
+                f"Signal {action} {sym} skipped -- live trading not ready",
+                thought_type="signal", symbol=sym,
             )
-            print(f"[ZOE] PAPER TRADE: {action} {sym} ${notional:.2f} filled @ ${fill_price:.6f}")
-
-            # Update daily notional
-            self.repo.set_daily_notional(
-                date.today(),
-                self.repo.get_daily_notional(date.today(), self.mode) + notional,
-                self.mode,
-            )
-
-            # Register with exit manager so exits are tracked even in paper mode
-            if action == "BUY":
-                self.exit_manager.register_position(
-                    symbol=sym,
-                    entry_price=fill_price,
-                    entry_time=datetime.now(timezone.utc),
-                )
             return
 
-        # Live execution
         try:
             order = await self.place_order(
                 initiator_id=self.cfg.admin_user_id,
@@ -670,72 +589,10 @@ class CryptoTraderService:
         print(f"[ZOE] EXIT: {exit_signal.reason.value} {symbol} ({exit_signal.pnl_pct:.2%}) -- {exit_signal.details}")
 
         if not self.cfg.live_ready():
-            # Paper mode: simulate sell fill + update holdings/cash
-            holdings = dict((self.repo.latest_holdings_snapshot(self.mode) or {}).get("holdings", {}))
-            qty = float(holdings.get(symbol, 0))
-            if qty <= 0:
-                self.exit_manager.unregister_position(symbol)
-                return
-
-            snap = self.price_cache.snapshot(symbol)
-            bid = snap.get("bid", snap.get("mid", 0))
-            if bid <= 0:
-                self.exit_manager.unregister_position(symbol)
-                return
-
-            fill_price = bid  # pessimistic: sell at bid
-            notional = qty * fill_price
-            paper_fee = notional * 0.001  # simulated 10bps fee
-
-            # Record order
-            paper_order_id = f"paper-exit-{uuid.uuid4()}"
-            self.repo.insert_order({
-                "id": paper_order_id,
-                "client_order_id": paper_order_id,
-                "symbol": symbol,
-                "side": "sell",
-                "order_type": "market",
-                "qty": qty,
-                "notional": notional,
-                "status": "filled",
-                "raw_response": {"paper": True, "exit_reason": exit_signal.reason.value},
-                "mode": self.mode,
-            })
-
-            # Record fill
-            self.repo.upsert_fill({
-                "order_id": paper_order_id,
-                "fill_id": f"paper-fill-{uuid.uuid4()}",
-                "symbol": symbol,
-                "side": "sell",
-                "qty": qty,
-                "price": fill_price,
-                "fee": paper_fee,
-                "executed_at": datetime.now(timezone.utc).isoformat(),
-                "mode": self.mode,
-            })
-
-            # Update holdings (remove position)
-            del holdings[symbol]
-            self.repo.insert_holdings_snapshot(holdings=holdings, total_value=0, mode=self.mode)
-
-            # Update cash (add sell proceeds)
-            cash_snap = self.repo.latest_cash_snapshot(self.mode)
-            current_cash = float((cash_snap or {}).get("buying_power", 0))
-            new_cash = current_cash + notional - paper_fee
-            self.repo.insert_cash_snapshot(cash_available=new_cash, buying_power=new_cash, mode=self.mode)
-
-            self._write_thought(
-                f"PAPER EXIT {symbol}: {exit_signal.reason.value} | sold {qty:.8f} @ ${fill_price:.6f} = ${notional:.2f} (fee=${paper_fee:.4f})",
-                thought_type="paper_exit",
-                symbol=symbol,
-                metadata={**exit_signal.to_dict(), "fill_price": fill_price, "qty": qty, "notional": notional},
-            )
-            print(f"[ZOE] PAPER EXIT: {symbol} {exit_signal.reason.value} ${notional:.2f}")
             self.exit_manager.unregister_position(symbol)
             return
 
-        # Live execution: sell the position
+        # Sell the position
         try:
             holdings = (self.repo.latest_holdings_snapshot(self.mode) or {}).get("holdings", {})
             qty = float(holdings.get(symbol, 0))

@@ -10,7 +10,7 @@ from .base import BaseIngestor
 
 logger = logging.getLogger(__name__)
 
-# Robinhood crypto symbols -> Polygon crypto symbols
+# Internal crypto symbols -> Polygon crypto symbols
 SYMBOL_TO_POLYGON: dict[str, str] = {
     "BTC-USD": "X:BTCUSD",
     "ETH-USD": "X:ETHUSD",
@@ -27,16 +27,16 @@ SYMBOL_TO_POLYGON: dict[str, str] = {
 
 class MarketDataIngestor(BaseIngestor):
     """
-    Wraps existing Polygon.io market_data.py client and RH get_best_bid_ask.
+    Wraps existing Polygon.io market_data.py client and exchange get_best_bid_ask.
     Fetches OHLCV bars, current price, and bid/ask spread.
     """
 
     source_name = "polygon"
 
-    def __init__(self, config: EdgeFactoryConfig, polygon_client: Any = None, rh_client: Any = None):
+    def __init__(self, config: EdgeFactoryConfig, polygon_client: Any = None, exchange_client: Any = None):
         self.config = config
         self._polygon = polygon_client  # existing market_data.MarketData instance
-        self._rh = rh_client  # existing RobinhoodCryptoClient instance
+        self._exchange = exchange_client  # exchange client (Kraken or RH)
         self._cache: dict[str, dict[str, Any]] = {}
         self._last_fetch: dict[str, datetime] = {}
 
@@ -89,10 +89,10 @@ class MarketDataIngestor(BaseIngestor):
                     data["current_price"] = 0.0
                     data["volume_24h"] = 0.0
 
-                # Fetch bid/ask from Robinhood
-                if self._rh is not None:
+                # Fetch bid/ask from exchange
+                if self._exchange is not None:
                     try:
-                        bid_ask = await self._rh.get_best_bid_ask(sym)
+                        bid_ask = await self._exchange.get_best_bid_ask(sym)
                         results = bid_ask.get("results", [])
                         if results:
                             entry = results[0] if isinstance(results, list) else bid_ask
@@ -102,7 +102,7 @@ class MarketDataIngestor(BaseIngestor):
                             bid = 0.0
                             ask = 0.0
                     except Exception as e:
-                        logger.warning("RH bid/ask failed for %s: %s", sym, e)
+                        logger.warning("Exchange bid/ask failed for %s: %s", sym, e)
                         bid = 0.0
                         ask = 0.0
 
