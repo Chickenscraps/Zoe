@@ -50,24 +50,24 @@ const SharePlan: React.FC = () => {
     fetchPlan();
   }, []);
 
-  if (loading) return <div className="p-8 text-white">Loading gameplan...</div>;
-  if (!plan) return <div className="p-8 text-white">No gameplan found for today</div>;
+  if (loading) return <div className="p-8 text-earth-700">Loading gameplan...</div>;
+  if (!plan) return <div className="p-8 text-earth-700">No gameplan found for today</div>;
 
   return (
     <ShareLayout title="STRATEGIC_PRE_MARKET_PROTOCOL">
       <div 
         data-testid="plan-ticket" 
-        className="card-premium p-12 w-[1100px] flex flex-col gap-10 relative overflow-hidden"
+        className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-12 w-[1100px] flex flex-col gap-10 relative overflow-hidden"
       >
         {/* Header */}
-        <div className="flex justify-between items-end pb-8 border-b border-border/50 relative z-10">
+        <div className="flex justify-between items-end pb-8 border-b border-earth-700/10 relative z-10">
           <div>
-             <div className="text-profit font-semibold text-[10px] uppercase tracking-[0.3em] mb-3">Market Logic Layer</div>
-             <h1 className="text-5xl font-semibold text-white tracking-tighter uppercase">Protocol Status: <span className="text-profit">Active</span></h1>
+             <div className="text-sakura-700 font-semibold text-[10px] uppercase tracking-[0.3em] mb-3">Market Logic Layer</div>
+             <h1 className="text-5xl font-semibold text-earth-700 tracking-tighter uppercase">Protocol Status: <span className="text-sakura-700">Active</span></h1>
           </div>
           <div className="text-right">
              <div className="text-text-muted font-semibold text-[10px] uppercase tracking-[0.3em] mb-3">Release Timestamp</div>
-             <div className="text-2xl text-white font-semibold tracking-tight tabular-nums">{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}</div>
+             <div className="text-2xl text-earth-700 font-semibold tracking-tight tabular-nums">{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}</div>
           </div>
         </div>
 
@@ -75,29 +75,29 @@ const SharePlan: React.FC = () => {
         <div className="flex-1 overflow-hidden relative z-10">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-earth-700/10">
                 <th className="py-4 px-4 font-semibold text-[10px] text-text-muted uppercase tracking-[0.2em]">Asset Symbol</th>
                 <th className="py-4 px-4 font-semibold text-[10px] text-text-muted uppercase tracking-[0.2em]">Execution Strategy</th>
                 <th className="py-4 px-4 font-semibold text-[10px] text-text-muted uppercase tracking-[0.2em]">Market Regime</th>
                 <th className="py-4 px-4 font-semibold text-[10px] text-text-muted uppercase tracking-[0.2em] text-right">Risk Tier</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/50">
+            <tbody className="divide-y divide-earth-700/10">
               {items.slice(0, 6).map((item) => (
-                <tr key={item.id} className="group hover:bg-white/[0.02] transition-colors">
+                <tr key={item.id} className="group hover:bg-sakura-500/5 transition-colors">
                   <td className="py-6 px-4">
-                    <span className="text-2xl font-semibold text-white tracking-tighter tabular-nums">{item.symbol}</span>
+                    <span className="text-2xl font-semibold text-earth-700 tracking-tighter tabular-nums">{item.symbol}</span>
                     <div className="text-[11px] text-text-muted font-medium italic mt-1 max-w-xs truncate opacity-70 group-hover:opacity-100 transition-opacity">{item.catalyst_summary}</div>
                   </td>
-                  <td className="py-6 px-4 font-semibold text-xs text-white uppercase tracking-tight">{item.preferred_strategy}</td>
+                  <td className="py-6 px-4 font-semibold text-xs text-earth-700 uppercase tracking-tight">{item.preferred_strategy}</td>
                   <td className="py-6 px-4">
-                    <span className="text-[10px] px-3 py-1 rounded-full bg-white/5 text-white border border-white/10 font-semibold uppercase tracking-widest">
+                    <span className="text-[10px] px-3 py-1 rounded-[4px] bg-earth-700/5 text-earth-700 border border-earth-700/10 font-semibold uppercase tracking-widest">
                       {item.regime}
                     </span>
                   </td>
                   <td className="py-6 px-4 text-right">
                     <span className={cn(
-                      "text-[10px] px-3 py-1 rounded-full font-semibold uppercase tracking-[0.15em]",
+                      "text-[10px] px-3 py-1 rounded-[4px] font-semibold uppercase tracking-[0.15em]",
                       item.risk_tier === 'Tier 1' ? 'bg-profit/10 text-profit border border-profit/20' : 'bg-warning/10 text-warning border border-warning/20'
                     )}>
                       {item.risk_tier.toUpperCase()}
@@ -118,11 +118,11 @@ const SharePlan: React.FC = () => {
         {/* Brand Footer */}
         <div className="flex justify-between items-center text-[10px] font-semibold tracking-[0.3em] text-text-dim uppercase mt-4 relative z-10">
           <div className="flex items-center gap-4">
-            <span className="text-white opacity-40">System Core</span>
-            <div className="w-1 h-1 rounded-full bg-border" />
-            <span className="text-white">Autonomous Research Layer</span>
+            <span className="text-earth-700/40">System Core</span>
+            <div className="w-1 h-1 rounded-full bg-sakura-500/40" />
+            <span className="text-earth-700">Autonomous Research Layer</span>
           </div>
-          <div className="bg-white text-black px-4 py-1.5 font-semibold flex items-center gap-3">
+          <div className="bg-earth-700 text-cream-100 px-4 py-1.5 font-semibold flex items-center gap-3">
             <Lock className="w-3 h-3" /> SESSION_LOCKED
           </div>
         </div>

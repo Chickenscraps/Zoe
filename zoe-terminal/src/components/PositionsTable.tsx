@@ -72,7 +72,7 @@ export function PositionsTable({ hideHeader, className }: PositionsTableProps) {
     {
       header: 'Symbol',
       accessorKey: 'symbol',
-      cell: info => <span className="font-semibold text-white">{info.getValue() as string}</span>
+      cell: info => <span className="font-semibold text-earth-700">{info.getValue() as string}</span>
     },
     {
       header: 'Qty',
@@ -140,7 +140,7 @@ export function PositionsTable({ hideHeader, className }: PositionsTableProps) {
           emptyMessage="No open positions"
         />
       ) : (
-        <div className="card-premium p-8 text-center">
+        <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-8 text-center">
           <p className="text-text-dim text-xs">No open positions</p>
           <p className="text-text-dim/60 text-[9px] mt-1">Positions will appear when the bot executes trades</p>
         </div>

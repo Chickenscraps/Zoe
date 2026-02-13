@@ -1,5 +1,8 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useAuth } from '../lib/AuthContext';
+import SnesWindow from './snes/SnesWindow';
+import SnesButton from './snes/SnesButton';
+import ParallaxBackground from './snes/ParallaxBackground';
 
 const HASH_KEY = 'zoe_auth_hash';
 
@@ -34,7 +37,6 @@ export default function PasswordGate({ children }: { children: React.ReactNode }
   useEffect(() => {
     const stored = localStorage.getItem(HASH_KEY);
     if (stored && resolveRole(stored)) {
-      // Ensure AuthContext role matches what's stored
       const storedRole = resolveRole(stored);
       if (storedRole) login(storedRole);
       setAuthed(true);
@@ -68,7 +70,7 @@ export default function PasswordGate({ children }: { children: React.ReactNode }
   if (authed === null) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-text-muted text-sm animate-pulse">Loading...</div>
+        <div className="font-pixel text-[0.5rem] text-text-muted animate-pulse uppercase tracking-widest">Loading...</div>
       </div>
     );
   }
@@ -76,13 +78,14 @@ export default function PasswordGate({ children }: { children: React.ReactNode }
   if (authed) return <>{children}</>;
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="bg-surface border border-border rounded-[20px] p-8 shadow-soft">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative">
+      <ParallaxBackground />
+      <div className="w-full max-w-sm relative z-10">
+        <SnesWindow variant="focused" title="System Login">
           {/* Logo / Title */}
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-black tracking-tighter text-text-primary">
-              ZOE<span className="text-profit">_</span>TERMINAL
+          <div className="text-center mb-6">
+            <h1 className="font-pixel text-sm uppercase tracking-[0.08em] text-gradient-accent">
+              ZOE Terminal
             </h1>
             <p className="text-text-muted text-xs mt-2 tracking-wide uppercase">
               Restricted Access
@@ -92,8 +95,8 @@ export default function PasswordGate({ children }: { children: React.ReactNode }
           {/* Admin Login */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-[10px] text-text-muted font-bold uppercase tracking-widest mb-2 pl-1">
-                Admin Password
+              <label className="block font-pixel text-[0.4rem] text-text-muted uppercase tracking-[0.1em] mb-2 pl-1">
+                Password
               </label>
               <input
                 type="password"
@@ -102,46 +105,44 @@ export default function PasswordGate({ children }: { children: React.ReactNode }
                   setInput(e.target.value);
                   setError(false);
                 }}
-                placeholder="Enter admin password"
+                placeholder="Enter password"
                 autoFocus
-                className="w-full bg-surface-base border border-border rounded-[14px] px-4 py-3 text-sm text-text-primary placeholder:text-text-dim focus:outline-none focus:border-profit/50 focus:ring-1 focus:ring-profit/30 transition-all"
+                className="w-full bg-cream-100 border-2 border-earth-700/15 rounded-[4px] px-4 py-3 text-sm text-text-primary placeholder:text-text-dim focus:outline-none focus:border-sakura-500 focus:ring-1 focus:ring-sakura-500/30 transition-all"
               />
               {error && (
-                <p className="text-loss text-xs mt-2 pl-1">
+                <p className="text-loss text-xs mt-2 pl-1 font-pixel text-[0.4rem]">
                   Incorrect password
                 </p>
               )}
             </div>
-            <button
-              type="submit"
-              className="w-full bg-profit/10 hover:bg-profit/20 text-profit border border-profit/20 rounded-[14px] py-3 text-sm font-bold tracking-wide uppercase transition-all hover:shadow-[0_0_20px_rgba(46,229,157,0.15)]"
-            >
+            <SnesButton type="submit" className="w-full">
               Access Dashboard
-            </button>
+            </SnesButton>
           </form>
 
           {/* Divider */}
-          <div className="flex items-center gap-3 my-6">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-[10px] text-text-dim font-bold uppercase tracking-widest">or</span>
-            <div className="flex-1 h-px bg-border" />
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-earth-700/10" />
+            <span className="font-pixel text-[0.35rem] text-text-dim uppercase tracking-widest">or</span>
+            <div className="flex-1 h-px bg-earth-700/10" />
           </div>
 
           {/* Guest Button */}
-          <button
+          <SnesButton
+            variant="secondary"
             onClick={handleGuestAccess}
-            className="w-full bg-white/[0.03] hover:bg-white/[0.06] text-text-muted hover:text-text-secondary border border-border hover:border-border/80 rounded-[14px] py-3 text-sm font-bold tracking-wide uppercase transition-all"
+            className="w-full"
           >
             Enter as Guest
-          </button>
+          </SnesButton>
           <p className="text-text-dim text-[9px] text-center mt-2 tracking-wide">
-            View-only access — no trading controls
+            View-only access
           </p>
-        </div>
+        </SnesWindow>
 
         <div className="text-center mt-6 space-y-1">
-          <p className="text-text-dim text-[10px] tracking-wider uppercase">
-            Zoe Trading System v4
+          <p className="font-pixel text-[0.35rem] text-text-dim tracking-wider uppercase">
+            ZOE Market Intelligence v4
           </p>
           <p className="text-text-dim/60 text-[9px] tracking-wide">
             Planned &amp; Designed by Josh Andrewlavage | Tobie LLC
