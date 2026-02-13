@@ -161,13 +161,11 @@ class EdgeFactoryOrchestrator:
                 self._consecutive_errors = 0
                 return summary
 
-            # Refresh account equity if V2 account state available
-            account_equity = None
-            if self.account_state is not None:
-                try:
-                    account_equity = await self.account_state.refresh()
-                except Exception as e:
-                    logger.warning("Account state refresh failed: %s", e)
+            # account_equity for trade sizing (refresh happens in run_forever)
+            account_equity = (
+                self.account_state.equity if self.account_state is not None
+                else None
+            )
 
             for sym in self.config.symbols:
                 sym_features = all_features.get(sym, {})
@@ -286,16 +284,26 @@ class EdgeFactoryOrchestrator:
             except Exception as e:
                 logger.error("Run loop error: %s", e)
 
+            # Refresh equity unconditionally (don't gate on regime)
+            if self.account_state is not None:
+                try:
+                    await self.account_state.refresh()
+                except Exception as e:
+                    logger.warning("Account state refresh failed: %s", e)
+
             # Emit metrics snapshot to local store (C8 dashboard integration)
             self._emit_metrics_snapshot()
 
             # Write health heartbeat so dashboard shows LIVE (not DEGRADED)
             await self._write_health_heartbeat()
 
-            # Write cash snapshot for equity chart (every 5th tick)
+            # Write cash snapshot for equity chart (every 5th tick + tick 1)
             await self._write_cash_snapshot()
 
-            # Write P&L daily row for P&L panel (every 10th tick)
+            # Write holdings snapshot for portfolio valuation (every 5th tick + tick 1)
+            await self._write_holdings_snapshot()
+
+            # Write P&L daily row for P&L panel (every 10th tick + tick 1)
             await self._write_pnl_snapshot()
 
             await asyncio.sleep(self.config.market_poll_interval)
@@ -478,8 +486,8 @@ class EdgeFactoryOrchestrator:
         if sb is None:
             return
 
-        # Write every 5th tick (~5 minutes) for chart granularity
-        if self._tick_count % 5 != 0:
+        # Write on tick 1 (immediate seed) + every 5th tick (~5 min)
+        if self._tick_count != 1 and self._tick_count % 5 != 0:
             return
 
         equity = (
@@ -497,6 +505,66 @@ class EdgeFactoryOrchestrator:
         except Exception as e:
             logger.warning("Cash snapshot write failed: %s", e)
 
+    async def _write_holdings_snapshot(self) -> None:
+        """Write holdings snapshot to Supabase for portfolio valuation.
+
+        The dashboard reads crypto_holdings_snapshots to compute
+        currentCryptoVal which is added to cash snapshots in the equity chart.
+        Without this, the crypto portion of portfolio value is stale.
+        Writes every 5th tick alongside cash snapshots (~5 min).
+        """
+        sb = getattr(self, '_supabase', None)
+        if sb is None:
+            return
+
+        # Write on tick 1 (immediate) + every 5th tick
+        if self._tick_count != 1 and self._tick_count % 5 != 0:
+            return
+
+        holdings: dict[str, float] = {}
+        total_value = 0.0
+
+        rh = getattr(self, '_rh_client', None)
+        if self.config.is_live() and rh is not None:
+            # Live mode: fetch real holdings from Robinhood
+            try:
+                holdings_resp = await rh.get_holdings()
+                results = holdings_resp.get("results", holdings_resp if isinstance(holdings_resp, list) else [])
+                for item in results:
+                    if not isinstance(item, dict):
+                        continue
+                    # RH crypto API uses asset_code (e.g. "DOGE"), append -USD
+                    sym = item.get("symbol") or item.get("asset_code", "")
+                    if sym and "-" not in sym:
+                        sym = f"{sym}-USD"
+                    qty = float(item.get("quantity") or item.get("total_quantity") or 0)
+                    if qty > 0 and sym:
+                        holdings[sym] = qty
+                    total_value += float(item.get("market_value", 0))
+            except Exception as e:
+                logger.warning("Holdings fetch from RH failed: %s", e)
+                return
+        else:
+            # Paper mode: build from open positions
+            try:
+                for pos in self.repo.get_open_positions():
+                    if pos.entry_price and pos.entry_price > 0:
+                        qty = pos.size_usd / pos.entry_price
+                        holdings[pos.symbol] = qty
+                        total_value += pos.size_usd
+            except Exception as e:
+                logger.warning("Paper holdings build failed: %s", e)
+
+        try:
+            sb.table("crypto_holdings_snapshots").insert({
+                "holdings": holdings,
+                "total_crypto_value": total_value,
+                "mode": self.config.mode,
+            }).execute()
+            logger.debug("Holdings snapshot written: %s, total=%.2f", holdings, total_value)
+        except Exception as e:
+            logger.warning("Holdings snapshot write failed: %s", e)
+
     async def _write_pnl_snapshot(self) -> None:
         """Upsert daily P&L row to Supabase.
 
@@ -508,8 +576,8 @@ class EdgeFactoryOrchestrator:
         if sb is None:
             return
 
-        # Upsert every 10th tick — it's a daily row, no need to hammer
-        if self._tick_count % 10 != 0:
+        # Upsert on tick 1 (immediate seed) + every 10th tick (~10 min)
+        if self._tick_count != 1 and self._tick_count % 10 != 0:
             return
 
         equity = (
