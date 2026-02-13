@@ -229,3 +229,39 @@
 - **App.tsx**: added `/ops` route
 
 ---
+
+## Phase 6 — Tests + Gating
+**Status**: Complete
+**Date**: 2026-02-13
+
+### 6a — Unit Tests (66 tests, all passing)
+
+**`tests/test_fifo_matcher.py`** — 12 tests for FIFO cost-basis matching:
+- simple_buy_sell_round_trip, fifo_order, partial_lot_consumption
+- fees_reduce_realized_pnl, multi_symbol, unrealized_pnl, unrealized_pnl_with_fees
+- sell_more_than_bought, from_fills_classmethod, cost_basis_multiple_lots
+- empty_matcher, total_fees_tracking
+
+**`tests/test_order_intent.py`** — 9 tests for order lifecycle state machine:
+- initial_state, valid_transitions (15 cases), invalid_transitions (6 cases)
+- terminal_states, non_terminal_states, transition_updates_timestamp
+- all_states_covered_in_transitions, default_values, custom_values
+
+**`tests/test_coalescer.py`** — 8 tests for market data coalescer:
+- TickerSnapshot default/custom values
+- update_stores_latest, multiple_symbols, dirty_tracking, stats_tracking
+- mid_and_spread_computed, get_nonexistent_symbol
+
+**`tests/test_symbol_normalization.py`** — 37 tests for Kraken symbol normalization:
+- _normalize_asset: XXBT→BTC, XETH→ETH, ZUSD→USD, SOL unchanged, XXDG→DOGE, XBT→BTC
+- _convert_wsname_to_v2: XBT→BTC, XDG→DOGE, ETH unchanged, no-slash passthrough
+- to_kraken: REST and WS formats for BTC/ETH/SOL/DOGE, unknown fallbacks
+- from_kraken: REST, WS v2, WS v1, altname, unknown
+- Round-trip: REST and WS for BTC/ETH/SOL/DOGE/XRP (parametrized)
+- Cache population: pair count, get_all_symbols
+
+### 6b — Test Infrastructure
+- Mock AssetPairs fixture for symbol tests (autouse, with save/restore of global cache)
+- All tests are pure unit tests — no network, no Supabase, no async runtime needed
+
+---
