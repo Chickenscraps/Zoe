@@ -3,7 +3,7 @@
   publish = "dist"
 
 [build.environment]
-  VITE_MODE_LOCK = "paper"
+  VITE_MODE_LOCK = "live"
   NPM_FLAGS = "--include=dev"
 
 [[redirects]]
