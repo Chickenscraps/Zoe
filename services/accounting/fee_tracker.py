@@ -25,7 +25,7 @@ class FeeTracker:
         fee_amount: float,
         fee_currency: str = "USD",
         fee_type: str = "trading",
-        mode: str = "paper",
+        mode: str = "live",
     ) -> None:
         """Record a single fee entry in the ledger."""
         if fee_amount <= 0:
@@ -44,7 +44,7 @@ class FeeTracker:
         except Exception as e:
             logger.warning("Fee ledger write failed: %s", e)
 
-    async def get_total_fees(self, mode: str = "paper") -> float:
+    async def get_total_fees(self, mode: str = "live") -> float:
         """Get total fees paid across all trades."""
         try:
             resp = self._sb.table("fee_ledger").select(
@@ -55,7 +55,7 @@ class FeeTracker:
             logger.warning("Fee ledger read failed: %s", e)
             return 0.0
 
-    async def get_fees_by_symbol(self, mode: str = "paper") -> dict[str, float]:
+    async def get_fees_by_symbol(self, mode: str = "live") -> dict[str, float]:
         """Get fees grouped by symbol."""
         try:
             resp = self._sb.table("fee_ledger").select(
@@ -70,7 +70,7 @@ class FeeTracker:
             logger.warning("Fee ledger read failed: %s", e)
             return {}
 
-    async def get_today_fees(self, mode: str = "paper") -> float:
+    async def get_today_fees(self, mode: str = "live") -> float:
         """Get fees paid today."""
         from datetime import date
         today = str(date.today())

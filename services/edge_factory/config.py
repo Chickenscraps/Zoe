@@ -30,7 +30,7 @@ CONFIRM_PHRASE = "I UNDERSTAND THIS IS REAL MONEY"
 @dataclass
 class EdgeFactoryConfig:
     # ── Mode ──────────────────────────────────────────────────
-    mode: str = field(default_factory=lambda: os.getenv("EDGE_FACTORY_MODE", "disabled"))
+    mode: str = field(default_factory=lambda: os.getenv("EDGE_FACTORY_MODE", "live"))
     admin_user_id: str = field(default_factory=lambda: os.getenv("ADMIN_USER_ID", ""))
 
     # ── Symbol Universe ───────────────────────────────────────
@@ -109,7 +109,7 @@ class EdgeFactoryConfig:
     intraday_max_cross_pct: float = field(default_factory=lambda: _float("EF_INTRADAY_MAX_CROSS", 0.002))
 
     def is_active(self) -> bool:
-        return self.mode in {"paper", "live"}
+        return self.mode == "live"
 
     def is_live(self) -> bool:
         return self.mode == "live"

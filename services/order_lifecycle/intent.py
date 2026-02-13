@@ -49,7 +49,7 @@ class OrderIntent:
     notional: float | None = None
     limit_price: float | None = None
     engine: str = ""  # "edge_factory" | "crypto_trader"
-    mode: str = "paper"
+    mode: str = "live"
     status: str = "created"
     broker_order_id: str | None = None
     fill_price: float | None = None
@@ -90,7 +90,7 @@ class IntentManager:
         notional: float | None = None,
         limit_price: float | None = None,
         engine: str = "",
-        mode: str = "paper",
+        mode: str = "live",
         idempotency_key: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> OrderIntent:

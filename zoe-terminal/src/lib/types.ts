@@ -43,7 +43,7 @@ export interface Database {
           day_trades_used: number;
           realized_pnl: number;
           unrealized_pnl: number;
-          mode: "paper" | "live";
+          mode: string;
           fees_paid: number;
           gross_equity: number | null;
           net_equity: number | null;
@@ -62,7 +62,7 @@ export interface Database {
           info: Json;
           recommended_strategy: string;
           created_at: string;
-          mode: "paper" | "live";
+          mode: string;
         };
       };
       thoughts: {
@@ -74,7 +74,7 @@ export interface Database {
           symbol: string | null;
           created_at: string;
           metadata: Json;
-          mode: "paper" | "live";
+          mode: string;
         };
       };
       health_heartbeat: {
@@ -85,7 +85,7 @@ export interface Database {
           status: "ok" | "warning" | "error" | "down";
           last_heartbeat: string;
           details: Json;
-          mode: "paper" | "live";
+          mode: string;
         };
       };
       daily_gameplans: {
@@ -152,7 +152,7 @@ export interface Database {
           submitted_at: string | null;
           updated_at: string;
           raw_response: Json;
-          mode: "paper" | "live";
+          mode: string;
         };
       };
       crypto_tickers: {
@@ -175,7 +175,7 @@ export interface Database {
           fee: number;
           executed_at: string;
           raw_fill: Json;
-          mode: "paper" | "live";
+          mode: string;
           broker_fee: number;
           fee_currency: string;
           broker_fill_id: string | null;
@@ -188,8 +188,8 @@ export interface Database {
           taken_at: string;
           holdings: Json;
           total_crypto_value: number;
-          source: "robinhood";
-          mode: "paper" | "live";
+          source: string;
+          mode: string;
         };
       };
       crypto_cash_snapshots: {
@@ -198,8 +198,8 @@ export interface Database {
           taken_at: string;
           cash_available: number;
           buying_power: number;
-          source: "robinhood";
-          mode: "paper" | "live";
+          source: string;
+          mode: string;
         };
       };
       crypto_reconciliation_events: {
@@ -214,7 +214,7 @@ export interface Database {
           holdings_diff: Json;
           status: "ok" | "degraded";
           reason: string | null;
-          mode: "paper" | "live";
+          mode: string;
         };
       };
       daily_notional: {
@@ -223,13 +223,13 @@ export interface Database {
           amount: number;
           notional_used: number;
           notional_limit: number;
-          mode: "paper" | "live";
+          mode: string;
         };
       };
       agent_state: {
         Row: {
           id: string;
-          mode: "paper" | "live";
+          mode: string;
           instance_id: string;
           state: Json;
           updated_at: string;
@@ -247,7 +247,7 @@ export interface Database {
           close: number;
           volume: number;
           patterns: Json;
-          mode: "paper" | "live";
+          mode: string;
           created_at: string;
         };
       };
@@ -255,7 +255,7 @@ export interface Database {
         Row: {
           id: string;
           run_id: string;
-          mode: "paper" | "live";
+          mode: string;
           instance_id: string;
           started_at: string;
           finished_at: string | null;
@@ -338,7 +338,7 @@ export interface Database {
           source: "wick" | "body";
           atr_snapshot: number | null;
           confirmed: boolean;
-          mode: "paper" | "live";
+          mode: string;
           created_at: string;
         };
       };
@@ -356,7 +356,7 @@ export interface Database {
           score: number;
           metadata: Json;
           is_active: boolean;
-          mode: "paper" | "live";
+          mode: string;
           created_at: string;
           updated_at: string;
         };
@@ -376,7 +376,7 @@ export interface Database {
           last_tested: string | null;
           is_active: boolean;
           metadata: Json;
-          mode: "paper" | "live";
+          mode: string;
           created_at: string;
           updated_at: string;
         };
@@ -393,7 +393,7 @@ export interface Database {
           confirmed: boolean;
           confirm_count: number;
           reason_json: Json;
-          mode: "paper" | "live";
+          mode: string;
           ts: string;
         };
       };
@@ -406,7 +406,7 @@ export interface Database {
           state: string;
           score: number | null;
           reason_json: Json;
-          mode: "paper" | "live";
+          mode: string;
         };
       };
       bounce_intents: {
@@ -425,7 +425,7 @@ export interface Database {
           blocked_reason: string | null;
           executed: boolean;
           reason_json: Json;
-          mode: "paper" | "live";
+          mode: string;
         };
       };
       zoe_events: {
@@ -439,7 +439,7 @@ export interface Database {
           symbol: string | null;
           color_hint: string | null;
           metadata: Json;
-          mode: "paper" | "live";
+          mode: string;
           created_at: string;
         };
       };
@@ -450,7 +450,7 @@ export interface Database {
           role: "user" | "assistant";
           content: string;
           context_page: string | null;
-          mode: "paper" | "live";
+          mode: string;
           created_at: string;
         };
       };
@@ -536,7 +536,7 @@ export interface Database {
           description: string;
           external_ref: string;
           created_at: string;
-          mode: "paper" | "live";
+          mode: string;
         };
       };
       fee_ledger: {
@@ -549,7 +549,7 @@ export interface Database {
           fee_currency: string;
           fee_type: "trading" | "withdrawal" | "deposit" | "other";
           created_at: string;
-          mode: "paper" | "live";
+          mode: string;
         };
       };
       order_intents: {
@@ -563,7 +563,7 @@ export interface Database {
           notional: number | null;
           limit_price: number | null;
           engine: string;
-          mode: "paper" | "live";
+          mode: string;
           status: "created" | "submitted" | "acked" | "partial_fill" | "cancel_requested" | "cancelled" | "replaced" | "filled" | "rejected" | "expired" | "error";
           broker_order_id: string | null;
           fill_price: number | null;
@@ -590,7 +590,7 @@ export interface Database {
         Row: {
           symbol: string;
           engine: string;
-          mode: "paper" | "live";
+          mode: string;
           locked_at: string;
           lock_holder: string;
         };

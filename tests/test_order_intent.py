@@ -96,7 +96,7 @@ class TestOrderIntentFields:
         assert intent.notional is None
         assert intent.limit_price is None
         assert intent.engine == ""
-        assert intent.mode == "paper"
+        assert intent.mode == "live"
         assert intent.broker_order_id is None
         assert intent.fill_price is None
         assert intent.fill_qty is None

@@ -13,9 +13,8 @@ class AccountState:
     """
     Live equity tracker for the Edge Factory.
 
-    In live mode: fetches exchange balances for cash, plus mark-to-market
-    crypto positions from market_snapshot_focus for total equity.
-    In paper mode: uses static config value + realized PnL.
+    Fetches exchange balances for cash, plus mark-to-market crypto positions
+    from market_snapshot_focus for total equity.
     Updates HWM (high water mark) if equity rises.
     """
 
@@ -50,51 +49,33 @@ class AccountState:
         return self._cached_crypto_value
 
     async def refresh(self) -> float:
-        """Refresh equity from exchange (live) or compute from PnL (paper)."""
-        if self.config.is_live() and self.exchange is not None:
-            try:
-                cash = await self._fetch_live_cash()
-                crypto_val = await self._fetch_crypto_mark_value()
-                equity = cash + crypto_val
-                self._cached_cash = cash
-                self._cached_crypto_value = crypto_val
-                self._cached_equity = equity
-                self._update_hwm(equity)
-                return equity
-            except Exception as e:
-                logger.warning("Live equity fetch failed: %s", e)
-                return self._cached_equity
+        """Refresh equity from exchange balances + mark-to-market positions."""
+        if self.exchange is None:
+            return self._cached_equity
 
-        # Paper mode: base equity + realized PnL
-        equity = self._compute_paper_equity()
-        self._cached_equity = equity
-        self._update_hwm(equity)
-        return equity
+        try:
+            cash = await self._fetch_live_cash()
+            crypto_val = await self._fetch_crypto_mark_value()
+            equity = cash + crypto_val
+            self._cached_cash = cash
+            self._cached_crypto_value = crypto_val
+            self._cached_equity = equity
+            self._update_hwm(equity)
+            return equity
+        except Exception as e:
+            logger.warning("Equity fetch failed: %s", e)
+            return self._cached_equity
 
     async def _fetch_live_cash(self) -> float:
-        """Fetch USD cash balance from exchange."""
+        """Fetch USD cash balance from Kraken."""
         data = await self.exchange.get_account_balances()
 
         if isinstance(data, dict):
-            # Kraken returns {"ZUSD": "123.45", "XXBT": "0.5", ...}
             for key in ("ZUSD", "USD", "USDT"):
                 if key in data:
                     val = float(data[key])
                     if val > 0:
                         return val
-
-            # RH compatibility: try crypto buying power, buying_power
-            crypto_bp = data.get("crypto_buying_power")
-            if crypto_bp is not None:
-                return float(crypto_bp)
-
-            bp = data.get("buying_power")
-            if bp is not None:
-                return float(bp)
-
-            portfolio = data.get("equity", data.get("portfolio_value"))
-            if portfolio is not None:
-                return float(portfolio)
 
         return self.config.account_equity
 
@@ -104,13 +85,11 @@ class AccountState:
             return 0.0
 
         try:
-            # Get current holdings from exchange
             holdings_data = await self.exchange.get_holdings()
             holdings = holdings_data if isinstance(holdings_data, dict) else {}
             if not holdings:
                 return 0.0
 
-            # Get mark prices from focus snapshots
             symbols = list(holdings.keys())
             resp = self._sb.table("market_snapshot_focus").select(
                 "symbol, mid"
@@ -126,13 +105,6 @@ class AccountState:
         except Exception as e:
             logger.debug("Crypto mark value fetch failed: %s", e)
             return 0.0
-
-    def _compute_paper_equity(self) -> float:
-        """Compute paper equity from base + realized PnL."""
-        base = self.config.account_equity
-        closed = self.repo.get_closed_positions(limit=100)
-        realized_pnl = sum(p.pnl_usd or 0 for p in closed)
-        return base + realized_pnl
 
     def _update_hwm(self, equity: float) -> None:
         """Update high water mark if equity is new high."""

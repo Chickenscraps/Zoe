@@ -7,16 +7,10 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from typing import Any
 
-from typing import Any as _AnyClient
-
-# Exchange-agnostic: accept any client satisfying ExchangeClient protocol
-try:
-    from integrations.robinhood_crypto_client.client import _sanitize
-except ImportError:
-    def _sanitize(d: dict) -> dict:
-        """Fallback sanitizer — strip sensitive keys from order responses."""
-        sensitive = {"api_key", "secret", "token", "password"}
-        return {k: v for k, v in d.items() if k.lower() not in sensitive} if isinstance(d, dict) else d
+def _sanitize(d: dict) -> dict:
+    """Strip sensitive keys from order responses."""
+    sensitive = {"api_key", "secret", "token", "password"}
+    return {k: v for k, v in d.items() if k.lower() not in sensitive} if isinstance(d, dict) else d
 
 from .candle_manager import CandleManager
 from .config import CONFIRM_PHRASE, CryptoTraderConfig
@@ -69,8 +63,8 @@ class CryptoTraderService:
         self._require_admin(initiator_id)
         if enabled and confirmation != CONFIRM_PHRASE:
             raise ValueError("Live mode denied: missing exact confirmation phrase")
-        self.cfg.rh_live_trading = enabled
-        self.cfg.rh_live_confirm = confirmation if enabled else ""
+        self.cfg.live_trading = enabled
+        self.cfg.live_confirm = confirmation if enabled else ""
         self.audit.write("crypto_live_mode", enabled=enabled)
         return "LIVE ON" if enabled else "LIVE OFF"
 
@@ -164,54 +158,15 @@ class CryptoTraderService:
         return local_cash, holdings
 
     async def reconcile(self) -> HealthState:
-        if self.mode == "paper":
-            return await self._reconcile_paper()
-        return await self._reconcile_live()
-
-    async def _reconcile_paper(self) -> HealthState:
-        """Paper mode: use local ledger only, no Robinhood API calls."""
-        local_cash, local_holdings = self._compute_local_ledger()
-        # If no fills yet, use starting equity from config
-        if local_cash == 0.0 and not local_holdings:
-            local_cash = float(getattr(self.cfg, "starting_equity", 2000.0))
-
-        total_value = 0.0  # Paper mode doesn't track market value
-        self.repo.insert_cash_snapshot(cash_available=local_cash, buying_power=local_cash, mode=self.mode)
-        self.repo.insert_holdings_snapshot(holdings=local_holdings, total_value=total_value, mode=self.mode)
-        self.repo.insert_reconciliation_event(
-            {
-                "taken_at": datetime.now(timezone.utc).isoformat(),
-                "local_cash": local_cash,
-                "rh_cash": local_cash,
-                "cash_diff": 0.0,
-                "local_holdings": local_holdings,
-                "rh_holdings": local_holdings,
-                "status": "ok",
-                "reason": "paper mode - local ledger only",
-                "mode": self.mode,
-            }
-        )
-        notional = self.repo.get_daily_notional(date.today(), self.mode)
-        return HealthState(
-            status="ok",
-            reason="paper mode",
-            last_reconcile_at=datetime.now(timezone.utc).isoformat(),
-            daily_notional_used=notional,
-            live_enabled=False,
-            open_orders=0,
-        )
-
-    async def _reconcile_live(self) -> HealthState:
-        """Live mode: reconcile against real exchange API."""
+        """Reconcile against Kraken exchange API."""
         balances = await self.client.get_account_balances()
         holdings_resp = await self.client.get_holdings()
 
-        # Handle both RH format (cash_available) and Kraken format (ZUSD)
         exchange_cash = float(
-            balances.get("cash_available")
-            or balances.get("cash")
-            or balances.get("ZUSD")
+            balances.get("ZUSD")
             or balances.get("USD")
+            or balances.get("cash_available")
+            or balances.get("cash")
             or 0.0
         )
         exchange_buying_power = float(balances.get("buying_power") or exchange_cash)
@@ -238,10 +193,10 @@ class CryptoTraderService:
             {
                 "taken_at": datetime.now(timezone.utc).isoformat(),
                 "local_cash": local_cash,
-                "rh_cash": exchange_cash,
+                "exchange_cash": exchange_cash,
                 "cash_diff": cash_diff,
                 "local_holdings": local_holdings,
-                "rh_holdings": exchange_holdings,
+                "exchange_holdings": exchange_holdings,
                 "holdings_diff": holding_diff,
                 "status": status,
                 "reason": reason,
@@ -467,7 +422,6 @@ class CryptoTraderService:
     async def _execute_signal(self, signal: Signal) -> None:
         """Execute a single signal — place order if all checks pass.
 
-        In paper mode: simulates by logging + recording the order intent.
         Guards: paused, safe_mode, degraded, notional limits.
         """
         sym = signal.symbol
@@ -514,30 +468,13 @@ class CryptoTraderService:
         )
         print(f"[ZOE] SIGNAL: {action} {sym} ${notional:.2f} (conf={signal.confidence:.0%}) -- {signal.reason}")
 
-        # Only place real orders if live_ready
         if not self.cfg.live_ready():
-            # Paper mode: log as paper trade thought
             self._write_thought(
-                f"PAPER {action} {sym}: ${notional:.2f} (would execute if live)",
-                thought_type="paper_trade",
-                symbol=sym,
-                metadata=signal.to_dict(),
+                f"Signal {action} {sym} skipped -- live trading not ready",
+                thought_type="signal", symbol=sym,
             )
-            print(f"[ZOE] PAPER TRADE: {action} {sym} ${notional:.2f}")
-
-            # Register with exit manager so exits are tracked even in paper mode
-            if action == "BUY":
-                snap = self.price_cache.snapshot(sym)
-                entry_price = snap.get("mid", 0)
-                if entry_price > 0:
-                    self.exit_manager.register_position(
-                        symbol=sym,
-                        entry_price=entry_price,
-                        entry_time=datetime.now(timezone.utc),
-                    )
             return
 
-        # Live execution
         try:
             order = await self.place_order(
                 initiator_id=self.cfg.admin_user_id,
@@ -642,18 +579,10 @@ class CryptoTraderService:
         print(f"[ZOE] EXIT: {exit_signal.reason.value} {symbol} ({exit_signal.pnl_pct:.2%}) -- {exit_signal.details}")
 
         if not self.cfg.live_ready():
-            # Paper mode: log exit but don't place order
-            self._write_thought(
-                f"PAPER EXIT {symbol}: {exit_signal.reason.value} (would sell if live)",
-                thought_type="paper_exit",
-                symbol=symbol,
-                metadata=exit_signal.to_dict(),
-            )
-            print(f"[ZOE] PAPER EXIT: {symbol} {exit_signal.reason.value}")
             self.exit_manager.unregister_position(symbol)
             return
 
-        # Live execution: sell the position
+        # Sell the position
         try:
             holdings = (self.repo.latest_holdings_snapshot(self.mode) or {}).get("holdings", {})
             qty = float(holdings.get(symbol, 0))

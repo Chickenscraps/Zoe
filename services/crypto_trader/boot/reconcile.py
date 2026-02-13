@@ -138,7 +138,4 @@ async def run_boot_reconciliation(
         except Exception:
             pass
 
-        # On error, default to safe mode in paper, halt in live
-        if mode == "live":
-            return BootResult(action="halt", reason=f"Boot error: {e}", run_id=run_id, duration_ms=elapsed_ms)
-        return BootResult(action="safe_mode", safe_mode_seconds=60, reason=f"Boot error: {e}", run_id=run_id, duration_ms=elapsed_ms)
+        return BootResult(action="halt", reason=f"Boot error: {e}", run_id=run_id, duration_ms=elapsed_ms)

@@ -24,7 +24,7 @@ class CashEventLedger:
         currency: str = "USD",
         description: str = "",
         external_ref: str = "",
-        mode: str = "paper",
+        mode: str = "live",
     ) -> None:
         """Record a cash event."""
         try:
@@ -40,7 +40,7 @@ class CashEventLedger:
         except Exception as e:
             logger.warning("Cash event write failed: %s", e)
 
-    async def get_total_deposits(self, mode: str = "paper") -> float:
+    async def get_total_deposits(self, mode: str = "live") -> float:
         """Sum of all deposits."""
         try:
             resp = self._sb.table("cash_events").select(
@@ -53,7 +53,7 @@ class CashEventLedger:
             logger.warning("Deposit total read failed: %s", e)
             return 0.0
 
-    async def get_total_withdrawals(self, mode: str = "paper") -> float:
+    async def get_total_withdrawals(self, mode: str = "live") -> float:
         """Sum of all withdrawals."""
         try:
             resp = self._sb.table("cash_events").select(
@@ -66,14 +66,14 @@ class CashEventLedger:
             logger.warning("Withdrawal total read failed: %s", e)
             return 0.0
 
-    async def get_net_deposits(self, mode: str = "paper") -> float:
+    async def get_net_deposits(self, mode: str = "live") -> float:
         """Net deposits (deposits - withdrawals). This is the invested capital."""
         deposits = await self.get_total_deposits(mode)
         withdrawals = await self.get_total_withdrawals(mode)
         return deposits - withdrawals
 
     async def get_events(
-        self, mode: str = "paper", limit: int = 50
+        self, mode: str = "live", limit: int = 50
     ) -> list[dict[str, Any]]:
         """Get recent cash events."""
         try:

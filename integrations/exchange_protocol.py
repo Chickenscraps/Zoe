@@ -1,7 +1,7 @@
 """Unified exchange client protocol for broker-agnostic trading.
 
-Both KrakenClient and RobinhoodCryptoClient satisfy this protocol,
-allowing the trading engines to switch exchanges via a single env var.
+KrakenClient satisfies this protocol, providing a unified interface
+for the trading engines.
 """
 
 from __future__ import annotations

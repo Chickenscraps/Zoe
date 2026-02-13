@@ -46,7 +46,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [killConfirmOpen, setKillConfirmOpen] = useState(false);
   const location = useLocation();
   const { cryptoCash, accountOverview, holdingsRows, livePrices, initialDeposit } = useDashboardData();
-  const { mode, setMode, isPaper, isLive } = useModeContext();
+  const { mode } = useModeContext();
   const { isGuest, logout } = useAuth();
   const { isOpen: copilotOpen, toggle: toggleCopilot } = useCopilotContext();
   const systemHealth = useSystemHealth();
@@ -144,21 +144,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className={cn("h-screen bg-background text-text-primary flex flex-col relative", tradingActive && "trading-active-border")}>
-      {isLive && (
-        <Suspense fallback={null}>
-          <Starfield />
-        </Suspense>
-      )}
+      <Suspense fallback={null}>
+        <Starfield />
+      </Suspense>
       <div className="noise-overlay" style={{ zIndex: 2 }} />
 
-      {/* Mode Banner */}
-      <div className={cn(
-        "w-full text-center py-1.5 text-[11px] font-black tracking-[0.25em] uppercase z-[60] relative select-none",
-        isPaper
-          ? "bg-profit/15 text-profit border-b border-profit/20"
-          : "bg-loss/15 text-loss border-b border-loss/20 animate-pulse"
-      )}>
-        {isPaper ? "◆ PAPER TRADING ◆" : "◆ LIVE TRADING ◆"}
+      {/* Live Trading Banner */}
+      <div className="w-full text-center py-1.5 text-[11px] font-black tracking-[0.25em] uppercase z-[60] relative select-none bg-loss/15 text-loss border-b border-loss/20 animate-pulse">
+        ◆ LIVE TRADING ◆
       </div>
 
       {/* Guest Banner */}
@@ -237,32 +230,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                  </div>
                </div>
                <div className="h-8 w-px bg-border hidden sm:block" />
-               {/* Mode Toggle */}
-               <div className="flex items-center gap-0 bg-surface-base border border-border rounded-full p-0.5">
-                 <button
-                   onClick={() => setMode('paper')}
-                   className={cn(
-                     "px-2 sm:px-3 py-1 rounded-full text-[9px] sm:text-[10px] font-black tracking-widest uppercase transition-all",
-                     isPaper
-                       ? "bg-profit text-background"
-                       : "text-text-muted hover:text-text-primary"
-                   )}
-                 >
-                   Paper
-                 </button>
-                 <button
-                   onClick={() => setMode('live')}
-                   className={cn(
-                     "px-2 sm:px-3 py-1 rounded-full text-[9px] sm:text-[10px] font-black tracking-widest uppercase transition-all",
-                     isLive
-                       ? "bg-loss text-background"
-                       : "text-text-muted hover:text-text-primary"
-                   )}
-                 >
-                   Live
-                 </button>
-               </div>
-               {/* Kill switch is now in top-left */}
                {/* Health Indicators */}
                <div className="hidden sm:block">
                  <HealthCluster health={systemHealth} />

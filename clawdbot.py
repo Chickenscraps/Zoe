@@ -51,7 +51,7 @@ vision_module = None
 voice_module = None
 memory_store = None
 poly_trader = None # Polymarket Trader
-crypto_trader = None # Robinhood Crypto Trader
+crypto_trader = None
 
 # Creative Pipeline Removed
 creative_pipeline_started = False
@@ -246,29 +246,25 @@ async def on_ready():
     except Exception as e:
         print(f"   ⚠️ Failed to link PaperBroker to DB: {e}")
 
-    # Initialize Crypto Trader (Robinhood)
+    # Initialize Crypto Trader (Kraken)
     global crypto_trader
     try:
-        from integrations.robinhood_crypto_client import RobinhoodCryptoClient, RobinhoodCryptoConfig
         from services.crypto_trader import CryptoTraderService, SupabaseCryptoRepository
         from services.crypto_trader.config import CryptoTraderConfig
         from supabase_memory import supabase_memory
 
         if supabase_memory.initialized:
-            # New Async Trader Logic
-            trader_config = CryptoTraderConfig() # Loads defaults + envs
-            rh_repo = SupabaseCryptoRepository(supabase_memory.client)
+            trader_config = CryptoTraderConfig()
+            trader_repo = SupabaseCryptoRepository(supabase_memory.client)
 
-            crypto_trader = CryptoTraderService(trader_config, rh_repo)
-
-            # Start the async loop (background task — run_forever is infinite)
+            crypto_trader = CryptoTraderService(trader_config, trader_repo)
             asyncio.create_task(crypto_trader.run_forever())
 
-            print("   🪙 Crypto Trader active (Async + Supabase)")
+            print("   Crypto Trader active (Kraken + Supabase)")
         else:
-            print("   ⚠️ Crypto Trader skipped: Supabase not ready")
+            print("   Crypto Trader skipped: Supabase not ready")
     except Exception as e:
-        print(f"   ⚠️ Crypto Trader init failed: {e}")
+        print(f"   Crypto Trader init failed: {e}")
 
     # Sync slash commands
     try:

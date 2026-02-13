@@ -55,14 +55,14 @@ class EquityCalculator:
         self,
         cash_usd: float,
         fifo_matcher: Any,
-        mode: str = "paper",
+        mode: str = "live",
     ) -> EquityBreakdown:
         """Compute full equity breakdown with mark-to-market.
 
         Args:
             cash_usd: Current USD cash balance.
             fifo_matcher: FIFOMatcher instance with current state.
-            mode: Trading mode (paper/live).
+            mode: Trading mode.
 
         Returns:
             EquityBreakdown with full position detail.

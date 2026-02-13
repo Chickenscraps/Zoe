@@ -157,22 +157,13 @@ def _print_boot_context(repo: SupabaseCryptoRepository, config: CryptoTraderConf
 
     # ── 8. Recent Signals/Thoughts ──
     recent_signals = repo.recent_thoughts(mode, limit=5, thought_type="signal")
-    recent_paper = repo.recent_thoughts(mode, limit=3, thought_type="paper_trade")
     if recent_signals:
         print(f"\n  [RECENT SIGNALS] (last {len(recent_signals)})")
         for t in recent_signals:
             content = t.get("content", "")[:80]
             created = t.get("created_at", "")
             print(f"    {_fmt_age(created)}: {content}")
-
-    if recent_paper:
-        print(f"\n  [RECENT PAPER TRADES] (last {len(recent_paper)})")
-        for t in recent_paper:
-            content = t.get("content", "")[:80]
-            created = t.get("created_at", "")
-            print(f"    {_fmt_age(created)}: {content}")
-
-    if not recent_signals and not recent_paper:
+    else:
         print(f"\n  [RECENT SIGNALS] none")
 
     # ── 9. Realized P&L ──
@@ -209,34 +200,22 @@ async def _warm_price_cache(service: CryptoTraderService) -> None:
 
 
 def _build_exchange_client():
-    """Create exchange client based on EXCHANGE env var."""
-    exchange = os.getenv("EXCHANGE", "kraken").lower()
-
-    if exchange == "kraken":
-        kraken_key = os.getenv("KRAKEN_API_KEY", "")
-        kraken_secret = os.getenv("KRAKEN_API_SECRET", "")
-        if not kraken_key or not kraken_secret:
-            print("[ZOE] ERROR: EXCHANGE=kraken but KRAKEN_API_KEY/SECRET not set")
-            sys.exit(1)
-        from integrations.kraken_client import KrakenClient, KrakenConfig
-        config = KrakenConfig.from_env()
-        print(f"[ZOE] Exchange: Kraken (key=****{kraken_key[-4:]})")
-        return KrakenClient(config)
-
-    # Fallback: Robinhood
-    from integrations.robinhood_crypto_client import RobinhoodCryptoClient, RobinhoodCryptoConfig
-    rh_config = RobinhoodCryptoConfig.from_env()
-    if not rh_config.api_key or not rh_config.private_key_seed:
-        print("[ZOE] ERROR: Set RH_CRYPTO_API_KEY and RH_CRYPTO_PRIVATE_KEY_SEED env vars")
+    """Create Kraken exchange client."""
+    kraken_key = os.getenv("KRAKEN_API_KEY", "")
+    kraken_secret = os.getenv("KRAKEN_API_SECRET", "")
+    if not kraken_key or not kraken_secret:
+        print("[ZOE] ERROR: KRAKEN_API_KEY/SECRET not set")
         sys.exit(1)
-    print("[ZOE] Exchange: Robinhood")
-    return RobinhoodCryptoClient(rh_config)
+    from integrations.kraken_client import KrakenClient, KrakenConfig
+    config = KrakenConfig.from_env()
+    print(f"[ZOE] Exchange: Kraken (key=****{kraken_key[-4:]})")
+    return KrakenClient(config)
 
 
 async def main() -> None:
     print("[ZOE] Initializing crypto trader service...")
 
-    # Exchange client (Kraken or Robinhood, based on EXCHANGE env var)
+    # Exchange client (Kraken)
     exchange_client = _build_exchange_client()
 
     # Supabase repository
@@ -260,7 +239,6 @@ async def main() -> None:
             service._degraded = True
             print("[ZOE] Restored degraded state from previous session")
 
-    print(f"[ZOE] Mode: {trader_config.mode}")
     print(f"[ZOE] Live trading: {trader_config.live_ready()}")
     print(f"[ZOE] Reconcile interval: {trader_config.reconcile_interval_seconds}s")
     print(f"[ZOE] Order poll interval: {trader_config.order_poll_interval_seconds}s")

@@ -2,10 +2,6 @@
 Edge Factory Runner — wires all components and starts the trading loop.
 
 Usage:
-    # Paper mode (recommended first):
-    EDGE_FACTORY_MODE=paper python -m services.edge_factory.runner
-
-    # Live mode (requires confirmation phrase):
     EDGE_FACTORY_MODE=live python -m services.edge_factory.runner
 
     # Dry-run: just verify wiring, don't start the loop:
@@ -32,7 +28,6 @@ from .features import ALL_FEATURES
 from .ingestion import GoogleTrendsIngestor, MarketDataIngestor, OKXFundingIngestor
 from .order_manager import OrderManager
 from .orchestrator import EdgeFactoryOrchestrator
-from .paper_executor import PaperExecutor
 from .position_sizer import PositionSizer
 from .quote_model import QuoteModel
 from .regime_detector import RegimeDetector
@@ -83,33 +78,15 @@ def _build_repository(config: EdgeFactoryConfig):
 
 
 def _build_exchange_client():
-    """Create exchange client based on EXCHANGE env var.
-
-    Returns KrakenClient or RobinhoodCryptoClient (or None if no creds).
-    """
-    exchange = os.getenv("EXCHANGE", "kraken").lower()
-
-    if exchange == "kraken":
-        kraken_key = os.getenv("KRAKEN_API_KEY", "")
-        kraken_secret = os.getenv("KRAKEN_API_SECRET", "")
-        if not kraken_key or not kraken_secret:
-            logger.warning("EXCHANGE=kraken but KRAKEN_API_KEY/SECRET not set")
-            return None
-        from integrations.kraken_client import KrakenClient, KrakenConfig
-        config = KrakenConfig.from_env()
-        return KrakenClient(config)
-
-    # Fallback: Robinhood
-    api_key = os.getenv("RH_CRYPTO_API_KEY", "")
-    seed = os.getenv("RH_CRYPTO_PRIVATE_KEY_SEED", "")
-    if not api_key or not seed:
+    """Create Kraken exchange client (or None if no creds)."""
+    kraken_key = os.getenv("KRAKEN_API_KEY", "")
+    kraken_secret = os.getenv("KRAKEN_API_SECRET", "")
+    if not kraken_key or not kraken_secret:
+        logger.warning("KRAKEN_API_KEY/SECRET not set")
         return None
-    from integrations.robinhood_crypto_client.client import (
-        RobinhoodCryptoClient,
-        RobinhoodCryptoConfig,
-    )
-    rh_config = RobinhoodCryptoConfig.from_env()
-    return RobinhoodCryptoClient(rh_config)
+    from integrations.kraken_client import KrakenClient, KrakenConfig
+    config = KrakenConfig.from_env()
+    return KrakenClient(config)
 
 
 def _build_polygon_client():
@@ -123,29 +100,23 @@ def _build_polygon_client():
 
 
 def _build_executor(config, repo, exchange_client):
-    """Build the right executor for the current mode."""
-    if config.is_live():
-        if exchange_client is None:
-            exchange = os.getenv("EXCHANGE", "kraken")
-            logger.error("Live mode requires %s API credentials", exchange.upper())
-            sys.exit(1)
+    """Build the live executor."""
+    if exchange_client is None:
+        logger.error("Live mode requires Kraken API credentials")
+        sys.exit(1)
 
-        from .live_executor import LiveExecutor
+    from .live_executor import LiveExecutor
 
-        # Wire V2 execution quality layer
-        quote_model = QuoteModel(exchange_client, config)
-        exec_policy = ExecutionPolicyEngine(config)
-        order_mgr = OrderManager(exchange_client, quote_model, config)
+    quote_model = QuoteModel(exchange_client, config)
+    exec_policy = ExecutionPolicyEngine(config)
+    order_mgr = OrderManager(exchange_client, quote_model, config)
 
-        return LiveExecutor(
-            config, repo, exchange_client,
-            quote_model=quote_model,
-            execution_policy=exec_policy,
-            order_manager=order_mgr,
-        )
-
-    # Paper mode
-    return PaperExecutor(config, repo)
+    return LiveExecutor(
+        config, repo, exchange_client,
+        quote_model=quote_model,
+        execution_policy=exec_policy,
+        order_manager=order_mgr,
+    )
 
 
 def build_orchestrator(config: EdgeFactoryConfig | None = None) -> EdgeFactoryOrchestrator:
@@ -211,7 +182,7 @@ def build_orchestrator(config: EdgeFactoryConfig | None = None) -> EdgeFactoryOr
 
 
 async def _cleanup(orchestrator: EdgeFactoryOrchestrator) -> None:
-    """Close aiohttp sessions and RH client."""
+    """Close aiohttp sessions and exchange client."""
     for name, ing in getattr(orchestrator, "_closeable_ingestors", {}).items():
         if hasattr(ing, "close"):
             try:
@@ -240,18 +211,17 @@ async def _run(dry_run: bool = False, instance_lock: InstanceLock | None = None)
     logger.info("=" * 60)
 
     if not config.is_active():
-        logger.error("EDGE_FACTORY_MODE is '%s'. Set to 'paper' or 'live' to start.", config.mode)
+        logger.error("EDGE_FACTORY_MODE is '%s'. Set to 'live' to start.", config.mode)
         return
 
-    # Live mode safety gate
-    if config.is_live():
-        confirm = os.getenv("RH_LIVE_CONFIRM", "")
-        if confirm != CONFIRM_PHRASE:
-            logger.error(
-                "Live mode requires RH_LIVE_CONFIRM='%s'",
-                CONFIRM_PHRASE,
-            )
-            return
+    # Safety gate
+    confirm = os.getenv("LIVE_CONFIRM", "")
+    if confirm != CONFIRM_PHRASE:
+        logger.error(
+            "Live mode requires LIVE_CONFIRM='%s'",
+            CONFIRM_PHRASE,
+        )
+        return
 
     # ── Rate limiter for exchange API ──────────────────────
     rate_limiter = RateLimitManager(
