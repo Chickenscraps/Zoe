@@ -17,6 +17,7 @@ import Charts from './pages/Charts';
 import Intelligence from './pages/Intelligence';
 import Settings from './pages/Settings';
 import Markets from './pages/Markets';
+import Ops from './pages/Ops';
 
 import ShareTrade from './pages/share/ShareTrade';
 import SharePnL from './pages/share/SharePnL';
@@ -55,6 +56,7 @@ function AppWithNotifications() {
           <Route path="/scanner" element={<Scanner />} />
           <Route path="/charts" element={<Charts />} />
           <Route path="/intelligence" element={<Intelligence />} />
+          <Route path="/ops" element={<Ops />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </AppShell>

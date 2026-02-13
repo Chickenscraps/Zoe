@@ -13,6 +13,7 @@ import {
   LogOut,
   Bot,
   Globe,
+  Shield,
 } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { useDashboardData } from '../hooks/useDashboardData';
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
   { label: 'Scanner', path: '/scanner', icon: Scan },
   { label: 'Charts', path: '/charts', icon: BarChart3 },
   { label: 'Intelligence', path: '/intelligence', icon: BrainCircuit },
+  { label: 'Ops', path: '/ops', icon: Shield },
   { label: 'Settings', path: '/settings', icon: Settings },
 ];
 

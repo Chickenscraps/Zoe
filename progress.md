@@ -200,3 +200,32 @@
 - **types.ts**: added order_intents, order_events, trade_locks table types
 
 ---
+
+## Phase 5 — Performance + Reliability Hardening
+**Status**: Complete
+**Date**: 2026-02-13
+
+### 5a — Startup Hydration (`services/reconciliation/hydration.py`)
+- `StartupHydrator`: executes hydration sequence before trading begins
+- Steps: catalog check → exchange balances + holdings → open order intents → reconciliation → heartbeat
+- Returns `HydrationResult` with cash, holdings, open_orders, errors, ready status
+
+### 5b — Reconciliation Engine (`services/reconciliation/broker_vs_db.py`)
+- `BrokerReconciler`: compares exchange state vs DB state
+- Detects: cash mismatch (>$0.01 tolerance), position qty diffs, orphaned/missing positions
+- Returns `ReconciliationResult` with status, diffs, details
+- Writes reconciliation events to `crypto_reconciliation_events` table
+
+### 5c — Ops Console (`zoe-terminal/src/pages/Ops.tsx`)
+- System status banner: HEALTHY / DEGRADED / SAFE_MODE with color coding
+- Component health grid: per-component heartbeat status + last update time
+- Active order intents table: symbol, side, limit, qty, status, engine, created
+- Trade locks display: symbol, engine, lock time
+- Latest reconciliation: exchange vs DB cash, holdings diffs
+- Auto-refreshes every 10s
+
+### 5d — Dashboard Integration
+- **AppShell.tsx**: added "Ops" nav item with Shield icon
+- **App.tsx**: added `/ops` route
+
+---
