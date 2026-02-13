@@ -141,7 +141,7 @@ export default function MACDChart({
     const histogram = macdLine.map((v, i) => v - signalLine[i]);
 
     // MACD histogram as colored bars
-    const histSeries = newChart.addHistogramSeries({
+    const histSeries = (newChart as any).addHistogramSeries({
       priceLineVisible: false,
       lastValueVisible: false,
     });
@@ -156,7 +156,7 @@ export default function MACDChart({
     histSeries.setData(histData);
 
     // MACD line
-    const macdSeries = newChart.addLineSeries({
+    const macdSeries = (newChart as any).addLineSeries({
       color: 'rgba(100, 149, 237, 0.9)',
       lineWidth: 1,
       priceLineVisible: false,
@@ -170,7 +170,7 @@ export default function MACDChart({
     macdSeries.setData(macdData);
 
     // Signal line
-    const signalSeries = newChart.addLineSeries({
+    const signalSeries = (newChart as any).addLineSeries({
       color: 'rgba(255, 165, 0, 0.7)',
       lineWidth: 1,
       lineStyle: LineStyle.Dashed,

@@ -290,7 +290,6 @@ export function computeHeatScore(
 
 // ── Tier styling helpers ───────────────────────────────────────────────────
 
-const GOLD_HEX = '#D4AF37';
 const GOLD_RGB = '212,175,55';
 
 export function getTierAlpha(score: number, tier: HeatTier): number {

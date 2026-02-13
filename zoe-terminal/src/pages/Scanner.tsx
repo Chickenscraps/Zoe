@@ -101,7 +101,7 @@ export default function Scanner() {
           .limit(1)
           .maybeSingle();
 
-        if (!latest?.created_at) {
+        if (!(latest as any)?.created_at) {
           setCandidates([]);
           return;
         }
@@ -110,7 +110,7 @@ export default function Scanner() {
           .from('candidate_scans')
           .select('*')
           .eq('mode', MODE)
-          .eq('created_at', latest.created_at)
+          .eq('created_at', (latest as any).created_at)
           .order('score', { ascending: false });
 
         if (error) throw error;

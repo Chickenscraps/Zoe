@@ -107,7 +107,7 @@ export default function Plan() {
 
   const cashAvailable = cryptoCash?.cash_available ?? 0;
   const buyingPower = cryptoCash?.buying_power ?? 0;
-  const notionalUsed = dailyNotional?.notional_used ?? 0;
+  const notionalUsed = (dailyNotional as any)?.notional_used ?? 0;
 
   // Curated gameplan columns
   const planColumns: ColumnDef<PlanItem>[] = [

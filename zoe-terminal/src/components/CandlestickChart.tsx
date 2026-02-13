@@ -79,7 +79,7 @@ export default function CandlestickChart({
       height,
     });
 
-    const candleSeries = chart.addCandlestickSeries({
+    const candleSeries = (chart as any).addCandlestickSeries({
       upColor: '#2ee59d',
       downColor: '#ff5b6e',
       borderUpColor: '#2ee59d',
@@ -89,7 +89,7 @@ export default function CandlestickChart({
     });
 
     // Bollinger Band overlay lines
-    const bbUpper = chart.addLineSeries({
+    const bbUpper = (chart as any).addLineSeries({
       color: 'rgba(100, 149, 237, 0.4)',
       lineWidth: 1,
       lineStyle: LineStyle.Dashed,
@@ -97,7 +97,7 @@ export default function CandlestickChart({
       lastValueVisible: false,
       crosshairMarkerVisible: false,
     });
-    const bbMiddle = chart.addLineSeries({
+    const bbMiddle = (chart as any).addLineSeries({
       color: 'rgba(100, 149, 237, 0.25)',
       lineWidth: 1,
       lineStyle: LineStyle.Dotted,
@@ -105,7 +105,7 @@ export default function CandlestickChart({
       lastValueVisible: false,
       crosshairMarkerVisible: false,
     });
-    const bbLower = chart.addLineSeries({
+    const bbLower = (chart as any).addLineSeries({
       color: 'rgba(100, 149, 237, 0.4)',
       lineWidth: 1,
       lineStyle: LineStyle.Dashed,

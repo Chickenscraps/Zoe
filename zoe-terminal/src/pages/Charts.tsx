@@ -59,7 +59,7 @@ export default function Charts() {
 
         if (data) {
           const prices: Record<string, number> = {};
-          for (const row of data) {
+          for (const row of data as any[]) {
             const info = row.info as any;
             if (info?.mid && !prices[row.symbol]) {
               prices[row.symbol] = info.mid;

@@ -103,7 +103,7 @@ export function EquityChart({ data, height = 300, className }: EquityChartProps)
                   fontSize: '11px',
                 }}
                 itemStyle={{ color: '#f3f4f6' }}
-                formatter={(value: number) => [formatCurrency(value), 'Equity']}
+                formatter={((value: any) => [formatCurrency(value ?? 0), 'Equity']) as any}
                 labelFormatter={(label) => formatDate(label as string)}
               />
               <Area

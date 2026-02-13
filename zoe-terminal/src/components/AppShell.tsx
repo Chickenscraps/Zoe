@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { useDashboardData } from '../hooks/useDashboardData';
-import { MODE, isPaper, isLive } from '../lib/mode';
+import { isPaper } from '../lib/mode';
 
 const NAV_ITEMS = [
   { label: 'Overview', path: '/', icon: LayoutDashboard },
@@ -40,7 +40,7 @@ const SYSTEM_ITEMS = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const { cryptoCash, accountOverview, healthSummary } = useDashboardData();
+  const { cryptoCash, accountOverview } = useDashboardData();
 
   const equity = cryptoCash?.buying_power ?? cryptoCash?.cash_available ?? accountOverview?.equity ?? 0;
 

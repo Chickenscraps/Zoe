@@ -114,7 +114,7 @@ export default function Settings() {
                <div className="grid grid-cols-1 md:grid-cols-3 px-6 py-4">
                    <div className="font-mono text-sm text-text-secondary">Daily Notional Used</div>
                    <div className="md:col-span-2 font-mono text-sm text-white">
-                     {formatCurrency(dailyNotional?.notional_used ?? 0)} / {formatCurrency(dailyNotional?.notional_limit ?? 50)}
+                     {formatCurrency((dailyNotional as any)?.notional_used ?? 0)} / {formatCurrency((dailyNotional as any)?.notional_limit ?? 50)}
                    </div>
                </div>
                <div className="grid grid-cols-1 md:grid-cols-3 px-6 py-4">
@@ -173,7 +173,7 @@ export default function Settings() {
                    <button
                      onClick={async () => {
                        try {
-                         await supabase.from('config').upsert({ key: 'kill_switch', value: true });
+                         await (supabase.from('config') as any).upsert({ key: 'kill_switch', value: true });
                          setKillConfirm(false);
                          alert('Kill switch activated. Trading paused.');
                        } catch {
