@@ -7,8 +7,16 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from typing import Any
 
-from integrations.robinhood_crypto_client import RobinhoodCryptoClient
-from integrations.robinhood_crypto_client.client import _sanitize
+from typing import Any as _AnyClient
+
+# Exchange-agnostic: accept any client satisfying ExchangeClient protocol
+try:
+    from integrations.robinhood_crypto_client.client import _sanitize
+except ImportError:
+    def _sanitize(d: dict) -> dict:
+        """Fallback sanitizer — strip sensitive keys from order responses."""
+        sensitive = {"api_key", "secret", "token", "password"}
+        return {k: v for k, v in d.items() if k.lower() not in sensitive} if isinstance(d, dict) else d
 
 from .candle_manager import CandleManager
 from .config import CONFIRM_PHRASE, CryptoTraderConfig
@@ -32,7 +40,7 @@ class HealthState:
 
 
 class CryptoTraderService:
-    def __init__(self, client: RobinhoodCryptoClient, repository: CryptoRepository, config: CryptoTraderConfig | None = None):
+    def __init__(self, client: Any, repository: CryptoRepository, config: CryptoTraderConfig | None = None):
         self.client = client
         self.repo = repository
         self.cfg = config or CryptoTraderConfig()
@@ -81,7 +89,7 @@ class CryptoTraderService:
     def _validate_symbol(self, symbol: str) -> str:
         normalized = symbol.strip().upper()
         if not normalized.endswith("-USD"):
-            raise ValueError("Only Robinhood crypto USD pairs are allowed")
+            raise ValueError("Only crypto USD pairs are allowed")
         return normalized
 
     def _enforce_trade_limits(self, *, notional: float, symbol: str) -> None:
@@ -194,39 +202,46 @@ class CryptoTraderService:
         )
 
     async def _reconcile_live(self) -> HealthState:
-        """Live mode: reconcile against real Robinhood API."""
+        """Live mode: reconcile against real exchange API."""
         balances = await self.client.get_account_balances()
         holdings_resp = await self.client.get_holdings()
 
-        rh_cash = float(balances.get("cash_available") or balances.get("cash") or 0.0)
-        rh_buying_power = float(balances.get("buying_power") or rh_cash)
-        rh_holdings = {item["symbol"]: float(item.get("quantity", 0.0)) for item in holdings_resp.get("results", holdings_resp if isinstance(holdings_resp, list) else [])}
+        # Handle both RH format (cash_available) and Kraken format (ZUSD)
+        exchange_cash = float(
+            balances.get("cash_available")
+            or balances.get("cash")
+            or balances.get("ZUSD")
+            or balances.get("USD")
+            or 0.0
+        )
+        exchange_buying_power = float(balances.get("buying_power") or exchange_cash)
+        exchange_holdings = {item["symbol"]: float(item.get("quantity", 0.0)) for item in holdings_resp.get("results", holdings_resp if isinstance(holdings_resp, list) else [])}
         total_value = sum(float(item.get("market_value", 0.0)) for item in holdings_resp.get("results", [])) if isinstance(holdings_resp, dict) else 0.0
 
         local_cash, local_holdings = self._compute_local_ledger()
-        cash_diff = local_cash - rh_cash
+        cash_diff = local_cash - exchange_cash
         holding_diff = {
-            sym: local_holdings.get(sym, 0.0) - rh_holdings.get(sym, 0.0)
-            for sym in sorted(set(local_holdings) | set(rh_holdings))
-            if abs(local_holdings.get(sym, 0.0) - rh_holdings.get(sym, 0.0)) > 0.0000001
+            sym: local_holdings.get(sym, 0.0) - exchange_holdings.get(sym, 0.0)
+            for sym in sorted(set(local_holdings) | set(exchange_holdings))
+            if abs(local_holdings.get(sym, 0.0) - exchange_holdings.get(sym, 0.0)) > 0.0000001
         }
 
         status = "ok"
         reason = ""
         if abs(cash_diff) > 1 or holding_diff:
             status = "degraded"
-            reason = "Mismatch between local ledger and Robinhood snapshots"
+            reason = "Mismatch between local ledger and exchange snapshots"
 
-        self.repo.insert_cash_snapshot(cash_available=rh_cash, buying_power=rh_buying_power, mode=self.mode)
-        self.repo.insert_holdings_snapshot(holdings=rh_holdings, total_value=total_value, mode=self.mode)
+        self.repo.insert_cash_snapshot(cash_available=exchange_cash, buying_power=exchange_buying_power, mode=self.mode)
+        self.repo.insert_holdings_snapshot(holdings=exchange_holdings, total_value=total_value, mode=self.mode)
         self.repo.insert_reconciliation_event(
             {
                 "taken_at": datetime.now(timezone.utc).isoformat(),
                 "local_cash": local_cash,
-                "rh_cash": rh_cash,
+                "rh_cash": exchange_cash,
                 "cash_diff": cash_diff,
                 "local_holdings": local_holdings,
-                "rh_holdings": rh_holdings,
+                "rh_holdings": exchange_holdings,
                 "holdings_diff": holding_diff,
                 "status": status,
                 "reason": reason,
@@ -285,7 +300,7 @@ class CryptoTraderService:
     def _write_heartbeats(self, health: HealthState) -> None:
         now_iso = datetime.now(timezone.utc).isoformat()
         components = [
-            ("robinhood_api", "ok" if not self._degraded else "warning"),
+            ("exchange_api", "ok" if not self._degraded else "warning"),
             ("reconciliation_engine", "ok" if health.status == "LIVE" else "warning"),
             ("snapshot_store", "ok"),
             ("discord_control", "ok"),

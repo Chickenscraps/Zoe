@@ -4,7 +4,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from integrations.robinhood_crypto_client import RobinhoodCryptoClient
 from ..config import CryptoTraderConfig
 from .state_rebuilder import DBState
 
@@ -23,7 +22,7 @@ class StateDiffs:
     missing_orders: list[str] = field(default_factory=list)
 
 
-async def fetch_broker_state(client: RobinhoodCryptoClient, config: CryptoTraderConfig) -> BrokerState:
+async def fetch_broker_state(client: Any, config: CryptoTraderConfig) -> BrokerState:
     """Fetch current broker state. In paper mode, returns empty (DB is source of truth)."""
     if config.mode == "paper":
         return BrokerState()
@@ -31,7 +30,14 @@ async def fetch_broker_state(client: RobinhoodCryptoClient, config: CryptoTrader
     balances = await client.get_account_balances()
     holdings_resp = await client.get_holdings()
 
-    cash = float(balances.get("cash_available") or balances.get("cash") or 0.0)
+    # Handle both RH format (cash_available) and Kraken format (ZUSD)
+    cash = float(
+        balances.get("cash_available")
+        or balances.get("cash")
+        or balances.get("ZUSD")
+        or balances.get("USD")
+        or 0.0
+    )
     bp = float(balances.get("buying_power") or cash)
     holdings = {
         item["symbol"]: float(item.get("quantity", 0.0))

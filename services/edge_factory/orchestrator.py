@@ -461,7 +461,7 @@ class EdgeFactoryOrchestrator:
             # Write health heartbeats for key components
             for component, status in [
                 ("edge_factory", "ok"),
-                ("robinhood_api", "ok"),
+                ("exchange_api", "ok"),
             ]:
                 sb.table("health_heartbeat").upsert({
                     "instance_id": "edge_factory",
@@ -524,16 +524,15 @@ class EdgeFactoryOrchestrator:
         holdings: dict[str, float] = {}
         total_value = 0.0
 
-        rh = getattr(self, '_rh_client', None)
-        if self.config.is_live() and rh is not None:
-            # Live mode: fetch real holdings from Robinhood
+        exchange = getattr(self, '_exchange_client', None)
+        if self.config.is_live() and exchange is not None:
+            # Live mode: fetch real holdings from exchange
             try:
-                holdings_resp = await rh.get_holdings()
+                holdings_resp = await exchange.get_holdings()
                 results = holdings_resp.get("results", holdings_resp if isinstance(holdings_resp, list) else [])
                 for item in results:
                     if not isinstance(item, dict):
                         continue
-                    # RH crypto API uses asset_code (e.g. "DOGE"), append -USD
                     sym = item.get("symbol") or item.get("asset_code", "")
                     if sym and "-" not in sym:
                         sym = f"{sym}-USD"
@@ -542,7 +541,7 @@ class EdgeFactoryOrchestrator:
                         holdings[sym] = qty
                     total_value += float(item.get("market_value", 0))
             except Exception as e:
-                logger.warning("Holdings fetch from RH failed: %s", e)
+                logger.warning("Holdings fetch failed: %s", e)
                 return
         else:
             # Paper mode: build from open positions

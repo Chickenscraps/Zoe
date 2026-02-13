@@ -21,7 +21,6 @@ load_dotenv(os.path.join(_root, ".env"))
 load_dotenv(os.path.join(_root, ".env.secrets"), override=True)
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"), override=True)
 
-from integrations.robinhood_crypto_client import RobinhoodCryptoClient, RobinhoodCryptoConfig
 from services.crypto_trader.config import CryptoTraderConfig
 from services.crypto_trader.supabase_repository import SupabaseCryptoRepository
 from services.crypto_trader.trader import CryptoTraderService
@@ -209,16 +208,36 @@ async def _warm_price_cache(service: CryptoTraderService) -> None:
         print(f"[ZOE] Price cache warm-up failed (non-fatal): {e}")
 
 
-async def main() -> None:
-    print("[ZOE] Initializing crypto trader service...")
+def _build_exchange_client():
+    """Create exchange client based on EXCHANGE env var."""
+    exchange = os.getenv("EXCHANGE", "kraken").lower()
 
-    # Robinhood client
+    if exchange == "kraken":
+        kraken_key = os.getenv("KRAKEN_API_KEY", "")
+        kraken_secret = os.getenv("KRAKEN_API_SECRET", "")
+        if not kraken_key or not kraken_secret:
+            print("[ZOE] ERROR: EXCHANGE=kraken but KRAKEN_API_KEY/SECRET not set")
+            sys.exit(1)
+        from integrations.kraken_client import KrakenClient, KrakenConfig
+        config = KrakenConfig.from_env()
+        print(f"[ZOE] Exchange: Kraken (key=****{kraken_key[-4:]})")
+        return KrakenClient(config)
+
+    # Fallback: Robinhood
+    from integrations.robinhood_crypto_client import RobinhoodCryptoClient, RobinhoodCryptoConfig
     rh_config = RobinhoodCryptoConfig.from_env()
     if not rh_config.api_key or not rh_config.private_key_seed:
         print("[ZOE] ERROR: Set RH_CRYPTO_API_KEY and RH_CRYPTO_PRIVATE_KEY_SEED env vars")
         sys.exit(1)
+    print("[ZOE] Exchange: Robinhood")
+    return RobinhoodCryptoClient(rh_config)
 
-    rh_client = RobinhoodCryptoClient(rh_config)
+
+async def main() -> None:
+    print("[ZOE] Initializing crypto trader service...")
+
+    # Exchange client (Kraken or Robinhood, based on EXCHANGE env var)
+    exchange_client = _build_exchange_client()
 
     # Supabase repository
     repo = SupabaseCryptoRepository()
@@ -230,7 +249,7 @@ async def main() -> None:
     prev_state = _print_boot_context(repo, trader_config)
 
     # Create service
-    service = CryptoTraderService(client=rh_client, repository=repo, config=trader_config)
+    service = CryptoTraderService(client=exchange_client, repository=repo, config=trader_config)
 
     # ── Restore previous state flags ──
     if prev_state:
@@ -247,7 +266,7 @@ async def main() -> None:
     print(f"[ZOE] Order poll interval: {trader_config.order_poll_interval_seconds}s")
 
     # ── Boot reconciliation — runs BEFORE the main loop ──
-    boot_result = await run_boot_reconciliation(rh_client, repo, trader_config)
+    boot_result = await run_boot_reconciliation(exchange_client, repo, trader_config)
 
     if boot_result.action == "halt":
         print(f"[ZOE] HALTED: {boot_result.reason}")
@@ -291,7 +310,7 @@ async def main() -> None:
         # Save final state before exit
         service._save_agent_state_snapshot()
         print("[ZOE] Agent state saved.")
-        await rh_client.close()
+        await exchange_client.close()
         print("[ZOE] Closed.")
 
 

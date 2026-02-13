@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 class LiveExecutor:
     """
-    Production executor bridging to existing RobinhoodCryptoClient.
+    Production executor bridging to exchange client (Kraken or RH).
 
     V1 behavior (no optional params):
     - Places LIMIT orders at bid price
@@ -39,14 +39,14 @@ class LiveExecutor:
         self,
         config: EdgeFactoryConfig,
         repository: FeatureRepository,
-        rh_client: object,  # RobinhoodCryptoClient
+        exchange_client: object,  # ExchangeClient (Kraken or RH)
         quote_model: QuoteModel | None = None,
         execution_policy: ExecutionPolicyEngine | None = None,
         order_manager: OrderManager | None = None,
     ):
         self.config = config
         self.repo = repository
-        self.rh = rh_client
+        self.exchange = exchange_client
         self.quote_model = quote_model
         self.execution_policy = execution_policy
         self.order_manager = order_manager
@@ -274,7 +274,7 @@ class LiveExecutor:
         client_order_id = f"ef-{signal.symbol.lower()}-{position_id[:8]}"
 
         try:
-            order = await self.rh.place_order(
+            order = await self.exchange.place_order(
                 symbol=signal.symbol,
                 side="buy",
                 order_type="limit",
@@ -339,11 +339,11 @@ class LiveExecutor:
 
         while elapsed < timeout:
             try:
-                order = await self.rh.get_order(order_id)
+                order = await self.exchange.get_order(order_id)
                 status = order.get("status", "")
 
                 if status == "filled":
-                    fills = await self.rh.get_order_fills(order_id)
+                    fills = await self.exchange.get_order_fills(order_id)
                     fill_list = fills.get("results", [])
                     if fill_list:
                         return fill_list[0]
@@ -361,7 +361,7 @@ class LiveExecutor:
 
         # Timeout — explicitly cancel the orphaned order on Robinhood
         try:
-            await self.rh.cancel_order(order_id)
+            await self.exchange.cancel_order(order_id)
             logger.info("Cancelled timed-out order %s", order_id)
         except Exception as e:
             logger.error("Failed to cancel timed-out order %s: %s", order_id, e)
@@ -460,7 +460,7 @@ class LiveExecutor:
         try:
             qty = position.size_usd / position.entry_price if position.entry_price > 0 else 0
 
-            order = await self.rh.place_order(
+            order = await self.exchange.place_order(
                 symbol=position.symbol,
                 side="sell",
                 order_type="market",
@@ -512,7 +512,7 @@ class LiveExecutor:
 
         # V1 fallback
         try:
-            data = await self.rh.get_best_bid_ask(symbol)
+            data = await self.exchange.get_best_bid_ask(symbol)
             results = data.get("results", [])
             if results:
                 entry = results[0] if isinstance(results, list) else data
@@ -537,7 +537,7 @@ class LiveExecutor:
 
         # V1 fallback
         try:
-            data = await self.rh.get_best_bid_ask(symbol)
+            data = await self.exchange.get_best_bid_ask(symbol)
             results = data.get("results", [])
             if results:
                 entry = results[0] if isinstance(results, list) else data

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-from integrations.robinhood_crypto_client import RobinhoodCryptoClient
+from typing import Any as _ExchangeClient
 from ..config import CryptoTraderConfig
 from ..repository import CryptoRepository
 from .state_rebuilder import rebuild_state_from_db
@@ -26,7 +26,7 @@ class BootResult:
 
 
 async def run_boot_reconciliation(
-    client: RobinhoodCryptoClient,
+    client: Any,
     repo: CryptoRepository,
     config: CryptoTraderConfig,
 ) -> BootResult:

@@ -22,11 +22,11 @@ class AccountState:
         self,
         config: EdgeFactoryConfig,
         repository: FeatureRepository,
-        rh_client: Any | None = None,
+        exchange_client: Any | None = None,
     ):
         self.config = config
         self.repo = repository
-        self.rh = rh_client
+        self.exchange = exchange_client
         self._cached_equity: float = config.account_equity
 
     @property
@@ -36,7 +36,7 @@ class AccountState:
 
     async def refresh(self) -> float:
         """Refresh equity from RH (live) or compute from PnL (paper)."""
-        if self.config.is_live() and self.rh is not None:
+        if self.config.is_live() and self.exchange is not None:
             try:
                 equity = await self._fetch_live_equity()
                 self._cached_equity = equity
@@ -53,22 +53,27 @@ class AccountState:
         return equity
 
     async def _fetch_live_equity(self) -> float:
-        """Fetch real equity from Robinhood."""
-        data = await self.rh.get_account_balances()
+        """Fetch real equity from exchange (Kraken or RH)."""
+        data = await self.exchange.get_account_balances()
 
-        # RH returns various balance fields depending on account type
         if isinstance(data, dict):
-            # Try crypto buying power first
+            # Kraken returns {"ZUSD": "123.45", "XXBT": "0.5", ...}
+            # Sum USD balance as cash equity
+            for key in ("ZUSD", "USD", "USDT"):
+                if key in data:
+                    val = float(data[key])
+                    if val > 0:
+                        return val
+
+            # RH compatibility: try crypto buying power, buying_power, equity
             crypto_bp = data.get("crypto_buying_power")
             if crypto_bp is not None:
                 return float(crypto_bp)
 
-            # Try standard buying_power (RH crypto accounts return this)
             bp = data.get("buying_power")
             if bp is not None:
                 return float(bp)
 
-            # Fallback to portfolio value
             portfolio = data.get("equity", data.get("portfolio_value"))
             if portfolio is not None:
                 return float(portfolio)

@@ -47,7 +47,7 @@ from services.flush_worker import FlushWorker
 # Highlander rule: process-level instance lock
 from services.instance_lock import InstanceLock, InstanceAlreadyRunning
 
-# Rate limiter for Robinhood API (100 RPM sustained)
+# Rate limiter for exchange API calls
 from services.rate_limiter import RateLimitManager
 
 # Circuit breakers + metrics
@@ -82,19 +82,32 @@ def _build_repository(config: EdgeFactoryConfig):
     return InMemoryFeatureRepository()
 
 
-def _build_rh_client():
-    """Create RobinhoodCryptoClient if credentials exist."""
+def _build_exchange_client():
+    """Create exchange client based on EXCHANGE env var.
+
+    Returns KrakenClient or RobinhoodCryptoClient (or None if no creds).
+    """
+    exchange = os.getenv("EXCHANGE", "kraken").lower()
+
+    if exchange == "kraken":
+        kraken_key = os.getenv("KRAKEN_API_KEY", "")
+        kraken_secret = os.getenv("KRAKEN_API_SECRET", "")
+        if not kraken_key or not kraken_secret:
+            logger.warning("EXCHANGE=kraken but KRAKEN_API_KEY/SECRET not set")
+            return None
+        from integrations.kraken_client import KrakenClient, KrakenConfig
+        config = KrakenConfig.from_env()
+        return KrakenClient(config)
+
+    # Fallback: Robinhood
     api_key = os.getenv("RH_CRYPTO_API_KEY", "")
     seed = os.getenv("RH_CRYPTO_PRIVATE_KEY_SEED", "")
-
     if not api_key or not seed:
         return None
-
     from integrations.robinhood_crypto_client.client import (
         RobinhoodCryptoClient,
         RobinhoodCryptoConfig,
     )
-
     rh_config = RobinhoodCryptoConfig.from_env()
     return RobinhoodCryptoClient(rh_config)
 
@@ -109,22 +122,23 @@ def _build_polygon_client():
     return MarketData()
 
 
-def _build_executor(config, repo, rh_client):
+def _build_executor(config, repo, exchange_client):
     """Build the right executor for the current mode."""
     if config.is_live():
-        if rh_client is None:
-            logger.error("Live mode requires RH_CRYPTO_API_KEY + RH_CRYPTO_PRIVATE_KEY_SEED")
+        if exchange_client is None:
+            exchange = os.getenv("EXCHANGE", "kraken")
+            logger.error("Live mode requires %s API credentials", exchange.upper())
             sys.exit(1)
 
         from .live_executor import LiveExecutor
 
-        # Wire V2 execution quality layer if RH client is available
-        quote_model = QuoteModel(rh_client, config)
+        # Wire V2 execution quality layer
+        quote_model = QuoteModel(exchange_client, config)
         exec_policy = ExecutionPolicyEngine(config)
-        order_mgr = OrderManager(rh_client, quote_model, config)
+        order_mgr = OrderManager(exchange_client, quote_model, config)
 
         return LiveExecutor(
-            config, repo, rh_client,
+            config, repo, exchange_client,
             quote_model=quote_model,
             execution_policy=exec_policy,
             order_manager=order_mgr,
@@ -144,13 +158,13 @@ def build_orchestrator(config: EdgeFactoryConfig | None = None) -> EdgeFactoryOr
         config = EdgeFactoryConfig()
 
     repo = _build_repository(config)
-    rh_client = _build_rh_client()
+    exchange_client = _build_exchange_client()
     polygon_client = _build_polygon_client()
 
     # ── Ingestors ──────────────────────────────────────────
     ingestors = {}
 
-    market_ingestor = MarketDataIngestor(config, polygon_client, rh_client)
+    market_ingestor = MarketDataIngestor(config, polygon_client, exchange_client)
     ingestors["polygon"] = market_ingestor
 
     try:
@@ -170,10 +184,10 @@ def build_orchestrator(config: EdgeFactoryConfig | None = None) -> EdgeFactoryOr
     regime_detector = RegimeDetector(config, repo)
     signal_generator = SignalGenerator(config, regime_detector)
     position_sizer = PositionSizer(config, repo)
-    executor = _build_executor(config, repo, rh_client)
+    executor = _build_executor(config, repo, exchange_client)
 
     # ── V2 optional components ─────────────────────────────
-    account_state = AccountState(config, repo, rh_client)
+    account_state = AccountState(config, repo, exchange_client)
     trade_intent = TradeIntentBuilder(config, position_sizer, repo)
 
     # ── Orchestrator ───────────────────────────────────────
@@ -191,7 +205,7 @@ def build_orchestrator(config: EdgeFactoryConfig | None = None) -> EdgeFactoryOr
 
     # Stash closeable resources for graceful shutdown
     orchestrator._closeable_ingestors = ingestors  # type: ignore[attr-defined]
-    orchestrator._rh_client = rh_client  # type: ignore[attr-defined]
+    orchestrator._exchange_client = exchange_client  # type: ignore[attr-defined]
 
     return orchestrator
 
@@ -205,10 +219,10 @@ async def _cleanup(orchestrator: EdgeFactoryOrchestrator) -> None:
             except Exception:
                 pass
 
-    rh = getattr(orchestrator, "_rh_client", None)
-    if rh is not None and hasattr(rh, "close"):
+    exchange = getattr(orchestrator, "_exchange_client", None)
+    if exchange is not None and hasattr(exchange, "close"):
         try:
-            await rh.close()
+            await exchange.close()
         except Exception:
             pass
 
@@ -239,11 +253,11 @@ async def _run(dry_run: bool = False, instance_lock: InstanceLock | None = None)
             )
             return
 
-    # ── Rate limiter for Robinhood API ──────────────────────
+    # ── Rate limiter for exchange API ──────────────────────
     rate_limiter = RateLimitManager(
-        rpm=int(os.getenv("RH_RATE_LIMIT_RPM", "100")),
-        burst=int(os.getenv("RH_RATE_LIMIT_BURST", "150")),
-        backoff_seconds=float(os.getenv("RH_RATE_LIMIT_BACKOFF", "30")),
+        rpm=int(os.getenv("EXCHANGE_RATE_LIMIT_RPM", "100")),
+        burst=int(os.getenv("EXCHANGE_RATE_LIMIT_BURST", "150")),
+        backoff_seconds=float(os.getenv("EXCHANGE_RATE_LIMIT_BACKOFF", "30")),
     )
 
     orchestrator = build_orchestrator(config)
