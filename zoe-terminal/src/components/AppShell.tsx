@@ -14,8 +14,6 @@ import {
   Layers,
   BarChart3,
   Shield,
-  ChevronDown,
-  Wrench,
 } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { useDashboardData } from '../hooks/useDashboardData';
@@ -41,15 +39,8 @@ const SYSTEM_ITEMS = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [systemMenuOpen, setSystemMenuOpen] = useState(false);
   const location = useLocation();
   const { cryptoCash, accountOverview, healthSummary } = useDashboardData();
-
-  // Auto-expand system menu if user is on a system page
-  const isOnSystemPage = SYSTEM_ITEMS.some(item => location.pathname === item.path);
-  useEffect(() => {
-    if (isOnSystemPage) setSystemMenuOpen(true);
-  }, [isOnSystemPage]);
 
   const equity = cryptoCash?.buying_power ?? cryptoCash?.cash_available ?? accountOverview?.equity ?? 0;
 
@@ -90,88 +81,52 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {isPaper ? "◆ PAPER ◆" : "◆ LIVE ◆"}
       </div>
 
-      <div className="flex flex-1 relative">
-      {/* Sidebar — drawer on mobile */}
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 w-[280px] sm:w-64 bg-surface border-r border-border transform transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0 shadow-crisp safe-left",
-          sidebarOpen ? "translate-x-0 drawer-enter" : "-translate-x-full"
-        )}
-      >
-        <div className="h-14 sm:h-16 lg:h-20 flex items-center justify-between px-5 sm:px-6 lg:px-8 border-b border-border">
-          <h1 className="text-lg sm:text-xl font-bold tracking-tighter text-white">
-            ZOE<span className="text-text-muted">_</span>TERMINAL
-          </h1>
-          <button
-            className="lg:hidden min-w-[44px] min-h-[44px] flex items-center justify-center text-text-secondary hover:text-white transition-colors -mr-2"
-            onClick={() => setSidebarOpen(false)}
-            aria-label="Close sidebar"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        <nav className="p-3 sm:p-4 space-y-1 overflow-y-auto max-h-[calc(100vh-140px)] scroll-smooth-mobile">
-          {NAV_ITEMS.map((item) => {
-            const isActive = location.pathname === item.path;
-            const Icon = item.icon;
-
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={closeSidebar}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-3 sm:py-2.5 rounded-btns text-sm font-semibold transition-all duration-200 min-h-[44px]",
-                  isActive
-                    ? "bg-surface-highlight text-white shadow-soft border-l-[3px] border-l-white/30"
-                    : "text-text-secondary hover:text-white hover:bg-white/[0.03] border-l-[3px] border-l-transparent"
-                )}
-              >
-                <Icon className={cn("w-[18px] h-[18px] sm:w-4 sm:h-4 shrink-0", isActive ? "text-profit" : "")} />
-                {item.label}
-              </Link>
-            );
-          })}
-
-          {/* Desktop: show system items flat */}
-          <div className="hidden lg:block">
-            {SYSTEM_ITEMS.map((item) => {
-              const isActive = location.pathname === item.path;
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  onClick={closeSidebar}
-                  className={cn(
-                    "flex items-center gap-3 px-4 py-2.5 rounded-btns text-sm font-semibold transition-all duration-200 min-h-[44px]",
-                    isActive
-                      ? "bg-surface-highlight text-white shadow-soft border-l-[3px] border-l-white/30"
-                      : "text-text-secondary hover:text-white hover:bg-white/[0.03] border-l-[3px] border-l-transparent"
-                  )}
-                >
-                  <Icon className={cn("w-4 h-4 shrink-0", isActive ? "text-profit" : "")} />
-                  {item.label}
-                </Link>
-              );
-            })}
+      {/* ── Mobile Full-Screen Menu ── */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden bg-background/95 backdrop-blur-xl flex flex-col animate-in fade-in duration-150">
+          {/* Close bar */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border/40">
+            <h1 className="text-lg font-bold tracking-tighter text-white">
+              ZOE<span className="text-text-muted">_</span>TERMINAL
+            </h1>
+            <button
+              className="min-w-[48px] min-h-[48px] flex items-center justify-center rounded-full bg-surface-highlight text-white hover:bg-white/10 transition-colors"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Close menu"
+            >
+              <X size={24} />
+            </button>
           </div>
 
-          {/* Mobile: collapsible system menu */}
-          <div className="lg:hidden pt-2 mt-2 border-t border-border/40">
-            <button
-              onClick={() => setSystemMenuOpen(!systemMenuOpen)}
-              className="flex items-center justify-between w-full px-4 py-3 rounded-btns text-sm font-semibold transition-all duration-200 min-h-[44px] text-text-secondary hover:text-white hover:bg-white/[0.03] border-l-[3px] border-l-transparent"
-            >
-              <div className="flex items-center gap-3">
-                <Wrench className="w-[18px] h-[18px] shrink-0" />
-                System
-              </div>
-              <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", systemMenuOpen && "rotate-180")} />
-            </button>
-            {systemMenuOpen && (
-              <div className="pl-3 space-y-0.5 mt-0.5">
+          {/* Two-column nav grid */}
+          <div className="flex-1 overflow-y-auto p-5 safe-bottom">
+            <div className="grid grid-cols-2 gap-3">
+              {NAV_ITEMS.map((item) => {
+                const isActive = location.pathname === item.path;
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={closeSidebar}
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-2 p-4 rounded-cards border text-sm font-semibold transition-all duration-200 min-h-[88px]",
+                      isActive
+                        ? "bg-surface-highlight text-white border-white/20 shadow-soft"
+                        : "bg-surface/60 text-text-secondary border-border/40 hover:text-white hover:bg-surface-highlight/50"
+                    )}
+                  >
+                    <Icon className={cn("w-6 h-6 shrink-0", isActive ? "text-profit" : "")} />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* System section */}
+            <div className="mt-5 pt-4 border-t border-border/30">
+              <div className="text-[10px] uppercase tracking-widest text-text-muted font-bold mb-3 px-1">System</div>
+              <div className="grid grid-cols-3 gap-3">
                 {SYSTEM_ITEMS.map((item) => {
                   const isActive = location.pathname === item.path;
                   const Icon = item.icon;
@@ -181,37 +136,91 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       to={item.path}
                       onClick={closeSidebar}
                       className={cn(
-                        "flex items-center gap-3 px-4 py-3 rounded-btns text-sm font-semibold transition-all duration-200 min-h-[44px]",
+                        "flex flex-col items-center justify-center gap-2 p-3 rounded-cards border text-xs font-semibold transition-all duration-200 min-h-[72px]",
                         isActive
-                          ? "bg-surface-highlight text-white shadow-soft border-l-[3px] border-l-white/30"
-                          : "text-text-secondary hover:text-white hover:bg-white/[0.03] border-l-[3px] border-l-transparent"
+                          ? "bg-surface-highlight text-white border-white/20 shadow-soft"
+                          : "bg-surface/60 text-text-secondary border-border/40 hover:text-white hover:bg-surface-highlight/50"
                       )}
                     >
-                      <Icon className={cn("w-[18px] h-[18px] shrink-0", isActive ? "text-profit" : "")} />
+                      <Icon className={cn("w-5 h-5 shrink-0", isActive ? "text-profit" : "")} />
                       {item.label}
                     </Link>
                   );
                 })}
               </div>
-            )}
+            </div>
+
+            {/* Node Instance footer */}
+            <div className="mt-6">
+              <div className="bg-surface-base/50 p-3 rounded-cards border border-border flex flex-col gap-1">
+                <div className="text-[10px] uppercase tracking-widest text-text-muted font-medium">Node Instance</div>
+                <div className="text-xs font-mono text-white truncate opacity-80">primary-v4-live</div>
+              </div>
+            </div>
           </div>
+        </div>
+      )}
+
+      <div className="flex flex-1 relative">
+      {/* Sidebar — desktop only */}
+      <aside
+        className="hidden lg:flex fixed inset-y-0 left-0 z-50 w-64 bg-surface border-r border-border lg:relative shadow-crisp flex-col"
+      >
+        <div className="h-20 flex items-center px-8 border-b border-border">
+          <h1 className="text-xl font-bold tracking-tighter text-white">
+            ZOE<span className="text-text-muted">_</span>TERMINAL
+          </h1>
+        </div>
+
+        <nav className="p-4 space-y-1 overflow-y-auto flex-1">
+          {NAV_ITEMS.map((item) => {
+            const isActive = location.pathname === item.path;
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-2.5 rounded-btns text-sm font-semibold transition-all duration-200 min-h-[44px]",
+                  isActive
+                    ? "bg-surface-highlight text-white shadow-soft border-l-[3px] border-l-white/30"
+                    : "text-text-secondary hover:text-white hover:bg-white/[0.03] border-l-[3px] border-l-transparent"
+                )}
+              >
+                <Icon className={cn("w-4 h-4 shrink-0", isActive ? "text-profit" : "")} />
+                {item.label}
+              </Link>
+            );
+          })}
+
+          {SYSTEM_ITEMS.map((item) => {
+            const isActive = location.pathname === item.path;
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-2.5 rounded-btns text-sm font-semibold transition-all duration-200 min-h-[44px]",
+                  isActive
+                    ? "bg-surface-highlight text-white shadow-soft border-l-[3px] border-l-white/30"
+                    : "text-text-secondary hover:text-white hover:bg-white/[0.03] border-l-[3px] border-l-transparent"
+                )}
+              >
+                <Icon className={cn("w-4 h-4 shrink-0", isActive ? "text-profit" : "")} />
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
 
-        <div className="absolute bottom-4 sm:bottom-6 left-4 sm:left-6 right-4 sm:right-6 safe-bottom">
-          <div className="bg-surface-base/50 p-3 sm:p-4 rounded-cards border border-border flex flex-col gap-1">
+        <div className="p-6 safe-bottom">
+          <div className="bg-surface-base/50 p-4 rounded-cards border border-border flex flex-col gap-1">
              <div className="text-[10px] uppercase tracking-widest text-text-muted font-medium">Node Instance</div>
              <div className="text-xs font-mono text-white truncate opacity-80">primary-v4-live</div>
           </div>
         </div>
       </aside>
-
-      {/* Mobile Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/70 z-40 lg:hidden backdrop-blur-md"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
