@@ -292,6 +292,12 @@ class EdgeFactoryOrchestrator:
             # Write health heartbeat so dashboard shows LIVE (not DEGRADED)
             await self._write_health_heartbeat()
 
+            # Write cash snapshot for equity chart (every 5th tick)
+            await self._write_cash_snapshot()
+
+            # Write P&L daily row for P&L panel (every 10th tick)
+            await self._write_pnl_snapshot()
+
             await asyncio.sleep(self.config.market_poll_interval)
 
     async def _check_kill_switch(self) -> bool:
@@ -410,26 +416,31 @@ class EdgeFactoryOrchestrator:
         }
 
     async def _write_health_heartbeat(self) -> None:
-        """Write reconciliation event + health heartbeats to Supabase (live mode).
+        """Write reconciliation event + health heartbeats to Supabase.
 
         This ensures the dashboard shows LIVE instead of DEGRADED when
-        the Edge Factory is the primary live service.
+        the Edge Factory is the primary live service.  The dashboard uses
+        LIVE_WINDOW_MS = 60 000 ms, so we must write at least every 60s.
+        We write every tick (60s interval) to stay within the window.
         """
         sb = getattr(self, '_supabase', None)
         if sb is None:
             return
 
-        # Only write every 5th tick to avoid hammering Supabase
-        if self._tick_count % 5 != 0:
-            return
-
         now_iso = datetime.now(timezone.utc).isoformat()
+
+        # ── Get real equity from account state if available ──
+        equity = (
+            self.account_state.equity if self.account_state is not None
+            else self.config.account_equity
+        )
+
         try:
             # Write reconciliation event (keeps dashboard healthSummary happy)
             sb.table("crypto_reconciliation_events").insert({
                 "taken_at": now_iso,
-                "local_cash": self.config.account_equity,
-                "rh_cash": self.config.account_equity,
+                "local_cash": equity,
+                "rh_cash": equity,
                 "cash_diff": 0.0,
                 "local_holdings": {},
                 "rh_holdings": {},
@@ -455,6 +466,88 @@ class EdgeFactoryOrchestrator:
 
         except Exception as e:
             logger.warning("Health heartbeat write failed: %s", e)
+
+    async def _write_cash_snapshot(self) -> None:
+        """Write cash snapshot to Supabase for the equity chart.
+
+        The dashboard equity chart reads from crypto_cash_snapshots.
+        Without these writes, the chart shows no data for live mode.
+        Writes every 5th tick (~5 min) to avoid flooding the table.
+        """
+        sb = getattr(self, '_supabase', None)
+        if sb is None:
+            return
+
+        # Write every 5th tick (~5 minutes) for chart granularity
+        if self._tick_count % 5 != 0:
+            return
+
+        equity = (
+            self.account_state.equity if self.account_state is not None
+            else self.config.account_equity
+        )
+
+        try:
+            sb.table("crypto_cash_snapshots").insert({
+                "cash_available": equity,
+                "buying_power": equity,
+                "mode": self.config.mode,
+            }).execute()
+            logger.debug("Cash snapshot written: equity=%.2f", equity)
+        except Exception as e:
+            logger.warning("Cash snapshot write failed: %s", e)
+
+    async def _write_pnl_snapshot(self) -> None:
+        """Upsert daily P&L row to Supabase.
+
+        The dashboard reads pnl_daily as a fallback equity chart and
+        for the P&L panel. Without this, live mode shows no P&L data.
+        Writes every 10th tick (~10 min) since it's a daily-granularity upsert.
+        """
+        sb = getattr(self, '_supabase', None)
+        if sb is None:
+            return
+
+        # Upsert every 10th tick — it's a daily row, no need to hammer
+        if self._tick_count % 10 != 0:
+            return
+
+        equity = (
+            self.account_state.equity if self.account_state is not None
+            else self.config.account_equity
+        )
+
+        # Calculate realized P&L from fills
+        realized_pnl = 0.0
+        try:
+            resp = sb.table("crypto_fills").select("side, qty, price, fee").eq(
+                "mode", self.config.mode
+            ).execute()
+            for fill in (resp.data or []):
+                qty = float(fill.get("qty", 0))
+                price = float(fill.get("price", 0))
+                fee = float(fill.get("fee", 0))
+                gross = qty * price
+                realized_pnl += (gross if fill.get("side") == "sell" else -gross) - fee
+        except Exception:
+            pass
+
+        try:
+            sb.table("pnl_daily").upsert({
+                "date": str(date.today()),
+                "instance_id": "default",
+                "equity": equity,
+                "daily_pnl": realized_pnl,
+                "drawdown": 0,
+                "cash_buffer_pct": 100,
+                "day_trades_used": 0,
+                "realized_pnl": realized_pnl,
+                "unrealized_pnl": 0,
+                "mode": self.config.mode,
+            }, on_conflict="date,instance_id,mode").execute()
+            logger.debug("P&L snapshot written: equity=%.2f pnl=%.4f", equity, realized_pnl)
+        except Exception as e:
+            logger.warning("P&L snapshot write failed: %s", e)
 
     def _emit_metrics_snapshot(self) -> None:
         """Emit metrics snapshot to local event store for dashboard (C8)."""
