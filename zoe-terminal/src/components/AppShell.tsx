@@ -161,7 +161,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <div className="flex flex-1 relative z-[5] overflow-hidden">
+      <div className="flex flex-1 relative overflow-hidden">
       {/* Sidebar */}
       <aside
         className={cn(
@@ -213,14 +213,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </aside>
-
-      {/* Mobile Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 z-[65] lg:hidden backdrop-blur-md"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -351,6 +343,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </Suspense>
 
       </div>
+
+      {/* Mobile Overlay — at root level so it covers banners too */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-[65] lg:hidden backdrop-blur-md"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
       {/* Kill Switch Confirmation Modal */}
       {killConfirmOpen && (
