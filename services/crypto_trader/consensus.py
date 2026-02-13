@@ -180,9 +180,10 @@ class ConsensusEngine:
 
         # ── Determine final result ──
         pass_rate = gates_passed / self.GATES_TOTAL
-        critical_blockers = len(blocking) >= 3
+        critical_blockers = len(blocking) >= 2  # tightened from 3
 
-        if critical_blockers or pass_rate < 3 / self.GATES_TOTAL:
+        # Raised minimum from 3/7 to 5/7 — require strong consensus
+        if critical_blockers or pass_rate < 5 / self.GATES_TOTAL:
             return ConsensusReport(
                 result=ConsensusResult.BLOCKED,
                 confidence=0.0,
@@ -195,7 +196,7 @@ class ConsensusEngine:
         if pass_rate >= 6 / self.GATES_TOTAL:
             result = ConsensusResult.STRONG_BUY if direction == "long" else ConsensusResult.STRONG_SELL
             confidence = min(1.0, pass_rate * 1.1)
-        elif pass_rate >= 4 / self.GATES_TOTAL:
+        elif pass_rate >= 5 / self.GATES_TOTAL:
             result = ConsensusResult.BUY if direction == "long" else ConsensusResult.SELL
             confidence = pass_rate
         else:

@@ -1,22 +1,21 @@
 import { useRef, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { initAuditMode } from './utils/ui_audit';
+import { ModeProvider } from './lib/mode';
+import { CopilotProvider } from './lib/CopilotContext';
+import { AuthProvider } from './lib/AuthContext';
+import PasswordGate from './components/PasswordGate';
 import { AppShell } from './components/AppShell';
 import { TradeToastContainer, type ToastAPI } from './components/TradeToast';
 import { useTradeNotifications } from './hooks/useTradeNotifications';
 import { initAudio } from './lib/chime';
 import Overview from './pages/Overview';
-import Positions from './pages/Positions';
 import Trades from './pages/Trades';
 import TradeDetail from './pages/TradeDetail';
 import Scanner from './pages/Scanner';
 import Charts from './pages/Charts';
-import Plan from './pages/Plan';
-import Thoughts from './pages/Thoughts';
-import Health from './pages/Health';
+import Intelligence from './pages/Intelligence';
 import Settings from './pages/Settings';
-import Structure from './pages/Structure';
-import Consensus from './pages/Consensus';
 
 import ShareTrade from './pages/share/ShareTrade';
 import SharePnL from './pages/share/SharePnL';
@@ -49,16 +48,11 @@ function AppWithNotifications() {
       <AppShell>
         <Routes>
           <Route path="/" element={<Overview />} />
-          <Route path="/positions" element={<Positions />} />
           <Route path="/trades" element={<Trades />} />
           <Route path="/trades/:id" element={<TradeDetail />} />
           <Route path="/scanner" element={<Scanner />} />
           <Route path="/charts" element={<Charts />} />
-          <Route path="/plan" element={<Plan />} />
-          <Route path="/thoughts" element={<Thoughts />} />
-          <Route path="/structure" element={<Structure />} />
-          <Route path="/consensus" element={<Consensus />} />
-          <Route path="/health" element={<Health />} />
+          <Route path="/intelligence" element={<Intelligence />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </AppShell>
@@ -74,18 +68,26 @@ function App() {
   }, []);
 
   return (
-    <Router>
-      <Routes>
-        {/* Share Routes (No Shell, No Notifications) */}
-        <Route path="/share/trade/:id" element={<ShareTrade />} />
-        <Route path="/share/pnl" element={<SharePnL />} />
-        <Route path="/share/position/:id" element={<SharePosition />} />
-        <Route path="/share/plan" element={<SharePlan />} />
+    <AuthProvider>
+    <PasswordGate>
+      <Router>
+        <ModeProvider>
+          <CopilotProvider>
+            <Routes>
+              {/* Share Routes (No Shell, No Notifications) */}
+              <Route path="/share/trade/:id" element={<ShareTrade />} />
+              <Route path="/share/pnl" element={<SharePnL />} />
+              <Route path="/share/position/:id" element={<SharePosition />} />
+              <Route path="/share/plan" element={<SharePlan />} />
 
-        {/* Main App with Notifications */}
-        <Route path="*" element={<AppWithNotifications />} />
-      </Routes>
-    </Router>
+              {/* Main App with Notifications */}
+              <Route path="*" element={<AppWithNotifications />} />
+            </Routes>
+          </CopilotProvider>
+        </ModeProvider>
+      </Router>
+    </PasswordGate>
+    </AuthProvider>
   );
 }
 

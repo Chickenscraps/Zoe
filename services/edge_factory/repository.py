@@ -160,7 +160,7 @@ class InMemoryFeatureRepository:
 class SupabaseFeatureRepository:
     """Production implementation using existing Supabase instance."""
 
-    def __init__(self) -> None:
+    def __init__(self, mode: str = "live") -> None:
         from supabase import create_client
 
         url = os.getenv("SUPABASE_URL", "")
@@ -168,11 +168,13 @@ class SupabaseFeatureRepository:
         if not url or not key:
             raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY required")
         self.client = create_client(url, key)
+        self.mode = mode
 
     # ── Features ──────────────────────────────────────────────
 
     def insert_feature(self, feature: FeatureSnapshot) -> None:
         self.client.table("ef_features").insert({
+            "mode": self.mode,
             "symbol": feature.symbol,
             "feature_name": feature.feature_name,
             "value": feature.value,
@@ -185,6 +187,7 @@ class SupabaseFeatureRepository:
         resp = (
             self.client.table("ef_features")
             .select("*")
+            .eq("mode", self.mode)
             .eq("symbol", symbol)
             .eq("feature_name", feature_name)
             .order("computed_at", desc=True)
@@ -208,6 +211,7 @@ class SupabaseFeatureRepository:
         resp = (
             self.client.table("ef_features")
             .select("*")
+            .eq("mode", self.mode)
             .eq("symbol", symbol)
             .eq("feature_name", feature_name)
             .order("computed_at", desc=True)
@@ -232,6 +236,7 @@ class SupabaseFeatureRepository:
         regime_id = str(uuid.uuid4())
         self.client.table("ef_regimes").insert({
             "id": regime_id,
+            "mode": self.mode,
             "regime": regime.regime,
             "confidence": regime.confidence,
             "detected_at": regime.detected_at.isoformat(),
@@ -243,6 +248,7 @@ class SupabaseFeatureRepository:
         resp = (
             self.client.table("ef_regimes")
             .select("*")
+            .eq("mode", self.mode)
             .order("detected_at", desc=True)
             .limit(1)
             .execute()
@@ -263,6 +269,7 @@ class SupabaseFeatureRepository:
         signal_id = signal.signal_id or str(uuid.uuid4())
         self.client.table("ef_signals").insert({
             "id": signal_id,
+            "mode": self.mode,
             "symbol": signal.symbol,
             "direction": signal.direction,
             "strength": signal.strength,
@@ -277,6 +284,7 @@ class SupabaseFeatureRepository:
         resp = (
             self.client.table("ef_signals")
             .select("*")
+            .eq("mode", self.mode)
             .eq("symbol", symbol)
             .order("generated_at", desc=True)
             .limit(limit)
@@ -303,6 +311,7 @@ class SupabaseFeatureRepository:
         position_id = position.position_id or str(uuid.uuid4())
         self.client.table("ef_positions").insert({
             "id": position_id,
+            "mode": self.mode,
             "symbol": position.symbol,
             "side": position.side,
             "entry_price": position.entry_price,
@@ -330,6 +339,7 @@ class SupabaseFeatureRepository:
         resp = (
             self.client.table("ef_positions")
             .select("*")
+            .eq("mode", self.mode)
             .in_("status", ["pending", "open"])
             .execute()
         )
@@ -339,6 +349,7 @@ class SupabaseFeatureRepository:
         resp = (
             self.client.table("ef_positions")
             .select("*")
+            .eq("mode", self.mode)
             .not_.in_("status", ["pending", "open"])
             .order("exit_time", desc=True)
             .limit(limit)
@@ -367,13 +378,21 @@ class SupabaseFeatureRepository:
     # ── State ─────────────────────────────────────────────────
 
     def get_state(self, key: str) -> Any:
-        resp = self.client.table("ef_state").select("value").eq("key", key).limit(1).execute()
+        resp = (
+            self.client.table("ef_state")
+            .select("value")
+            .eq("mode", self.mode)
+            .eq("key", key)
+            .limit(1)
+            .execute()
+        )
         if not resp.data:
             return None
         return resp.data[0]["value"]
 
     def set_state(self, key: str, value: Any) -> None:
         self.client.table("ef_state").upsert({
+            "mode": self.mode,
             "key": key,
             "value": json.dumps(value) if not isinstance(value, str) else value,
             "updated_at": datetime.now(timezone.utc).isoformat(),

@@ -211,6 +211,8 @@ export interface Database {
         Row: {
           day: string;
           amount: number;
+          notional_used: number;
+          notional_limit: number;
           mode: "paper" | "live";
         };
       };
@@ -326,6 +328,7 @@ export interface Database {
           source: "wick" | "body";
           atr_snapshot: number | null;
           confirmed: boolean;
+          mode: "paper" | "live";
           created_at: string;
         };
       };
@@ -343,6 +346,7 @@ export interface Database {
           score: number;
           metadata: Json;
           is_active: boolean;
+          mode: "paper" | "live";
           created_at: string;
           updated_at: string;
         };
@@ -362,6 +366,7 @@ export interface Database {
           last_tested: string | null;
           is_active: boolean;
           metadata: Json;
+          mode: "paper" | "live";
           created_at: string;
           updated_at: string;
         };
@@ -378,6 +383,7 @@ export interface Database {
           confirmed: boolean;
           confirm_count: number;
           reason_json: Json;
+          mode: "paper" | "live";
           ts: string;
         };
       };
@@ -390,6 +396,7 @@ export interface Database {
           state: string;
           score: number | null;
           reason_json: Json;
+          mode: "paper" | "live";
         };
       };
       bounce_intents: {
@@ -408,6 +415,33 @@ export interface Database {
           blocked_reason: string | null;
           executed: boolean;
           reason_json: Json;
+          mode: "paper" | "live";
+        };
+      };
+      zoe_events: {
+        Row: {
+          id: string;
+          source: "chat" | "thought" | "system" | "trade" | "config";
+          subtype: string;
+          severity: "info" | "success" | "warning" | "critical";
+          title: string;
+          body: string | null;
+          symbol: string | null;
+          color_hint: string | null;
+          metadata: Json;
+          mode: "paper" | "live";
+          created_at: string;
+        };
+      };
+      copilot_messages: {
+        Row: {
+          id: string;
+          user_id: string;
+          role: "user" | "assistant";
+          content: string;
+          context_page: string | null;
+          mode: "paper" | "live";
+          created_at: string;
         };
       };
     };

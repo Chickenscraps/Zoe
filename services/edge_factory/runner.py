@@ -18,10 +18,11 @@ import logging
 import os
 import sys
 
-# Load .env before any config reads
+# Load .env + .env.secrets before any config reads
 from dotenv import load_dotenv
 
 load_dotenv()
+load_dotenv(".env.secrets", override=True)
 
 from .account_state import AccountState
 from .config import CONFIRM_PHRASE, EdgeFactoryConfig
@@ -38,6 +39,20 @@ from .regime_detector import RegimeDetector
 from .repository import InMemoryFeatureRepository, SupabaseFeatureRepository
 from .signal_generator import SignalGenerator
 from .trade_intent import TradeIntentBuilder
+
+# Local-first event store + flush worker
+from services.local_store import LocalEventStore
+from services.flush_worker import FlushWorker
+
+# Highlander rule: process-level instance lock
+from services.instance_lock import InstanceLock, InstanceAlreadyRunning
+
+# Rate limiter for Robinhood API (100 RPM sustained)
+from services.rate_limiter import RateLimitManager
+
+# Circuit breakers + metrics
+from .circuit_breakers import CircuitBreakerManager
+from .metrics_collector import MetricsCollector
 
 logger = logging.getLogger("edge_factory")
 
@@ -60,8 +75,8 @@ def _build_repository(config: EdgeFactoryConfig):
     supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
     if supabase_url and supabase_key:
-        logger.info("Using Supabase repository")
-        return SupabaseFeatureRepository()
+        logger.info("Using Supabase repository (mode=%s)", config.mode)
+        return SupabaseFeatureRepository(mode=config.mode)
 
     logger.warning("No Supabase credentials -- falling back to in-memory repository")
     return InMemoryFeatureRepository()
@@ -198,7 +213,7 @@ async def _cleanup(orchestrator: EdgeFactoryOrchestrator) -> None:
             pass
 
 
-async def _run(dry_run: bool = False) -> None:
+async def _run(dry_run: bool = False, instance_lock: InstanceLock | None = None) -> None:
     """Main async entry point."""
     config = EdgeFactoryConfig()
 
@@ -224,7 +239,68 @@ async def _run(dry_run: bool = False) -> None:
             )
             return
 
+    # ── Rate limiter for Robinhood API ──────────────────────
+    rate_limiter = RateLimitManager(
+        rpm=int(os.getenv("RH_RATE_LIMIT_RPM", "100")),
+        burst=int(os.getenv("RH_RATE_LIMIT_BURST", "150")),
+        backoff_seconds=float(os.getenv("RH_RATE_LIMIT_BACKOFF", "30")),
+    )
+
     orchestrator = build_orchestrator(config)
+
+    # ── Circuit breakers ───────────────────────────────────
+    circuit_breakers = CircuitBreakerManager(
+        dd_soft_pct=float(os.getenv("CB_DD_SOFT_PCT", "5.0")),
+        dd_hard_pct=float(os.getenv("CB_DD_HARD_PCT", "20.0")),
+        max_consecutive_losses=int(os.getenv("CB_MAX_CONSEC_LOSSES", "5")),
+        loss_cooldown_hours=float(os.getenv("CB_LOSS_COOLDOWN_HOURS", "4.0")),
+        spread_blowout_pct=float(os.getenv("CB_SPREAD_BLOWOUT_PCT", "1.0")),
+    )
+
+    # ── Metrics collector ──────────────────────────────────
+    metrics_collector = MetricsCollector(
+        emit_interval_ticks=int(os.getenv("METRICS_EMIT_INTERVAL", "10")),
+    )
+
+    # Stash on orchestrator for access by sub-components
+    orchestrator._rate_limiter = rate_limiter  # type: ignore[attr-defined]
+    orchestrator._circuit_breakers = circuit_breakers  # type: ignore[attr-defined]
+    orchestrator._metrics = metrics_collector  # type: ignore[attr-defined]
+
+    # ── Local-first event store + flush worker ─────────────
+    local_store = None
+    flush_task = None
+    try:
+        store_path = os.getenv("LOCAL_STORE_PATH", "data/local_events.db")
+        local_store = LocalEventStore(store_path)
+        logger.info("Local event store initialized: %s", store_path)
+
+        # Create Supabase client for flush worker
+        supabase_url = os.getenv("SUPABASE_URL", "")
+        supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+        if supabase_url and supabase_key:
+            from supabase import create_client
+            flush_sb = create_client(supabase_url, supabase_key)
+            flush_worker = FlushWorker(local_store, flush_sb, mode=config.mode)
+            logger.info("Flush worker created (mode=%s)", config.mode)
+        else:
+            flush_worker = None
+            logger.warning("No Supabase credentials — flush worker disabled")
+    except Exception as e:
+        logger.warning("Failed to init local store / flush worker: %s", e)
+        flush_worker = None
+
+    # Stash local_store on orchestrator for event emission
+    orchestrator._local_store = local_store  # type: ignore[attr-defined]
+    orchestrator._flush_worker = flush_worker  # type: ignore[attr-defined]
+
+    # Stash Supabase client on orchestrator for health heartbeats
+    orchestrator._supabase = getattr(flush_worker, 'sb', None) if flush_worker else None  # type: ignore[attr-defined]
+
+    # C3: Stash metrics + local_store on executor for IS tracking
+    executor = orchestrator.executor
+    executor._metrics = metrics_collector  # type: ignore[attr-defined]
+    executor._local_store = local_store  # type: ignore[attr-defined]
 
     try:
         if dry_run:
@@ -234,6 +310,11 @@ async def _run(dry_run: bool = False) -> None:
             logger.info("Dry-run complete. Wiring OK.")
             return
 
+        # Start flush worker alongside the trading loop
+        if flush_worker is not None:
+            flush_task = asyncio.create_task(flush_worker.run_forever())
+            logger.info("Flush worker started as background task")
+
         logger.info("Starting run_forever loop...")
         await orchestrator.run_forever()
     except KeyboardInterrupt:
@@ -241,6 +322,18 @@ async def _run(dry_run: bool = False) -> None:
     except Exception as e:
         logger.error("Fatal error: %s", e, exc_info=True)
     finally:
+        # Cancel flush worker gracefully
+        if flush_task is not None:
+            flush_task.cancel()
+            try:
+                await flush_task
+            except asyncio.CancelledError:
+                pass
+
+        # Close local store
+        if local_store is not None:
+            local_store.close()
+
         await _cleanup(orchestrator)
 
 
@@ -251,7 +344,20 @@ def main() -> None:
     os.makedirs("logs", exist_ok=True)
 
     dry_run = "--dry-run" in sys.argv
-    asyncio.run(_run(dry_run=dry_run))
+
+    # ── Highlander Rule: only one bot instance ──────────────
+    lock_path = os.getenv("EF_LOCK_PATH", "data/edge_factory.lock")
+    instance_lock = InstanceLock(lock_path)
+    try:
+        instance_lock.acquire()
+    except InstanceAlreadyRunning as e:
+        logger.critical(str(e))
+        sys.exit(1)
+
+    try:
+        asyncio.run(_run(dry_run=dry_run, instance_lock=instance_lock))
+    finally:
+        instance_lock.release()
 
 
 if __name__ == "__main__":

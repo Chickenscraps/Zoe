@@ -22,12 +22,11 @@ if TYPE_CHECKING:
 
 # ── Watchlist ────────────────────────────────────────────────────
 WATCHLIST = [
-    "BTC-USD", "ETH-USD", "DOGE-USD", "SOL-USD", "SHIB-USD",
-    "AVAX-USD", "LINK-USD", "XLM-USD", "LTC-USD", "UNI-USD",
+    "BTC-USD", "ETH-USD", "SOL-USD", "AVAX-USD",
 ]
 
 # Minimum ticks before we trust technical indicators
-MIN_TICKS_FOR_TECHNICALS = 6  # ~30 min at 5-min poll interval
+MIN_TICKS_FOR_TECHNICALS = 24  # ~2h at 5-min poll interval (was 6 / 30min)
 
 
 @dataclass

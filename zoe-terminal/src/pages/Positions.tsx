@@ -3,6 +3,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { useMemo } from 'react';
 import { formatCurrency, formatPercentage } from '../lib/utils';
 import { useDashboardData } from '../hooks/useDashboardData';
+import { FEE_RATE_PER_SIDE } from '../lib/constants';
 
 interface PositionRow {
   symbol: string;
@@ -21,13 +22,13 @@ export default function Positions() {
   const positions = useMemo<PositionRow[]>(() => {
     if (!holdingsRows || holdingsRows.length === 0) return [];
 
-    // Compute avg price from fills
+    // Compute avg price from fills (include fees in cost basis)
     const avgPrices: Record<string, { totalCost: number; totalQty: number }> = {};
     for (const fill of (cryptoFills || [])) {
       if (fill.side === 'buy') {
         const sym = fill.symbol;
         if (!avgPrices[sym]) avgPrices[sym] = { totalCost: 0, totalQty: 0 };
-        avgPrices[sym].totalCost += fill.qty * fill.price;
+        avgPrices[sym].totalCost += fill.qty * fill.price + (fill.fee || 0);
         avgPrices[sym].totalQty += fill.qty;
       }
     }
@@ -44,8 +45,9 @@ export default function Positions() {
       const current = priceMap[h.asset] ?? avg;
       const mktVal = h.qty * current;
       const cost = h.qty * avg;
-      const pnl = mktVal - cost;
-      const pnlPct = cost > 0 ? pnl / cost : 0;
+      const exitFee = mktVal * FEE_RATE_PER_SIDE; // estimated exit fee
+      const pnl = mktVal - cost - exitFee;
+      const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0; // as percentage (e.g., -2.04 for -2.04%)
 
       return {
         symbol: h.asset,

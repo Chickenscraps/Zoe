@@ -4,6 +4,7 @@ import { StatusChip } from '../components/StatusChip';
 import { formatCurrency, formatDate } from '../lib/utils';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { useModeContext } from '../lib/mode';
 
 interface TradeDetailData {
   trade_id: string;
@@ -25,6 +26,7 @@ interface TradeDetailData {
 export default function TradeDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { mode } = useModeContext();
   const [trade, setTrade] = useState<TradeDetailData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,6 +39,7 @@ export default function TradeDetail() {
           .from('trades')
           .select('*')
           .eq('trade_id', id)
+          .eq('mode', mode)
           .single();
 
         if (error) throw error;
@@ -66,7 +69,7 @@ export default function TradeDetail() {
       }
     }
     fetchTrade();
-  }, [id]);
+  }, [id, mode]);
 
   if (loading) {
     return <div className="text-text-secondary animate-pulse p-8">Loading trade...</div>;

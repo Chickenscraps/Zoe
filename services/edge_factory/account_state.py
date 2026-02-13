@@ -56,12 +56,17 @@ class AccountState:
         """Fetch real equity from Robinhood."""
         data = await self.rh.get_account_balances()
 
-        # RH returns various balance fields
+        # RH returns various balance fields depending on account type
         if isinstance(data, dict):
             # Try crypto buying power first
             crypto_bp = data.get("crypto_buying_power")
             if crypto_bp is not None:
                 return float(crypto_bp)
+
+            # Try standard buying_power (RH crypto accounts return this)
+            bp = data.get("buying_power")
+            if bp is not None:
+                return float(bp)
 
             # Fallback to portfolio value
             portfolio = data.get("equity", data.get("portfolio_value"))

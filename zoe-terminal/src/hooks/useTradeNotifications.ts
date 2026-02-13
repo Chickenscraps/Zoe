@@ -10,10 +10,12 @@
 
 import { useEffect, useRef } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { useModeContext } from "../lib/mode";
 import { chimeBuy, chimeSell, chimeAlert } from "../lib/chime";
 import type { ToastAPI, ToastType } from "../components/TradeToast";
 
 export function useTradeNotifications(toastApi: React.MutableRefObject<ToastAPI | null>) {
+  const { mode } = useModeContext();
   // Track whether we've received the initial snapshot (skip those)
   const initializedOrders = useRef(false);
   const initializedFills = useRef(false);
@@ -27,13 +29,14 @@ export function useTradeNotifications(toastApi: React.MutableRefObject<ToastAPI 
 
     // ── Subscribe to crypto_orders ────────────────────────────────
     const ordersChannel = supabase
-      .channel("trade-notifications-orders")
+      .channel(`trade-notifications-orders-${mode}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "crypto_orders",
+          filter: `mode=eq.${mode}`,
         },
         (payload) => {
           if (!initializedOrders.current) return;
@@ -67,13 +70,14 @@ export function useTradeNotifications(toastApi: React.MutableRefObject<ToastAPI 
 
     // ── Subscribe to crypto_fills ─────────────────────────────────
     const fillsChannel = supabase
-      .channel("trade-notifications-fills")
+      .channel(`trade-notifications-fills-${mode}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "crypto_fills",
+          filter: `mode=eq.${mode}`,
         },
         (payload) => {
           if (!initializedFills.current) return;
@@ -107,13 +111,14 @@ export function useTradeNotifications(toastApi: React.MutableRefObject<ToastAPI 
 
     // ── Subscribe to bounce_events (structure pipeline alerts) ────
     const bounceChannel = supabase
-      .channel("trade-notifications-bounce")
+      .channel(`trade-notifications-bounce-${mode}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "bounce_events",
+          filter: `mode=eq.${mode}`,
         },
         (payload) => {
           const event = payload.new as Record<string, unknown>;
@@ -133,13 +138,14 @@ export function useTradeNotifications(toastApi: React.MutableRefObject<ToastAPI 
 
     // ── Subscribe to structure_events (breakout/breakdown) ────────
     const structureChannel = supabase
-      .channel("trade-notifications-structure")
+      .channel(`trade-notifications-structure-${mode}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "structure_events",
+          filter: `mode=eq.${mode}`,
         },
         (payload) => {
           const event = payload.new as Record<string, unknown>;
@@ -164,5 +170,5 @@ export function useTradeNotifications(toastApi: React.MutableRefObject<ToastAPI 
       supabase.removeChannel(bounceChannel);
       supabase.removeChannel(structureChannel);
     };
-  }, [toastApi]);
+  }, [toastApi, mode]);
 }

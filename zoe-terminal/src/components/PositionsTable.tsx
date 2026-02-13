@@ -1,0 +1,150 @@
+import { useMemo } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
+import { DataTable } from './DataTable';
+import { formatCurrency, formatPercentage } from '../lib/utils';
+import { useDashboardData } from '../hooks/useDashboardData';
+import { FEE_RATE_PER_SIDE } from '../lib/constants';
+import { Briefcase } from 'lucide-react';
+
+interface PositionRow {
+  symbol: string;
+  quantity: number;
+  avg_price: number;
+  current_price: number;
+  market_value: number;
+  pnl_percent: number;
+  unrealized_pnl: number;
+}
+
+interface PositionsTableProps {
+  /** Hide the section header — useful when embedding inside another card */
+  hideHeader?: boolean;
+  className?: string;
+}
+
+export function PositionsTable({ hideHeader, className }: PositionsTableProps) {
+  const { holdingsRows, livePrices, cryptoFills } = useDashboardData();
+
+  // Build position rows from holdings + live prices
+  const positions = useMemo<PositionRow[]>(() => {
+    if (!holdingsRows || holdingsRows.length === 0) return [];
+
+    // Compute avg price from fills (include fees in cost basis)
+    const avgPrices: Record<string, { totalCost: number; totalQty: number }> = {};
+    for (const fill of (cryptoFills || [])) {
+      if (fill.side === 'buy') {
+        const sym = fill.symbol;
+        if (!avgPrices[sym]) avgPrices[sym] = { totalCost: 0, totalQty: 0 };
+        avgPrices[sym].totalCost += fill.qty * fill.price + (fill.fee || 0);
+        avgPrices[sym].totalQty += fill.qty;
+      }
+    }
+
+    // Map live prices by symbol
+    const priceMap: Record<string, number> = {};
+    for (const scan of (livePrices || [])) {
+      const info = scan.info as any ?? {};
+      if (info.mid) priceMap[scan.symbol] = info.mid;
+    }
+
+    return holdingsRows.map(h => {
+      const avg = avgPrices[h.asset] ? avgPrices[h.asset].totalCost / avgPrices[h.asset].totalQty : 0;
+      const current = priceMap[h.asset] ?? avg;
+      const mktVal = h.qty * current;
+      const cost = h.qty * avg;
+      const exitFee = mktVal * FEE_RATE_PER_SIDE; // estimated exit fee
+      const pnl = mktVal - cost - exitFee;
+      const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0; // as percentage (e.g., -2.04 for -2.04%)
+
+      return {
+        symbol: h.asset,
+        quantity: h.qty,
+        avg_price: avg,
+        current_price: current,
+        market_value: mktVal,
+        pnl_percent: pnlPct,
+        unrealized_pnl: pnl,
+      };
+    });
+  }, [holdingsRows, livePrices, cryptoFills]);
+
+  const columns = useMemo<ColumnDef<PositionRow>[]>(() => [
+    {
+      header: 'Symbol',
+      accessorKey: 'symbol',
+      cell: info => <span className="font-semibold text-white">{info.getValue() as string}</span>
+    },
+    {
+      header: 'Qty',
+      accessorKey: 'quantity',
+      cell: info => <span className="text-text-secondary tabular-nums">{(info.getValue() as number).toFixed(6)}</span>
+    },
+    {
+      header: 'Avg Price',
+      accessorKey: 'avg_price',
+      cell: info => <span className="tabular-nums">{formatCurrency(info.getValue() as number)}</span>
+    },
+    {
+      header: 'Current Mark',
+      accessorKey: 'current_price',
+      cell: info => <span className="tabular-nums">{formatCurrency(info.getValue() as number)}</span>
+    },
+    {
+      header: 'Market Value',
+      accessorKey: 'market_value',
+      cell: info => <span className="text-text-primary font-medium tabular-nums">{formatCurrency(info.getValue() as number)}</span>
+    },
+    {
+      header: 'P&L (%)',
+      accessorKey: 'pnl_percent',
+      cell: info => {
+        const val = info.getValue() as number;
+        return (
+          <span className={val >= 0 ? "text-profit tabular-nums" : "text-loss tabular-nums"}>
+            {formatPercentage(val)}
+          </span>
+        );
+      }
+    },
+    {
+      header: 'P&L ($)',
+      accessorKey: 'unrealized_pnl',
+      cell: info => {
+        const val = info.getValue() as number;
+        return (
+          <span className={val >= 0 ? "text-profit tabular-nums" : "text-loss tabular-nums"}>
+            {formatCurrency(val)}
+          </span>
+        );
+      }
+    }
+  ], []);
+
+  return (
+    <div className={className}>
+      {!hideHeader && (
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
+            <Briefcase className="w-3 h-3 text-profit" /> Open Positions
+          </h3>
+          <span className="text-[9px] font-bold text-text-dim uppercase tracking-widest">
+            {positions.length} active
+          </span>
+        </div>
+      )}
+
+      {positions.length > 0 ? (
+        <DataTable
+          columns={columns}
+          data={positions}
+          emptyMessage="No open positions"
+        />
+      ) : (
+        <div className="card-premium p-8 text-center">
+          <p className="text-text-dim text-xs">No open positions</p>
+          <p className="text-text-dim/60 text-[9px] mt-1">Positions will appear when the bot executes trades</p>
+        </div>
+      )}
+    </div>
+  );
+}
