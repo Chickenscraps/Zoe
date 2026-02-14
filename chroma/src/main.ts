@@ -20,7 +20,34 @@ import { analytics } from './analytics';
 let state: GameState = createInitialState();
 let timerInterval: ReturnType<typeof setInterval> | null = null;
 let targetColor = '';
-let currentScreen: 'start' | 'game' | 'result' = 'start';
+
+// ─── Personal Best (localStorage) ───
+function getPersonalBest(): { level: number; score: number } {
+  try {
+    const stored = localStorage.getItem('chroma_pb');
+    if (stored) return JSON.parse(stored);
+  } catch { /* ignore */ }
+  return { level: 0, score: 0 };
+}
+
+function savePersonalBest(level: number, score: number): boolean {
+  const pb = getPersonalBest();
+  if (level > pb.level || (level === pb.level && score > pb.score)) {
+    localStorage.setItem('chroma_pb', JSON.stringify({ level, score }));
+    return true;
+  }
+  return false;
+}
+
+function getGamesPlayed(): number {
+  try { return parseInt(localStorage.getItem('chroma_games') || '0', 10); }
+  catch { return 0; }
+}
+
+function incrementGamesPlayed(): void {
+  try { localStorage.setItem('chroma_games', String(getGamesPlayed() + 1)); }
+  catch { /* ignore */ }
+}
 
 // ─── URL Params ───
 const params = new URLSearchParams(window.location.search);
@@ -28,6 +55,8 @@ const challengeLevel = params.get('c') ? parseInt(params.get('c')!, 10) : null;
 
 // ─── Render App Shell ───
 function renderApp(): void {
+  const pb = getPersonalBest();
+  const gamesPlayed = getGamesPlayed();
   const app = document.getElementById('app')!;
   app.innerHTML = `
     <div class="bg-glow"></div>
@@ -38,10 +67,15 @@ function renderApp(): void {
       <p class="tagline fade-up fade-up-delay-1">How sharp are your eyes?<br/>Find the different shade before time runs out.</p>
       ${challengeLevel ? `
         <div class="challenge-banner fade-up fade-up-delay-2">
-          Someone challenged you to beat <strong>Level ${challengeLevel}</strong>!
+          Someone reached <strong>Level ${challengeLevel}</strong>. Can you beat them?
         </div>
       ` : ''}
-      <button id="btn-start" class="btn btn-primary fade-up fade-up-delay-2">Play Now</button>
+      ${pb.level > 0 ? `
+        <div class="personal-best fade-up fade-up-delay-1">
+          Your best: Level ${pb.level} &middot; ${gamesPlayed} game${gamesPlayed === 1 ? '' : 's'} played
+        </div>
+      ` : ''}
+      <button id="btn-start" class="btn btn-primary fade-up fade-up-delay-2">${pb.level > 0 ? 'Play Again' : 'Play Now'}</button>
       <div class="how-to-play fade-up fade-up-delay-3">
         <strong>How to play:</strong> Tap the tile that's a<br/>different shade. Be fast — the clock is ticking!
       </div>
@@ -74,6 +108,7 @@ function renderApp(): void {
     <!-- Result Screen -->
     <div id="screen-result" class="screen">
       <div class="result-card" id="result-card">
+        <div id="result-new-best" class="result-new-best" style="display:none">NEW PERSONAL BEST!</div>
         <div id="result-level" class="result-level">0</div>
         <div class="result-level-label">Level Reached</div>
         <div id="result-title" class="result-title"></div>
@@ -93,6 +128,7 @@ function renderApp(): void {
           </div>
         </div>
         <div id="result-percentile" class="result-percentile"></div>
+        ${challengeLevel ? `<div id="result-challenge" class="result-challenge"></div>` : ''}
         <div class="result-actions">
           <button id="btn-share" class="btn btn-share btn-sm">Copy Result & Challenge Link</button>
           <div class="share-row">
@@ -121,7 +157,6 @@ function renderApp(): void {
 
 // ─── Screen Management ───
 function showScreen(name: 'start' | 'game' | 'result'): void {
-  currentScreen = name;
   document.querySelectorAll('.screen').forEach((el) => el.classList.remove('active'));
   document.getElementById(`screen-${name}`)!.classList.add('active');
 }
@@ -171,7 +206,6 @@ function handleTileTap(index: number, tile: HTMLElement): void {
   if (!state.isActive) return;
 
   if (index === state.targetIndex) {
-    // Correct!
     tile.classList.add('correct');
     playCorrect();
 
@@ -181,7 +215,6 @@ function handleTileTap(index: number, tile: HTMLElement): void {
     analytics.levelComplete(state.level - 1, state.score);
 
     // Show level-up flash on grid size changes
-    const newConfig = state.gridSize;
     if (state.level > 1 && getLevelGridSize(state.level) > getLevelGridSize(prevLevel)) {
       showLevelUpFlash(state.level);
       playLevelUp();
@@ -196,7 +229,6 @@ function handleTileTap(index: number, tile: HTMLElement): void {
       updateHUD();
     }, 150);
   } else {
-    // Wrong!
     tile.classList.add('wrong');
     playWrong();
     state = handleWrongTap(state);
@@ -222,7 +254,7 @@ function getLevelGridSize(level: number): number {
 function startTimer(): void {
   if (timerInterval) clearInterval(timerInterval);
 
-  const tickRate = 50; // ms
+  const tickRate = 50;
   timerInterval = setInterval(() => {
     if (!state.isActive) return;
 
@@ -258,7 +290,6 @@ function updateTimerDisplay(): void {
   timeEl.textContent = state.timeLeft.toFixed(1);
   barEl.style.width = `${Math.max(0, pct)}%`;
 
-  // Color based on urgency
   barEl.classList.remove('low', 'critical');
   if (state.timeLeft <= 3) {
     barEl.classList.add('critical');
@@ -277,7 +308,6 @@ function showLevelUpFlash(level: number): void {
   const text = document.getElementById('level-up-text')!;
   text.textContent = `Level ${level}`;
   flash.classList.remove('show');
-  // Force reflow
   void flash.offsetHeight;
   flash.classList.add('show');
   setTimeout(() => flash.classList.remove('show'), 700);
@@ -288,11 +318,18 @@ function endGame(): void {
   state.isActive = false;
   stopTimer();
   playGameOver();
+  incrementGamesPlayed();
 
   const rank = getResultRank(state.level);
   const percentile = getPercentile(state.level);
+  const isNewBest = savePersonalBest(state.level, state.score);
 
   // Update result screen
+  const newBestEl = document.getElementById('result-new-best');
+  if (newBestEl) {
+    newBestEl.style.display = isNewBest ? 'block' : 'none';
+  }
+
   document.getElementById('result-level')!.textContent = String(state.level);
   document.getElementById('result-title')!.textContent = `${rank.emoji} ${rank.title}`;
   (document.getElementById('result-title')! as HTMLElement).style.color = rank.color;
@@ -303,6 +340,18 @@ function endGame(): void {
     state.fastestReaction < Infinity ? `${(state.fastestReaction / 1000).toFixed(2)}s` : '-';
   document.getElementById('result-percentile')!.textContent =
     `Top ${100 - percentile}% of players`;
+
+  // Challenge result
+  const challengeEl = document.getElementById('result-challenge');
+  if (challengeEl && challengeLevel) {
+    if (state.level >= challengeLevel) {
+      challengeEl.textContent = `You beat the challenge (Level ${challengeLevel})!`;
+      challengeEl.style.color = '#4ade80';
+    } else {
+      challengeEl.textContent = `Challenge: Level ${challengeLevel}. You need ${challengeLevel - state.level} more!`;
+      challengeEl.style.color = '#fbbf24';
+    }
+  }
 
   showScreen('result');
 
@@ -346,7 +395,6 @@ function copyToClipboard(text: string): void {
   navigator.clipboard.writeText(text).then(() => {
     showToast();
   }).catch(() => {
-    // Fallback
     const ta = document.createElement('textarea');
     ta.value = text;
     ta.style.position = 'fixed';

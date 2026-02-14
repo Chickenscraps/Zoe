@@ -460,6 +460,40 @@ html, body {
   transform: translateX(-50%) translateY(0);
 }
 
+/* ─── Personal Best ─── */
+.personal-best {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+
+/* ─── New Best Badge ─── */
+.result-new-best {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #000;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  padding: 6px 16px;
+  border-radius: 60px;
+  display: inline-block;
+  margin-bottom: 12px;
+  animation: bounce-in 0.5s ease;
+}
+
+@keyframes bounce-in {
+  0% { transform: scale(0); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* ─── Challenge Result ─── */
+.result-challenge {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
 /* ─── Stats Dashboard ─── */
 .stats-link {
   position: fixed;
