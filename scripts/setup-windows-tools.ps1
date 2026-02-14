@@ -23,6 +23,7 @@ $wingetPackages = @(
     'VideoLAN.VLC'
     'OBSProject.OBSStudio'
     'Spotify.Spotify'
+    'Adobe.CreativeCloud'
 )
 
 # --- Chrome extensions (must be installed manually via browser) ---

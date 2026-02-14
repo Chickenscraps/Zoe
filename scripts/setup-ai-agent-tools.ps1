@@ -19,6 +19,7 @@ $aiWingetPackages = @(
     @{ Id = 'Windsurf.Windsurf';           Desc = 'Windsurf (Codeium AI editor)' }
     @{ Id = 'Anthropic.Claude';            Desc = 'Claude desktop app' }
     @{ Id = 'OpenAI.ChatGPT';             Desc = 'ChatGPT desktop app' }
+    @{ Id = 'Google.Gemini';               Desc = 'Google Gemini desktop app' }
     @{ Id = 'Ollama.Ollama';               Desc = 'Ollama (local LLM runner)' }
     @{ Id = 'LMStudio.LMStudio';           Desc = 'LM Studio (local model UI)' }
 )
@@ -42,8 +43,11 @@ $npmInstalled = Get-Command npm -ErrorAction SilentlyContinue
 if ($npmInstalled) {
     Write-Host "  Installing Claude Code (npm) ..."
     npm install -g @anthropic-ai/claude-code
+
+    Write-Host "  Installing OpenClaw (npm) ..."
+    npm install -g openclaw
 } else {
-    Write-Host "  npm not found — install Node.js first for Claude Code CLI" -ForegroundColor DarkGray
+    Write-Host "  npm not found — install Node.js first for Claude Code / OpenClaw CLI" -ForegroundColor DarkGray
 }
 
 # Aider (AI pair programming CLI)
@@ -138,6 +142,7 @@ Write-Host @"
   2. Open Cursor/VS Code and sign in to Copilot
   3. Launch Ollama and pull a model: ollama pull llama3.1
   4. Run 'claude' in terminal to start Claude Code
-  5. Run 'aider' in a git repo for AI pair programming
+  5. Run 'openclaw' in terminal for OpenClaw agent
+  6. Run 'aider' in a git repo for AI pair programming
 
 "@ -ForegroundColor White
