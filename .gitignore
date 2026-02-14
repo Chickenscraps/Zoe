@@ -78,9 +78,12 @@ memory/
 .agent/*.json
 !.agent/workflows/
 .env
-.env.secrets
+.env.*
 credentials.json
 token.json
+kraken.txt
+*.key
+*.pem
 *.db
 *.log
 logs/
@@ -95,6 +98,7 @@ temp*/
 *.mp3
 *.wav
 *.png
+!zoe-terminal/src/assets/sakura/*.png
 group_dm_export.json
 
 # Local Netlify folder

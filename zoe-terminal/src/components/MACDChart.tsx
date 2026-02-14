@@ -178,7 +178,7 @@ export default function MACDChart({
   return (
     <div
       ref={containerRef}
-      className="w-full rounded-lg overflow-hidden"
+      className="w-full overflow-hidden"
       style={{ height }}
     />
   );

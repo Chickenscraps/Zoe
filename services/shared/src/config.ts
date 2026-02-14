@@ -23,28 +23,10 @@ const discordSchema = z.object({
   DISCORD_GUILD_ID: z.string().optional(),
 });
 
-const robinhoodSchema = z.object({
-  ROBINHOOD_USERNAME: z.string().optional(),
-  ROBINHOOD_PASSWORD: z.string().optional(),
-  ROBINHOOD_MFA_SECRET: z.string().optional(),
-});
-
 const researchSchema = z.object({
   GOOGLE_TRENDS_API_KEY: z.string().optional(),
   X_BEARER_TOKEN: z.string().optional(),
   BLOOMBERG_API_KEY: z.string().optional(),
-});
-
-const paperBrokerSchema = z.object({
-  PAPER_STARTING_EQUITY: z.coerce.number().positive().default(2000),
-  PAPER_MAX_RISK_PER_TRADE: z.coerce.number().positive().default(100),
-  PAPER_PDT_MAX_DAY_TRADES: z.coerce.number().int().min(0).default(3),
-  PAPER_PDT_WINDOW_DAYS: z.coerce.number().int().min(1).default(5),
-  PAPER_PESSIMISTIC_FILLS: z
-    .enum(["true", "false"])
-    .default("true")
-    .transform((v) => v === "true"),
-  PAPER_SLIPPAGE_BPS: z.coerce.number().min(0).default(5),
 });
 
 const appSchema = z.object({
@@ -59,9 +41,7 @@ export const configSchema = appSchema
   .merge(supabaseSchema)
   .merge(polygonSchema)
   .merge(discordSchema)
-  .merge(robinhoodSchema)
-  .merge(researchSchema)
-  .merge(paperBrokerSchema);
+  .merge(researchSchema);
 
 export type ZoeConfig = z.infer<typeof configSchema>;
 
@@ -70,17 +50,8 @@ export type ZoeConfig = z.infer<typeof configSchema>;
 export const marketDataConfigSchema = appSchema.merge(polygonSchema).merge(supabaseSchema);
 export type MarketDataConfig = z.infer<typeof marketDataConfigSchema>;
 
-export const paperBrokerConfigSchema = appSchema.merge(supabaseSchema).merge(paperBrokerSchema);
-export type PaperBrokerConfig = z.infer<typeof paperBrokerConfigSchema>;
-
 export const discordBotConfigSchema = appSchema.merge(supabaseSchema).merge(discordSchema);
 export type DiscordBotConfig = z.infer<typeof discordBotConfigSchema>;
-
-export const traderConfigSchema = appSchema
-  .merge(supabaseSchema)
-  .merge(polygonSchema)
-  .merge(paperBrokerSchema);
-export type TraderConfig = z.infer<typeof traderConfigSchema>;
 
 // ─── Loader ───────────────────────────────────────────────────────────
 

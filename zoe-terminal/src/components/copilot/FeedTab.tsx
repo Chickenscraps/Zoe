@@ -67,7 +67,7 @@ export default function FeedTab() {
             onKeyDown={e => e.key === 'Enter' && handleSend()}
             placeholder="Message Zoe..."
             disabled={chat.isStreaming}
-            className="flex-1 bg-surface-base border border-border rounded px-3 py-2 text-xs text-white placeholder:text-text-dim focus:outline-none focus:border-border-strong"
+            className="flex-1 bg-surface-base border border-border px-3 py-2 text-xs text-text-primary placeholder:text-text-dim focus:outline-none focus:border-border-strong"
           />
           <button
             onClick={chat.isStreaming ? chat.stopStreaming : handleSend}
@@ -76,7 +76,7 @@ export default function FeedTab() {
               "p-2 rounded transition-colors",
               chat.isStreaming
                 ? "bg-loss/20 text-loss hover:bg-loss/30"
-                : "bg-surface-highlight text-text-secondary hover:text-white disabled:opacity-30"
+                : "bg-surface-highlight text-text-secondary hover:text-text-primary disabled:opacity-30"
             )}
           >
             {chat.isStreaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -99,9 +99,9 @@ function ChatBubble({ msg }: { msg: CopilotMessage }) {
     <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "max-w-[85%] px-3 py-2 rounded-lg text-xs leading-relaxed",
+          "max-w-[85%] px-3 py-2 text-xs leading-relaxed",
           isUser
-            ? "bg-surface-highlight text-white"
+            ? "bg-surface-highlight text-cream-100"
             : "bg-surface-base text-text-primary border border-border",
           msg.streaming && "opacity-80",
         )}

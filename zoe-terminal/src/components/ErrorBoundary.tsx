@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import SnesButton from './snes/SnesButton';
 
 interface Props {
   children: ReactNode;
@@ -34,18 +35,15 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="flex flex-col items-center justify-center p-12 text-center gap-4">
           <AlertTriangle className="w-10 h-10 text-warning" />
-          <h2 className="text-lg font-semibold text-white">
+          <h2 className="font-pixel text-[0.55rem] uppercase tracking-[0.08em] text-text-primary">
             {this.props.fallbackMessage ?? 'Something went wrong'}
           </h2>
           <p className="text-sm text-text-muted max-w-md">
             {this.state.error?.message ?? 'An unexpected error occurred.'}
           </p>
-          <button
-            onClick={this.handleReset}
-            className="flex items-center gap-2 px-4 py-2 bg-surface-highlight text-text-primary rounded hover:bg-border transition-colors text-sm font-medium mt-2"
-          >
-            <RefreshCw className="w-4 h-4" /> Try Again
-          </button>
+          <SnesButton variant="secondary" size="sm" onClick={this.handleReset} className="mt-2">
+            <RefreshCw className="w-3 h-3 mr-2 inline" /> Try Again
+          </SnesButton>
         </div>
       );
     }

@@ -9,7 +9,6 @@ export interface FeedItem {
   symbol: string | null;
   color_hint: string | null;
   metadata: Record<string, unknown>;
-  mode: 'paper' | 'live';
   created_at: string;
 }
 
@@ -31,7 +30,7 @@ export interface CopilotMessage {
 
 /** Source badge config — color and label for each source type. */
 export const SOURCE_CONFIG: Record<FeedItem['source'], { label: string; color: string }> = {
-  chat:    { label: 'Chat',    color: 'text-white' },
+  chat:    { label: 'Chat',    color: 'text-text-primary' },
   thought: { label: 'Thought', color: 'text-text-muted' },
   system:  { label: 'System',  color: 'text-yellow-400' },
   trade:   { label: 'Trade',   color: 'text-blue-400' },

@@ -14,39 +14,49 @@ interface KPICardProps {
 
 export function KPICard({ label, value, trend, trendDir, icon: Icon, subValue, className, style }: KPICardProps) {
   return (
-    <div className={cn("card-glass card-shimmer-sweep relative overflow-hidden p-6", className)} style={style}>
-      <div className="flex justify-between items-start mb-3">
-        <span className="text-text-muted text-[10px] font-semibold uppercase tracking-[0.15em]">{label}</span>
-        {Icon && <Icon className="w-4 h-4 text-text-muted/40" />}
+    <div
+      className={cn(
+        "bg-paper-100/80 border-2 border-earth-700/20 relative overflow-hidden p-5 card-stagger",
+        className,
+      )}
+      style={{
+        borderRadius: 0,
+        boxShadow: '3px 3px 0 rgba(69, 43, 39, 0.14)',
+        ...style,
+      }}
+    >
+      {/* Inset highlight for SNES window feel */}
+      <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: 'inset 1px 1px 0 rgba(255,255,255,0.3)' }} />
+
+      <div className="flex justify-between items-start mb-3 relative">
+        <span className="font-pixel text-[0.4rem] text-text-muted uppercase tracking-[0.12em]">{label}</span>
+        {Icon && <Icon className="w-4 h-4 text-earth-700/30" />}
       </div>
 
-      <div className="flex items-baseline gap-2">
+      <div className="flex items-baseline gap-2 relative">
         <span className={cn(
-          "text-3xl font-bold text-white tracking-tighter tabular-nums",
+          "text-[1.75rem] font-extrabold text-earth-700 tracking-tight tabular-nums leading-none",
           trendDir === 'up' && "stat-glow-green",
           trendDir === 'down' && "stat-glow-red",
         )}>{value}</span>
         {trend && (
           <span className={cn(
-            "text-[10px] font-semibold px-2 py-0.5 rounded-full tracking-wider uppercase tabular-nums",
-            trendDir === 'up' && "bg-profit/10 text-profit border border-profit/20",
-            trendDir === 'down' && "bg-loss/10 text-loss border border-loss/20",
-            trendDir === 'neutral' && "bg-white/5 text-text-muted border border-white/10"
-          )}>
+            "font-pixel text-[0.3rem] px-2 py-0.5 tracking-wider uppercase tabular-nums border-2",
+            trendDir === 'up' && "bg-profit/12 text-profit border-profit/25",
+            trendDir === 'down' && "bg-loss/12 text-loss border-loss/25",
+            trendDir === 'neutral' && "bg-earth-700/5 text-text-muted border-earth-700/10"
+          )} style={{ borderRadius: 0 }}>
             {trend}
           </span>
         )}
       </div>
 
       {subValue && (
-        <div className="mt-2 text-[11px] font-medium text-text-muted flex items-center gap-1.5">
-          <div className="w-1 h-1 rounded-full bg-border-strong" />
+        <div className="mt-2.5 text-sm font-medium text-text-secondary flex items-center gap-1.5 relative">
+          <div className="w-1.5 h-1.5 bg-sakura-500/50" style={{ borderRadius: 0 }} />
           {subValue}
         </div>
       )}
-
-      {/* Bottom shine */}
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
     </div>
   );
 }

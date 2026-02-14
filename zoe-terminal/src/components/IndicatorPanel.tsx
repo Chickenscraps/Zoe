@@ -78,10 +78,10 @@ export default function IndicatorPanel({
   const hasAnyData = macd || bollinger || consensus || regime || goldenDeathCross || (divergences && divergences.length > 0);
 
   return (
-    <div className="bg-surface border border-border rounded-xl overflow-hidden">
+    <div className="bg-surface border border-border overflow-hidden">
       <div className="px-6 py-4 border-b border-border bg-surface-highlight/20 flex items-center gap-2">
         <Activity className="w-4 h-4 text-text-muted" />
-        <h3 className="font-bold text-sm">Advanced Indicators</h3>
+        <h3 className="font-pixel text-[0.45rem] uppercase tracking-[0.08em] text-earth-700">Advanced Indicators</h3>
       </div>
       <div className="p-6 space-y-4">
 
@@ -130,7 +130,7 @@ export default function IndicatorPanel({
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Bollinger</span>
             <span className={cn(
               'text-[11px] font-bold tabular-nums',
-              bollinger.percent_b < 0.2 ? 'text-profit' : bollinger.percent_b > 0.8 ? 'text-loss' : 'text-white'
+              bollinger.percent_b < 0.2 ? 'text-profit' : bollinger.percent_b > 0.8 ? 'text-loss' : 'text-text-primary'
             )}>
               %B {(bollinger.percent_b * 100).toFixed(0)}%
             </span>
@@ -204,9 +204,9 @@ export default function IndicatorPanel({
               {consensus.result === 'blocked' ? (
                 <ShieldOff className="w-3.5 h-3.5 text-red-400" />
               ) : (
-                <Shield className="w-3.5 h-3.5 text-white/60" />
+                <Shield className="w-3.5 h-3.5 text-text-muted" />
               )}
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">Consensus</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-primary">Consensus</span>
             </div>
             <span className={cn(
               'text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border',
@@ -219,7 +219,7 @@ export default function IndicatorPanel({
           {/* Gate progress */}
           <div className="flex items-center justify-between text-[9px] text-text-muted">
             <span>Gates Passed</span>
-            <span className="font-bold tabular-nums text-white">{consensus.gates_passed}/{consensus.gates_total}</span>
+            <span className="font-bold tabular-nums text-text-primary">{consensus.gates_passed}/{consensus.gates_total}</span>
           </div>
           <div className="h-1.5 bg-background rounded-full overflow-hidden">
             <div

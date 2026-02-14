@@ -47,21 +47,22 @@ export function EquityChart({ data, dailyPnl, allTimePnl, allTimePnlPct, height 
   const [view, setView] = useState<ChartView>('alltime');
   const hasData = data.length > 1;
 
-  // Filter data based on view
+  // Filter data based on view, strip non-finite equity values
   const filteredData = useMemo(() => {
-    if (!hasData) return [];
+    const clean = data.filter(p => isFinite(p.equity) && !isNaN(p.equity));
+    if (clean.length < 2) return [];
     if (view === 'today') {
       const today = new Date().toISOString().slice(0, 10);
-      const todayData = data.filter(p => p.date.startsWith(today));
-      return todayData.length > 0 ? todayData : data.slice(-1);
+      const todayData = clean.filter(p => p.date.startsWith(today));
+      return todayData.length > 0 ? todayData : clean.slice(-1);
     }
     if (view === '7d') {
       const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      const weekData = data.filter(p => p.date >= cutoff);
-      return weekData.length > 0 ? weekData : data.slice(-1);
+      const weekData = clean.filter(p => p.date >= cutoff);
+      return weekData.length > 0 ? weekData : clean.slice(-1);
     }
-    return data;
-  }, [data, hasData, view]);
+    return clean;
+  }, [data, view]);
 
   const isProfit = view === 'today' ? dailyPnl >= 0 : allTimePnl >= 0;
   const color = isProfit ? "#2ee59d" : "#ff5b6e";
@@ -77,19 +78,13 @@ export function EquityChart({ data, dailyPnl, allTimePnl, allTimePnlPct, height 
     }));
   }, [filteredData]);
 
-  const displayPnl = view === 'today' ? dailyPnl : allTimePnl;
-  const displayPct = view === 'today' ? 0 : allTimePnlPct;
-
-  // Determine how many ticks to show based on data density
-  const tickCount = useMemo(() => {
-    const len = pnlData.length;
-    if (len < 10) return len;
-    if (len < 50) return 6;
-    return 8;
-  }, [pnlData.length]);
+  const rawDisplayPnl = view === 'today' ? dailyPnl : allTimePnl;
+  const rawDisplayPct = view === 'today' ? 0 : allTimePnlPct;
+  const displayPnl = isFinite(rawDisplayPnl) ? rawDisplayPnl : 0;
+  const displayPct = isFinite(rawDisplayPct) ? rawDisplayPct : 0;
 
   return (
-    <div className={cn("card-premium card-shimmer-sweep p-4 sm:p-6", className)}>
+    <div className={cn("bg-surface-base border-2 border-earth-700/20 card-shimmer-sweep p-4 sm:p-6", className)}>
       {/* Header with toggle */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 sm:mb-6">
         <div>
@@ -139,13 +134,13 @@ export function EquityChart({ data, dailyPnl, allTimePnl, allTimePnlPct, height 
 
       {!hasData ? (
         <div
-          className="flex items-center justify-center border border-dashed border-border rounded-lg"
+          className="flex items-center justify-center border border-dashed border-border"
           style={{ height }}
         >
           <div className="text-center">
-            <p className="text-text-muted text-xs font-bold">No equity data yet</p>
+            <p className="text-text-muted text-xs font-bold">Not enough history yet</p>
             <p className="text-text-muted/60 text-[10px] mt-1">
-              Data will appear once cash snapshots are recorded
+              P&L curve will appear after a few snapshots are recorded
             </p>
           </div>
         </div>
@@ -198,13 +193,14 @@ export function EquityChart({ data, dailyPnl, allTimePnl, allTimePnlPct, height 
                   fontSize: '11px',
                 }}
                 itemStyle={{ color: '#f3f4f6' }}
-                formatter={(value: number, name: string) => {
+                formatter={((value: any, name: any) => {
+                  if (value == null) return ['—', name ?? ''];
                   if (name === 'pnl') {
                     const prefix = value >= 0 ? '+' : '';
                     return [`${prefix}${formatCurrency(value)}`, 'P&L'];
                   }
                   return [formatCurrency(value), 'Total Value'];
-                }}
+                }) as any}
                 labelFormatter={(label) => formatTooltipLabel(label as string)}
               />
               <Area

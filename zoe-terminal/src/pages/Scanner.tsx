@@ -7,7 +7,7 @@ import {
   Snowflake, AlertTriangle, Zap, Eye,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { useModeContext } from '../lib/mode';
+
 import { cn } from '../lib/utils';
 import IndicatorPanel from '../components/IndicatorPanel';
 import {
@@ -78,7 +78,6 @@ interface EnrichedCandidate {
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function Scanner() {
-  const { mode } = useModeContext();
   const [candidates, setCandidates] = useState<CandidateScan[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortMode, setSortMode] = useState<SortMode>('consensus');
@@ -97,7 +96,6 @@ export default function Scanner() {
         const { data: latest } = await supabase
           .from('candidate_scans')
           .select('created_at')
-          .eq('mode', mode)
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -110,7 +108,6 @@ export default function Scanner() {
         const { data, error } = await supabase
           .from('candidate_scans')
           .select('*')
-          .eq('mode', mode)
           .eq('created_at', latest.created_at)
           .order('score', { ascending: false });
 
@@ -126,7 +123,7 @@ export default function Scanner() {
     fetchCandidates();
     const interval = setInterval(fetchCandidates, 30000);
     return () => clearInterval(interval);
-  }, [mode]);
+  }, []);
 
   // Compute heat scores for all candidates
   const enriched: EnrichedCandidate[] = useMemo(() => {
@@ -228,43 +225,43 @@ export default function Scanner() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 sm:gap-4 border-b border-border pb-4 sm:pb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 sm:gap-4 border-b border-earth-700/10 pb-4 sm:pb-8">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tighter">Market Scanner</h2>
+          <h2 className="font-pixel text-[0.65rem] uppercase tracking-[0.08em] text-earth-700">Market Scanner</h2>
           <p className="text-xs sm:text-sm text-text-muted mt-1 sm:mt-2 font-medium tracking-tight">
             {candidates.length} symbols &middot; heat consensus
           </p>
           {/* Tier summary chips */}
           <div className="flex gap-2 mt-3 flex-wrap">
             {tierCounts.GOLD > 0 && (
-              <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30">
+              <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 border border-amber-500/25">
                 {tierCounts.GOLD} Gold
               </span>
             )}
             {tierCounts.WARM > 0 && (
-              <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400/80 border border-amber-500/20">
+              <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700/80 border border-amber-500/20">
                 {tierCounts.WARM} Warm
               </span>
             )}
             {tierCounts.COOL > 0 && (
-              <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-white/5 text-text-muted border border-white/10">
+              <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-earth-700/5 text-text-muted border border-earth-700/10">
                 {tierCounts.COOL} Cool
               </span>
             )}
             {tierCounts.COLD > 0 && (
-              <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-white/5 text-text-dim border border-white/8">
+              <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-earth-700/5 text-text-dim border border-earth-700/10">
                 {tierCounts.COLD} Cold
               </span>
             )}
             {tierCounts.BLOCKED > 0 && (
-              <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/25">
+              <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-red-500/10 text-red-600 border border-red-500/20">
                 {tierCounts.BLOCKED} Blocked
               </span>
             )}
           </div>
         </div>
         <div className="flex flex-col items-end gap-3">
-          <div className="bg-surface-highlight/50 px-4 py-2 rounded-xl border border-border text-[10px] font-black text-white uppercase tracking-[0.2em]">
+          <div className="bg-paper-100/80 px-4 py-2 border-2 border-earth-700/10 font-pixel text-[0.35rem] text-earth-700 uppercase tracking-[0.2em]">
             {candidates[0]?.created_at ? `Last scan: ${new Date(candidates[0].created_at).toLocaleTimeString()}` : 'Waiting...'}
           </div>
         </div>
@@ -278,7 +275,7 @@ export default function Scanner() {
           <select
             value={sortMode}
             onChange={e => setSortMode(e.target.value as SortMode)}
-            className="bg-surface-base border border-border rounded-xl px-3 py-2 text-[11px] font-bold text-white focus:outline-none focus:border-amber-500/40 cursor-pointer appearance-none min-h-[40px]"
+            className="bg-cream-100 border-2 border-earth-700/10 px-3 py-2 text-[11px] font-bold text-earth-700 focus:outline-none focus:border-sakura-500/40 cursor-pointer appearance-none min-h-[40px]"
           >
             {SORT_OPTIONS.map(opt => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -293,10 +290,10 @@ export default function Scanner() {
               key={opt.value}
               onClick={() => setFilterMode(opt.value)}
               className={cn(
-                'text-[10px] font-bold uppercase tracking-wider px-3 py-2 rounded-xl border transition-all duration-150 min-h-[40px]',
+                'text-[10px] font-bold uppercase tracking-wider px-3 py-2 border transition-all duration-150 min-h-[40px]',
                 filterMode === opt.value
-                  ? 'bg-white/10 text-white border-white/20'
-                  : 'bg-transparent text-text-muted border-border hover:text-white hover:border-white/15'
+                  ? 'bg-sakura-500/15 text-earth-700 border-sakura-500/30'
+                  : 'bg-transparent text-text-muted border-earth-700/10 hover:text-earth-700 hover:border-earth-700/20'
               )}
             >
               {opt.label}
@@ -316,8 +313,8 @@ export default function Scanner() {
             onToggleExpand={() => toggleExpand(candidate.symbol)}
           />
         )) : (
-          <div className="col-span-full text-center py-20 text-text-muted italic border border-dashed border-border/50 rounded-cards bg-surface/50">
-            <Activity className="w-8 h-8 text-border mx-auto mb-4 opacity-50" />
+          <div className="col-span-full text-center py-20 text-text-muted italic border border-dashed border-earth-700/15 bg-paper-100/50">
+            <Activity className="w-8 h-8 text-earth-700/20 mx-auto mb-4 opacity-50" />
             {filterMode !== 'all'
               ? 'No symbols match the current filter.'
               : 'No scan candidates found. Scanner initializing...'}
@@ -348,14 +345,14 @@ function ScannerCard({ candidate, heat, expanded, onToggleExpand }: ScannerCardP
     <div
       data-symbol={candidate.symbol}
       className={cn(
-        'relative overflow-hidden rounded-cards p-4 sm:p-7 group',
-        'bg-surface-base transition-all duration-250',
+        'relative overflow-hidden p-4 sm:p-7 group',
+        'bg-paper-100/80 transition-all duration-250',
         heat.tier === 'GOLD' && 'scanner-card-gold',
         heat.tier === 'BLOCKED' && 'scanner-card-blocked',
       )}
       style={{
         background: style.background !== 'none'
-          ? `${style.background}, var(--color-surface-base)`
+          ? `${style.background}, var(--color-paper-100)`
           : undefined,
         border: style.border,
         boxShadow: style.boxShadow,
@@ -365,16 +362,16 @@ function ScannerCard({ candidate, heat, expanded, onToggleExpand }: ScannerCardP
       {/* Decorative corner glow */}
       <div className={cn(
         'absolute top-0 right-0 w-32 h-32 rounded-full -mr-16 -mt-16 transition-all',
-        heat.tier === 'GOLD' ? 'bg-amber-400/[0.06] group-hover:bg-amber-400/[0.10]' :
-        heat.tier === 'WARM' ? 'bg-amber-400/[0.03] group-hover:bg-amber-400/[0.06]' :
-        'bg-white/[0.02] group-hover:bg-white/[0.04]'
+        heat.tier === 'GOLD' ? 'bg-sakura-500/[0.06] group-hover:bg-sakura-500/[0.10]' :
+        heat.tier === 'WARM' ? 'bg-sakura-500/[0.03] group-hover:bg-sakura-500/[0.06]' :
+        'bg-sakura-500/[0.03] group-hover:bg-sakura-500/[0.06]'
       )} />
 
       {/* Top row: Symbol + Badge | Score */}
       <div className="flex justify-between items-start mb-3 sm:mb-5 relative z-10">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tighter">{candidate.symbol}</h3>
+            <h3 className="text-2xl sm:text-3xl font-black text-earth-700 tracking-tighter">{candidate.symbol}</h3>
             {/* Tier badge */}
             <span className={cn(
               'inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border',
@@ -398,10 +395,10 @@ function ScannerCard({ candidate, heat, expanded, onToggleExpand }: ScannerCardP
         <div className="flex flex-col items-end">
           <div className={cn(
             'text-3xl sm:text-4xl font-black tracking-tighter tabular-nums',
-            heat.tier === 'GOLD' ? 'text-amber-300' :
-            heat.tier === 'WARM' ? 'text-amber-400/90' :
+            heat.tier === 'GOLD' ? 'text-amber-600' :
+            heat.tier === 'WARM' ? 'text-amber-600/90' :
             heat.tier === 'BLOCKED' ? 'text-red-400/70' :
-            'text-white'
+            'text-earth-700'
           )}>
             {heat.score}
           </div>
@@ -428,7 +425,7 @@ function ScannerCard({ candidate, heat, expanded, onToggleExpand }: ScannerCardP
         <ScoreBar label="Liquidity" value={breakdown.liquidity ?? 0} max={25} icon={<Droplets className="w-3 h-3" />} color="bg-blue-400" />
         <ScoreBar label="Momentum" value={breakdown.momentum ?? 0} max={30} icon={<TrendingUp className="w-3 h-3" />} color="bg-profit" />
         <ScoreBar label="Volatility" value={breakdown.volatility ?? 0} max={20} icon={<Gauge className="w-3 h-3" />} color="bg-yellow-400" />
-        <ScoreBar label="Trend" value={breakdown.trend ?? 0} max={25} icon={<BarChart3 className="w-3 h-3" />} color="bg-white/80" />
+        <ScoreBar label="Trend" value={breakdown.trend ?? 0} max={25} icon={<BarChart3 className="w-3 h-3" />} color="bg-earth-700/60" />
       </div>
 
       {/* Blocked reasons inline */}
@@ -501,7 +498,7 @@ function ScannerCard({ candidate, heat, expanded, onToggleExpand }: ScannerCardP
       )}
 
       {/* Technical Indicators */}
-      <div className="pt-4 border-t border-border/50 space-y-2 relative z-10">
+      <div className="pt-4 border-t border-earth-700/10 space-y-2 relative z-10">
         <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-[11px]">
           <Indicator label="Spread" value={info.spread_pct != null ? `${info.spread_pct.toFixed(3)}%` : '--'} />
           <Indicator label="RSI" value={info.rsi != null ? info.rsi.toFixed(0) : '--'} warn={info.rsi != null && (info.rsi > 70 || info.rsi < 30)} />
@@ -517,14 +514,14 @@ function ScannerCard({ candidate, heat, expanded, onToggleExpand }: ScannerCardP
       {/* Expand/collapse: "Why this tier" details */}
       <button
         onClick={onToggleExpand}
-        className="w-full mt-4 flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-text-muted hover:text-white transition-colors relative z-10 py-1"
+        className="w-full mt-4 flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-text-muted hover:text-earth-700 transition-colors relative z-10 py-1"
       >
         {expanded ? 'Hide Details' : 'Why this score?'}
         {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
       </button>
 
       {expanded && (
-        <div className="mt-3 pt-3 border-t border-border/40 relative z-10 space-y-2 scanner-detail-enter">
+        <div className="mt-3 pt-3 border-t border-earth-700/10 relative z-10 space-y-2 scanner-detail-enter">
           <div className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted mb-2">
             {heat.tier === 'BLOCKED' ? 'Blocked because...' : `Why ${heat.tier}`}
           </div>
@@ -556,7 +553,7 @@ function ScannerCard({ candidate, heat, expanded, onToggleExpand }: ScannerCardP
           <div className="pt-2">
             <Link
               to="/charts"
-              className="text-[10px] text-text-muted hover:text-profit transition-colors font-bold uppercase tracking-widest"
+              className="text-[10px] text-text-muted hover:text-sakura-700 transition-colors font-bold uppercase tracking-widest"
             >
               View Chart &rarr;
             </Link>
@@ -569,7 +566,7 @@ function ScannerCard({ candidate, heat, expanded, onToggleExpand }: ScannerCardP
         <div className="pt-2 relative z-10">
           <Link
             to="/charts"
-            className="text-[10px] text-text-muted hover:text-profit transition-colors font-bold uppercase tracking-widest"
+            className="text-[10px] text-text-muted hover:text-sakura-700 transition-colors font-bold uppercase tracking-widest"
           >
             View Chart &rarr;
           </Link>
@@ -586,12 +583,12 @@ function HeatBar({ label, value, weight, tier }: { label: string; value: number;
   const barColor = tier === 'BLOCKED' ? 'bg-red-400/40'
     : pct > 65 ? 'bg-amber-400'
     : pct > 40 ? 'bg-amber-400/60'
-    : 'bg-white/20';
+    : 'bg-earth-700/15';
 
   return (
     <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-wider">
       <span className="w-[80px] text-text-muted truncate">{label}</span>
-      <div className="flex-1 h-1 bg-background/80 rounded-full overflow-hidden">
+      <div className="flex-1 h-1 bg-cream-100/80 rounded-full overflow-hidden">
         <div
           className={cn('h-full rounded-full transition-all duration-300', barColor)}
           style={{ width: `${pct}%` }}
@@ -609,7 +606,7 @@ function ScoreBar({ label, value, max, icon, color }: { label: string; value: nu
   return (
     <div className="flex items-center gap-2.5 text-[10px] font-black uppercase tracking-widest">
       <span className="w-[72px] text-text-muted flex items-center gap-1.5">{icon}{label}</span>
-      <div className="flex-1 h-1.5 bg-background shadow-crisp rounded-full overflow-hidden">
+      <div className="flex-1 h-1.5 bg-cream-100/80 rounded-full overflow-hidden">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
       </div>
       <span className="w-8 text-right text-text-secondary tabular-nums text-[9px]">{value.toFixed(0)}</span>

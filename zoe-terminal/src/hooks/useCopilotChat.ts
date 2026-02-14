@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
-import { useModeContext } from '../lib/mode';
 import { useDashboardData } from './useDashboardData';
 import { buildContextPack } from '../lib/contextPack';
 import type { CopilotMessage } from '../lib/copilotTypes';
@@ -10,7 +9,6 @@ import type { CopilotMessage } from '../lib/copilotTypes';
  * Copilot chat hook — manages messages, SSE streaming, and Supabase persistence.
  */
 export function useCopilotChat() {
-  const { mode } = useModeContext();
   const location = useLocation();
   const dashboardData = useDashboardData();
   const [messages, setMessages] = useState<CopilotMessage[]>([]);
@@ -25,7 +23,6 @@ export function useCopilotChat() {
         const { data } = await supabase
           .from('copilot_messages')
           .select('*')
-          .eq('mode', mode)
           .order('created_at', { ascending: true })
           .limit(50);
 
@@ -44,7 +41,7 @@ export function useCopilotChat() {
       }
     }
     loadHistory();
-  }, [mode]);
+  }, []);
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -68,7 +65,6 @@ export function useCopilotChat() {
           role: 'user',
           content: userMsg.content,
           context_page: location.pathname,
-          mode,
           created_at: userMsg.created_at,
         })
         .then();
@@ -158,7 +154,6 @@ export function useCopilotChat() {
             role: 'assistant',
             content: accumulated,
             context_page: location.pathname,
-            mode,
             created_at: new Date().toISOString(),
           })
           .then();
@@ -178,7 +173,7 @@ export function useCopilotChat() {
         abortRef.current = null;
       }
     },
-    [isStreaming, mode, location.pathname, dashboardData],
+    [isStreaming, location.pathname, dashboardData],
   );
 
   const stopStreaming = useCallback(() => {
@@ -188,8 +183,8 @@ export function useCopilotChat() {
 
   const clearHistory = useCallback(async () => {
     setMessages([]);
-    await supabase.from('copilot_messages').delete().eq('mode', mode);
-  }, [mode]);
+    await supabase.from('copilot_messages').delete().neq('id', '');
+  }, []);
 
   return {
     messages,
