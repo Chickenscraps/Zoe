@@ -11,7 +11,7 @@ $ErrorActionPreference = 'Continue'
 Write-Host "`n=== Windows Dev Tuning ===" -ForegroundColor Cyan
 
 # ============================================================
-# 1. Power plan — High Performance
+# 1. Power plan -- High Performance
 # ============================================================
 Write-Host "`n--- Setting High Performance power plan ---" -ForegroundColor Yellow
 powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
@@ -24,7 +24,7 @@ powercfg /setactive SCHEME_CURRENT
 Write-Host "  Power plan set to High Performance, sleep disabled on AC." -ForegroundColor Green
 
 # ============================================================
-# 2. Explorer — show extensions, hidden files, full path
+# 2. Explorer -- show extensions, hidden files, full path
 # ============================================================
 Write-Host "`n--- Configuring Explorer for development ---" -ForegroundColor Yellow
 
@@ -128,7 +128,7 @@ if ($gitInstalled) {
     git config --global rerere.enabled true
     Write-Host "  Git configured (autocrlf=input, longpaths, rebase pull, histogram diff)." -ForegroundColor Green
 } else {
-    Write-Host "  Git not found — install it first, then re-run." -ForegroundColor DarkGray
+    Write-Host "  Git not found -- install it first, then re-run." -ForegroundColor DarkGray
 }
 
 # ============================================================

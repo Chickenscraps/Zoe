@@ -73,4 +73,4 @@ if ($failed.Count -gt 0) {
     Write-Host "Re-run the script or install them manually with: winget install -e --id <ID> --source winget"
 }
 
-Write-Host "`nChrome extensions were opened in your browser — install them manually if not already added.`n"
+Write-Host "`nChrome extensions were opened in your browser -- install them manually if not already added.`n"

@@ -47,7 +47,7 @@ if ($npmInstalled) {
     Write-Host "  Installing OpenClaw (npm) ..."
     npm install -g openclaw
 } else {
-    Write-Host "  npm not found — install Node.js first for Claude Code / OpenClaw CLI" -ForegroundColor DarkGray
+    Write-Host "  npm not found -- install Node.js first for Claude Code / OpenClaw CLI" -ForegroundColor DarkGray
 }
 
 # Aider (AI pair programming CLI)
@@ -56,7 +56,7 @@ if ($pipInstalled) {
     Write-Host "  Installing aider (pip) ..."
     pip install aider-chat
 } else {
-    Write-Host "  pip not found — install Python first for aider" -ForegroundColor DarkGray
+    Write-Host "  pip not found -- install Python first for aider" -ForegroundColor DarkGray
 }
 
 # ============================================================
@@ -81,7 +81,7 @@ if ($codeInstalled) {
     }
     Write-Host "  VS Code AI extensions installed." -ForegroundColor Green
 } else {
-    Write-Host "  VS Code CLI not found — install VS Code first, then re-run." -ForegroundColor DarkGray
+    Write-Host "  VS Code CLI not found -- install VS Code first, then re-run." -ForegroundColor DarkGray
 }
 
 # ============================================================
@@ -89,16 +89,16 @@ if ($codeInstalled) {
 # ============================================================
 Write-Host "`n--- API key reminders ---" -ForegroundColor Yellow
 
-Write-Host @"
+$apiKeyMsg = @"
 
   After setup, configure your API keys as environment variables:
 
-    ANTHROPIC_API_KEY     — Claude API (claude.ai/settings)
-    OPENAI_API_KEY        — OpenAI / ChatGPT (platform.openai.com)
-    GITHUB_TOKEN          — GitHub Copilot (github.com/settings/tokens)
-    GROQ_API_KEY          — Groq (console.groq.com)
-    GOOGLE_API_KEY        — Gemini (aistudio.google.com)
-    OPENROUTER_API_KEY    — OpenRouter (openrouter.ai)
+    ANTHROPIC_API_KEY     - Claude API (claude.ai/settings)
+    OPENAI_API_KEY        - OpenAI / ChatGPT (platform.openai.com)
+    GITHUB_TOKEN          - GitHub Copilot (github.com/settings/tokens)
+    GROQ_API_KEY          - Groq (console.groq.com)
+    GOOGLE_API_KEY        - Gemini (aistudio.google.com)
+    OPENROUTER_API_KEY    - OpenRouter (openrouter.ai)
 
   Set them permanently:
     [System.Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', 'sk-...', 'User')
@@ -106,7 +106,8 @@ Write-Host @"
   Or add to your PowerShell profile:
     notepad `$PROFILE
 
-"@ -ForegroundColor White
+"@
+Write-Host $apiKeyMsg -ForegroundColor White
 
 # ============================================================
 # 5. Chrome AI extensions
@@ -135,7 +136,7 @@ if ($failed.Count -gt 0) {
     $failed | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
 }
 
-Write-Host @"
+$nextStepsMsg = @"
 
   Next steps:
   1. Set your API keys (see above)
@@ -145,4 +146,5 @@ Write-Host @"
   5. Run 'openclaw' in terminal for OpenClaw agent
   6. Run 'aider' in a git repo for AI pair programming
 
-"@ -ForegroundColor White
+"@
+Write-Host $nextStepsMsg -ForegroundColor White
