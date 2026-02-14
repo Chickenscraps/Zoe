@@ -311,9 +311,10 @@ function endGame(): void {
 }
 
 // ─── Sharing ───
+const SHARE_BASE = 'https://qwdkadwuyejyadwptgfd.supabase.co/storage/v1/object/public/chroma/index.html';
+
 function getShareUrl(): string {
-  const base = window.location.origin + window.location.pathname;
-  return `${base}?c=${state.level}&ref=share`;
+  return `${SHARE_BASE}?c=${state.level}&ref=share`;
 }
 
 function shareResult(): void {
