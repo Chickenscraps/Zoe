@@ -168,27 +168,24 @@ foreach ($svc in $aiServices) {
 # ============================================================
 Write-Host "`n--- ComfyUI recommended custom nodes ---" -ForegroundColor Yellow
 
-$comfyMsg = @"
-
-  After ComfyUI is installed, open it and use ComfyUI Manager to install:
-
-    - ComfyUI Manager        (node management, essential)
-    - WAS Node Suite          (hundreds of utility nodes)
-    - Impact Pack             (face detailing, segmentation)
-    - AnimateDiff             (video/animation generation)
-    - Advanced ControlNet     (pose and composition control)
-    - ComfyUI Essentials      (missing core functionality)
-    - ComfyUI-SAM3            (Segment Anything Model 3)
-    - LayerForge              (Photoshop-like canvas in ComfyUI)
-    - ComfyUI-VideoUpscale    (memory-efficient video upscaling)
-
-  Recommended models to download via ComfyUI Manager:
-    - Flux 2 (best overall quality for local generation)
-    - Stable Diffusion XL (largest LoRA/ControlNet ecosystem)
-    - Wan 2.2 1.3B (video generation, only needs ~8GB VRAM)
-
-"@
-Write-Host $comfyMsg -ForegroundColor White
+Write-Host ""
+Write-Host "  After ComfyUI is installed, open it and use ComfyUI Manager to install:" -ForegroundColor White
+Write-Host ""
+Write-Host "    * ComfyUI Manager        (node management, essential)" -ForegroundColor White
+Write-Host "    * WAS Node Suite          (hundreds of utility nodes)" -ForegroundColor White
+Write-Host "    * Impact Pack             (face detailing, segmentation)" -ForegroundColor White
+Write-Host "    * AnimateDiff             (video/animation generation)" -ForegroundColor White
+Write-Host "    * Advanced ControlNet     (pose and composition control)" -ForegroundColor White
+Write-Host "    * ComfyUI Essentials      (missing core functionality)" -ForegroundColor White
+Write-Host "    * ComfyUI-SAM3            (Segment Anything Model 3)" -ForegroundColor White
+Write-Host "    * LayerForge              (Photoshop-like canvas in ComfyUI)" -ForegroundColor White
+Write-Host "    * ComfyUI-VideoUpscale    (memory-efficient video upscaling)" -ForegroundColor White
+Write-Host ""
+Write-Host "  Recommended models to download via ComfyUI Manager:" -ForegroundColor White
+Write-Host "    * Flux 2 (best overall quality for local generation)" -ForegroundColor White
+Write-Host "    * Stable Diffusion XL (largest LoRA/ControlNet ecosystem)" -ForegroundColor White
+Write-Host "    * Wan 2.2 1.3B (video generation, only needs ~8GB VRAM)" -ForegroundColor White
+Write-Host ""
 
 # ============================================================
 # Summary
@@ -200,19 +197,16 @@ if ($failed.Count -gt 0) {
     $failed | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
 }
 
-$nextSteps = @"
-
-  Next steps:
-  1. Install Adobe apps from Creative Cloud:
-       Photoshop, After Effects, Illustrator, Media Encoder
-  2. Download AE/PS plugins from the pages that opened
-  3. Install ZXP/UXP Installer first, then use it to install .zxp/.ccx plugins
-  4. Sign up for free tiers on AI services (Pika, Runway, Suno, etc.)
-  5. Launch ComfyUI and install recommended custom nodes via Manager
-  6. Download DaVinci Resolve from the page that opened
-  7. Set up adb-mcp for AI agent control of Photoshop/AE:
-       git clone https://github.com/mikechambers/adb-mcp
-       Follow README for Python + Node.js + UXP plugin setup
-
-"@
-Write-Host $nextSteps -ForegroundColor White
+Write-Host ""
+Write-Host "  Next steps:" -ForegroundColor White
+Write-Host "  1. Install Adobe apps from Creative Cloud:" -ForegroundColor White
+Write-Host "       Photoshop, After Effects, Illustrator, Media Encoder" -ForegroundColor White
+Write-Host "  2. Download AE/PS plugins from the pages that opened" -ForegroundColor White
+Write-Host "  3. Install ZXP/UXP Installer first, then use it to install .zxp/.ccx plugins" -ForegroundColor White
+Write-Host "  4. Sign up for free tiers on AI services (Pika, Runway, Suno, etc.)" -ForegroundColor White
+Write-Host "  5. Launch ComfyUI and install recommended custom nodes via Manager" -ForegroundColor White
+Write-Host "  6. Download DaVinci Resolve from the page that opened" -ForegroundColor White
+Write-Host "  7. Set up adb-mcp for AI agent control of Photoshop/AE:" -ForegroundColor White
+Write-Host "       git clone https://github.com/mikechambers/adb-mcp" -ForegroundColor White
+Write-Host "       Follow README for Python + Node.js + UXP plugin setup" -ForegroundColor White
+Write-Host ""
