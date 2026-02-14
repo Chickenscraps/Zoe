@@ -7,9 +7,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from typing import Any
 
-from integrations.robinhood_crypto_client import RobinhoodCryptoClient
-from integrations.robinhood_crypto_client.client import _sanitize
-
+from .broker import Broker, KrakenBroker
 from .candle_manager import CandleManager
 from .config import CONFIRM_PHRASE, CryptoTraderConfig
 from .logger import JsonAuditLogger
@@ -32,15 +30,15 @@ class HealthState:
 
 
 class CryptoTraderService:
-    def __init__(self, client: RobinhoodCryptoClient, repository: CryptoRepository, config: CryptoTraderConfig | None = None):
-        self.client = client
+    def __init__(self, broker: Broker, repository: CryptoRepository, config: CryptoTraderConfig | None = None):
+        self.broker = broker
         self.repo = repository
         self.cfg = config or CryptoTraderConfig()
         self.mode = self.cfg.mode
         self.audit = JsonAuditLogger()
         self.price_cache = PriceCache(capacity_per_symbol=288)  # 24h at 5-min ticks
         self.candle_manager = CandleManager()
-        self.price_cache.set_candle_manager(self.candle_manager)  # Wire candle ingestion
+        self.price_cache.set_candle_manager(self.candle_manager)
         self.exit_manager = SmartExitManager(
             price_cache=self.price_cache,
             consensus_engine=ConsensusEngine(),
@@ -61,8 +59,8 @@ class CryptoTraderService:
         self._require_admin(initiator_id)
         if enabled and confirmation != CONFIRM_PHRASE:
             raise ValueError("Live mode denied: missing exact confirmation phrase")
-        self.cfg.rh_live_trading = enabled
-        self.cfg.rh_live_confirm = confirmation if enabled else ""
+        self.cfg.live_trading = enabled
+        self.cfg.live_confirm = confirmation if enabled else ""
         self.audit.write("crypto_live_mode", enabled=enabled)
         return "LIVE ON" if enabled else "LIVE OFF"
 
@@ -81,7 +79,7 @@ class CryptoTraderService:
     def _validate_symbol(self, symbol: str) -> str:
         normalized = symbol.strip().upper()
         if not normalized.endswith("-USD"):
-            raise ValueError("Only Robinhood crypto USD pairs are allowed")
+            raise ValueError("Only crypto USD pairs are allowed")
         return normalized
 
     def _enforce_trade_limits(self, *, notional: float, symbol: str) -> None:
@@ -111,32 +109,29 @@ class CryptoTraderService:
         order_notional = notional or ((qty or 0) * (limit_price or 0))
         self._enforce_trade_limits(notional=order_notional, symbol=safe_symbol)
 
-        client_order_id = f"zoe-{safe_symbol.lower()}-{uuid.uuid4()}"
-        order = await self.client.place_order(
+        order = await self.broker.place_order(
             symbol=safe_symbol,
             side=side,
-            order_type=order_type,
-            client_order_id=client_order_id,
-            notional=notional,
-            qty=qty,
-            limit_price=limit_price,
+            qty=qty or 0,
+            limit_price=limit_price or 0,
         )
+        order_id = order.get("id", str(uuid.uuid4()))
         self.repo.insert_order(
             {
-                "id": order.get("id", client_order_id),
-                "client_order_id": client_order_id,
+                "id": order_id,
+                "client_order_id": order.get("client_order_id", f"zoe-{safe_symbol.lower()}-{uuid.uuid4()}"),
                 "symbol": safe_symbol,
                 "side": side,
                 "order_type": order_type,
                 "qty": qty,
                 "notional": notional,
                 "status": order.get("status", "submitted"),
-                "raw_response": _sanitize(order),
+                "raw_response": order.get("raw", {}),
                 "mode": self.mode,
             }
         )
         self.repo.set_daily_notional(date.today(), self.repo.get_daily_notional(date.today(), self.mode) + order_notional, self.mode)
-        self.audit.write("crypto_order_submitted", symbol=safe_symbol, side=side, notional=order_notional, client_order_id=client_order_id, mode=self.mode)
+        self.audit.write("crypto_order_submitted", symbol=safe_symbol, side=side, notional=order_notional, mode=self.mode)
         return order
 
     def _compute_local_ledger(self) -> tuple[float, dict[str, float]]:
@@ -161,13 +156,12 @@ class CryptoTraderService:
         return await self._reconcile_live()
 
     async def _reconcile_paper(self) -> HealthState:
-        """Paper mode: use local ledger only, no Robinhood API calls."""
+        """Paper mode: use local ledger only, no exchange API calls."""
         local_cash, local_holdings = self._compute_local_ledger()
-        # If no fills yet, use starting equity from config
         if local_cash == 0.0 and not local_holdings:
             local_cash = float(getattr(self.cfg, "starting_equity", 2000.0))
 
-        total_value = 0.0  # Paper mode doesn't track market value
+        total_value = 0.0
         self.repo.insert_cash_snapshot(cash_available=local_cash, buying_power=local_cash, mode=self.mode)
         self.repo.insert_holdings_snapshot(holdings=local_holdings, total_value=total_value, mode=self.mode)
         self.repo.insert_reconciliation_event(
@@ -194,39 +188,36 @@ class CryptoTraderService:
         )
 
     async def _reconcile_live(self) -> HealthState:
-        """Live mode: reconcile against real Robinhood API."""
-        balances = await self.client.get_account_balances()
-        holdings_resp = await self.client.get_holdings()
-
-        rh_cash = float(balances.get("cash_available") or balances.get("cash") or 0.0)
-        rh_buying_power = float(balances.get("buying_power") or rh_cash)
-        rh_holdings = {item["symbol"]: float(item.get("quantity", 0.0)) for item in holdings_resp.get("results", holdings_resp if isinstance(holdings_resp, list) else [])}
-        total_value = sum(float(item.get("market_value", 0.0)) for item in holdings_resp.get("results", [])) if isinstance(holdings_resp, dict) else 0.0
+        """Live mode: reconcile against exchange API via broker abstraction."""
+        exchange_cash = await self.broker.get_cash()
+        exchange_positions = await self.broker.get_positions()
+        total_usd = await self.broker.get_total_usd()
+        crypto_value = total_usd - exchange_cash
 
         local_cash, local_holdings = self._compute_local_ledger()
-        cash_diff = local_cash - rh_cash
+        cash_diff = local_cash - exchange_cash
         holding_diff = {
-            sym: local_holdings.get(sym, 0.0) - rh_holdings.get(sym, 0.0)
-            for sym in sorted(set(local_holdings) | set(rh_holdings))
-            if abs(local_holdings.get(sym, 0.0) - rh_holdings.get(sym, 0.0)) > 0.0000001
+            sym: local_holdings.get(sym, 0.0) - exchange_positions.get(sym, 0.0)
+            for sym in sorted(set(local_holdings) | set(exchange_positions))
+            if abs(local_holdings.get(sym, 0.0) - exchange_positions.get(sym, 0.0)) > 0.0000001
         }
 
         status = "ok"
         reason = ""
         if abs(cash_diff) > 1 or holding_diff:
             status = "degraded"
-            reason = "Mismatch between local ledger and Robinhood snapshots"
+            reason = "Mismatch between local ledger and exchange snapshots"
 
-        self.repo.insert_cash_snapshot(cash_available=rh_cash, buying_power=rh_buying_power, mode=self.mode)
-        self.repo.insert_holdings_snapshot(holdings=rh_holdings, total_value=total_value, mode=self.mode)
+        self.repo.insert_cash_snapshot(cash_available=exchange_cash, buying_power=exchange_cash, mode=self.mode)
+        self.repo.insert_holdings_snapshot(holdings=exchange_positions, total_value=crypto_value, mode=self.mode)
         self.repo.insert_reconciliation_event(
             {
                 "taken_at": datetime.now(timezone.utc).isoformat(),
                 "local_cash": local_cash,
-                "rh_cash": rh_cash,
+                "rh_cash": exchange_cash,
                 "cash_diff": cash_diff,
                 "local_holdings": local_holdings,
-                "rh_holdings": rh_holdings,
+                "rh_holdings": exchange_positions,
                 "holdings_diff": holding_diff,
                 "status": status,
                 "reason": reason,
@@ -244,28 +235,68 @@ class CryptoTraderService:
         return self.get_health(reason_override=reason)
 
     async def poll_open_orders(self) -> None:
-        for order in self.repo.list_open_orders(self.mode):
-            rh_order = await self.client.get_order(order["id"])
-            status = rh_order.get("status", order.get("status", "submitted"))
-            self.repo.update_order_status(order["id"], status, _sanitize(rh_order))
+        """Poll open orders from exchange and update DB."""
+        if isinstance(self.broker, KrakenBroker):
+            exchange_orders = await self.broker.get_open_orders()
+            db_orders = self.repo.list_open_orders(self.mode)
+            exchange_order_ids = {eo["order_id"] for eo in exchange_orders}
 
-            fills = await self.client.get_order_fills(order["id"])
-            for fill in fills.get("results", fills if isinstance(fills, list) else []):
-                self.repo.upsert_fill(
-                    {
-                        "order_id": order["id"],
-                        "fill_id": fill.get("id"),
-                        "symbol": order.get("symbol"),
-                        "side": order.get("side"),
-                        "qty": float(fill.get("quantity", 0)),
-                        "price": float(fill.get("price", 0)),
-                        "fee": float(fill.get("fee", 0)),
-                        "executed_at": fill.get("executed_at"),
-                        "mode": self.mode,
-                    }
-                )
-            if status in {"partially_filled", "filled", "canceled", "rejected"}:
-                await self.reconcile()
+            # Check DB orders that are no longer in exchange open orders → filled/canceled
+            for db_order in db_orders:
+                if db_order["id"] not in exchange_order_ids:
+                    try:
+                        result = await self.broker.client.query_orders([db_order["id"]])
+                        for txid, order_data in result.items():
+                            final_status = order_data.get("status", "closed")
+                            status_map = {"open": "submitted", "closed": "filled", "canceled": "canceled", "expired": "canceled"}
+                            mapped = status_map.get(final_status, final_status)
+                            self.repo.update_order_status(db_order["id"], mapped, order_data)
+
+                            vol_exec = float(order_data.get("vol_exec", 0))
+                            if vol_exec > 0:
+                                cost = float(order_data.get("cost", 0))
+                                fee = float(order_data.get("fee", 0))
+                                avg_price = cost / vol_exec if vol_exec > 0 else 0
+                                descr = order_data.get("descr", {})
+                                self.repo.upsert_fill({
+                                    "order_id": txid,
+                                    "fill_id": f"kraken-{txid}",
+                                    "symbol": db_order.get("symbol", ""),
+                                    "side": descr.get("type", db_order.get("side", "")),
+                                    "qty": vol_exec,
+                                    "price": avg_price,
+                                    "fee": fee,
+                                    "executed_at": datetime.fromtimestamp(
+                                        float(order_data.get("closetm", time.time())), tz=timezone.utc
+                                    ).isoformat(),
+                                    "mode": self.mode,
+                                })
+                    except Exception as e:
+                        print(f"[ZOE] Order query failed for {db_order['id']}: {e}")
+                    await self.reconcile()
+        else:
+            for order in self.repo.list_open_orders(self.mode):
+                rh_order = await self.broker.client.get_order(order["id"])
+                status = rh_order.get("status", order.get("status", "submitted"))
+                self.repo.update_order_status(order["id"], status, rh_order)
+
+                fills = await self.broker.client.get_order_fills(order["id"])
+                for fill in fills.get("results", fills if isinstance(fills, list) else []):
+                    self.repo.upsert_fill(
+                        {
+                            "order_id": order["id"],
+                            "fill_id": fill.get("id"),
+                            "symbol": order.get("symbol"),
+                            "side": order.get("side"),
+                            "qty": float(fill.get("quantity", 0)),
+                            "price": float(fill.get("price", 0)),
+                            "fee": float(fill.get("fee", 0)),
+                            "executed_at": fill.get("executed_at"),
+                            "mode": self.mode,
+                        }
+                    )
+                if status in {"partially_filled", "filled", "canceled", "rejected"}:
+                    await self.reconcile()
 
     def get_health(self, reason_override: str = "") -> HealthState:
         daily_notional = self.repo.get_daily_notional(date.today(), self.mode)
@@ -284,8 +315,9 @@ class CryptoTraderService:
 
     def _write_heartbeats(self, health: HealthState) -> None:
         now_iso = datetime.now(timezone.utc).isoformat()
+        exchange_name = self.cfg.exchange + "_api"
         components = [
-            ("robinhood_api", "ok" if not self._degraded else "warning"),
+            (exchange_name, "ok" if not self._degraded else "warning"),
             ("reconciliation_engine", "ok" if health.status == "LIVE" else "warning"),
             ("snapshot_store", "ok"),
             ("discord_control", "ok"),
@@ -338,19 +370,16 @@ class CryptoTraderService:
             pass
 
     def _get_open_positions(self) -> set[str]:
-        """Get set of symbols with open positions."""
         holdings = (self.repo.latest_holdings_snapshot(self.mode) or {}).get("holdings", {})
         return {sym for sym, qty in holdings.items() if float(qty) > 0}
 
     async def _run_scan(self) -> None:
         """Full pipeline: scan -> score -> signal -> (optional) auto-execute."""
         try:
-            # Phase 1: Scan — fetch prices, update cache, score (with chart analysis)
-            candidates = await scan_candidates(self.client, self.price_cache, self.candle_manager)
+            candidates = await scan_candidates(self.broker, self.price_cache, self.candle_manager)
             if not candidates:
                 return
 
-            # Persist scan results to dashboard
             rows = [
                 {
                     "instance_id": "default",
@@ -369,7 +398,6 @@ class CryptoTraderService:
             tick_counts = {c.symbol: c.info.get("tick_count", 0) for c in candidates[:3]}
             print(f"[ZOE] Scan: {len(candidates)} symbols | top={top.symbol} ({top.score}) | ticks={tick_counts}")
 
-            # Phase 2: Generate signals
             open_positions = self._get_open_positions()
             signals = generate_signals(
                 candidates=candidates,
@@ -380,9 +408,7 @@ class CryptoTraderService:
             )
 
             actionable = [s for s in signals if s.is_actionable]
-            holds = [s for s in signals if not s.is_actionable]
 
-            # Log scan thought
             scan_summary = f"Scanned {len(candidates)} symbols. Top: {top.symbol} (score {top.score:.0f})"
             if actionable:
                 action_strs = [f"{s.action} {s.symbol} ({s.confidence:.0%})" for s in actionable]
@@ -402,7 +428,6 @@ class CryptoTraderService:
                 },
             )
 
-            # Phase 3: Auto-execute actionable signals
             for signal in actionable:
                 await self._execute_signal(signal)
 
@@ -412,16 +437,10 @@ class CryptoTraderService:
             traceback.print_exc()
 
     async def _execute_signal(self, signal: Signal) -> None:
-        """Execute a single signal — place order if all checks pass.
-
-        In paper mode: simulates by logging + recording the order intent.
-        Guards: paused, safe_mode, degraded, notional limits.
-        """
         sym = signal.symbol
         action = signal.action
         notional = signal.suggested_notional
 
-        # Guard checks
         if self._paused:
             self._write_thought(f"Signal {action} {sym} skipped -- trading paused", thought_type="signal", symbol=sym)
             return
@@ -442,7 +461,6 @@ class CryptoTraderService:
 
         side = "buy" if action == "BUY" else "sell"
 
-        # Log the decision
         self._write_thought(
             f"Executing {action} {sym}: ${notional:.2f} notional | confidence={signal.confidence:.0%} | {signal.reason}",
             thought_type="signal",
@@ -451,156 +469,95 @@ class CryptoTraderService:
         )
         self.audit.write(
             "crypto_signal_execute",
-            symbol=sym,
-            action=action,
-            confidence=signal.confidence,
-            notional=notional,
-            reason=signal.reason,
-            strategy=signal.strategy,
-            mode=self.mode,
+            symbol=sym, action=action, confidence=signal.confidence,
+            notional=notional, reason=signal.reason, strategy=signal.strategy, mode=self.mode,
         )
         print(f"[ZOE] SIGNAL: {action} {sym} ${notional:.2f} (conf={signal.confidence:.0%}) -- {signal.reason}")
 
-        # Only place real orders if live_ready
         if not self.cfg.live_ready():
-            # Paper mode: log as paper trade thought
             self._write_thought(
                 f"PAPER {action} {sym}: ${notional:.2f} (would execute if live)",
-                thought_type="paper_trade",
-                symbol=sym,
-                metadata=signal.to_dict(),
+                thought_type="paper_trade", symbol=sym, metadata=signal.to_dict(),
             )
             print(f"[ZOE] PAPER TRADE: {action} {sym} ${notional:.2f}")
-
-            # Register with exit manager so exits are tracked even in paper mode
             if action == "BUY":
                 snap = self.price_cache.snapshot(sym)
                 entry_price = snap.get("mid", 0)
                 if entry_price > 0:
-                    self.exit_manager.register_position(
-                        symbol=sym,
-                        entry_price=entry_price,
-                        entry_time=datetime.now(timezone.utc),
-                    )
+                    self.exit_manager.register_position(symbol=sym, entry_price=entry_price, entry_time=datetime.now(timezone.utc))
             return
 
-        # Live execution
         try:
             order = await self.place_order(
-                initiator_id=self.cfg.admin_user_id,
-                symbol=sym,
-                side=side,
-                notional=notional,
-                order_type="market",
+                initiator_id=self.cfg.admin_user_id, symbol=sym, side=side, notional=notional, order_type="market",
             )
             self._write_thought(
                 f"Order placed: {action} {sym} ${notional:.2f} -> {order.get('status', 'submitted')}",
-                thought_type="order",
-                symbol=sym,
+                thought_type="order", symbol=sym,
                 metadata={"order_id": order.get("id"), "signal": signal.to_dict()},
             )
-
-            # Register with exit manager on live BUY
             if action == "BUY":
                 snap = self.price_cache.snapshot(sym)
                 entry_price = snap.get("mid", 0)
                 if entry_price > 0:
-                    self.exit_manager.register_position(
-                        symbol=sym,
-                        entry_price=entry_price,
-                        entry_time=datetime.now(timezone.utc),
-                    )
+                    self.exit_manager.register_position(symbol=sym, entry_price=entry_price, entry_time=datetime.now(timezone.utc))
         except Exception as e:
             self._write_thought(
                 f"Order FAILED: {action} {sym} ${notional:.2f} -- {e}",
-                thought_type="order_error",
-                symbol=sym,
+                thought_type="order_error", symbol=sym,
                 metadata={"error": str(e), "signal": signal.to_dict()},
             )
             print(f"[ZOE] ORDER FAILED for {sym}: {e}")
 
     async def _check_exits(self) -> None:
-        """Check all open positions against exit rules every tick.
-
-        This is the critical missing piece: without this, positions drift
-        indefinitely with no stop-loss, no take-profit, no time stop.
-        """
         try:
             holdings = (self.repo.latest_holdings_snapshot(self.mode) or {}).get("holdings", {})
             open_symbols = {sym for sym, qty in holdings.items() if float(qty) > 0}
 
-            # Register any positions the exit manager doesn't know about
             for sym in open_symbols:
                 if self.exit_manager.get_position_state(sym) is None:
-                    # Recover entry data from recent orders
                     snap = self.price_cache.snapshot(sym)
                     mid = snap.get("mid", 0)
-                    self.exit_manager.register_position(
-                        symbol=sym,
-                        entry_price=mid,  # best guess if no historical entry
-                        entry_time=datetime.now(timezone.utc),
-                    )
+                    self.exit_manager.register_position(symbol=sym, entry_price=mid, entry_time=datetime.now(timezone.utc))
 
-            # Unregister positions that are no longer held
             for sym in list(self.exit_manager.active_positions()):
                 if sym not in open_symbols:
                     self.exit_manager.unregister_position(sym)
 
-            # Check each position for exit conditions
             for sym in open_symbols:
                 snap = self.price_cache.snapshot(sym)
                 current_price = snap.get("mid", 0)
                 current_spread = snap.get("spread_pct", 0)
-
                 if current_price <= 0:
                     continue
-
-                exit_signal = self.exit_manager.check_exits(
-                    symbol=sym,
-                    current_price=current_price,
-                    current_spread_pct=current_spread,
-                )
-
+                exit_signal = self.exit_manager.check_exits(symbol=sym, current_price=current_price, current_spread_pct=current_spread)
                 if exit_signal is not None:
                     await self._execute_exit(sym, exit_signal)
-
         except Exception as e:
             import traceback
             print(f"[ZOE] Exit check error: {e}")
             traceback.print_exc()
 
-    async def _execute_exit(self, symbol: str, exit_signal: 'ExitSignal') -> None:
-        """Execute an exit signal — sell the position."""
+    async def _execute_exit(self, symbol: str, exit_signal: Any) -> None:
         self._write_thought(
             f"EXIT {symbol}: {exit_signal.reason.value} | {exit_signal.details} | P&L: {exit_signal.pnl_pct:.2%}",
-            thought_type="exit_signal",
-            symbol=symbol,
-            metadata=exit_signal.to_dict(),
+            thought_type="exit_signal", symbol=symbol, metadata=exit_signal.to_dict(),
         )
         self.audit.write(
-            "crypto_exit_signal",
-            symbol=symbol,
-            reason=exit_signal.reason.value,
-            urgency=exit_signal.urgency.value,
-            pnl_pct=exit_signal.pnl_pct,
-            details=exit_signal.details,
-            mode=self.mode,
+            "crypto_exit_signal", symbol=symbol, reason=exit_signal.reason.value,
+            urgency=exit_signal.urgency.value, pnl_pct=exit_signal.pnl_pct, details=exit_signal.details, mode=self.mode,
         )
         print(f"[ZOE] EXIT: {exit_signal.reason.value} {symbol} ({exit_signal.pnl_pct:.2%}) -- {exit_signal.details}")
 
         if not self.cfg.live_ready():
-            # Paper mode: log exit but don't place order
             self._write_thought(
                 f"PAPER EXIT {symbol}: {exit_signal.reason.value} (would sell if live)",
-                thought_type="paper_exit",
-                symbol=symbol,
-                metadata=exit_signal.to_dict(),
+                thought_type="paper_exit", symbol=symbol, metadata=exit_signal.to_dict(),
             )
             print(f"[ZOE] PAPER EXIT: {symbol} {exit_signal.reason.value}")
             self.exit_manager.unregister_position(symbol)
             return
 
-        # Live execution: sell the position
         try:
             holdings = (self.repo.latest_holdings_snapshot(self.mode) or {}).get("holdings", {})
             qty = float(holdings.get(symbol, 0))
@@ -608,30 +565,19 @@ class CryptoTraderService:
                 self.exit_manager.unregister_position(symbol)
                 return
 
-            # Determine notional from current price
-            snap = self.price_cache.snapshot(symbol)
-            mid = snap.get("mid", 0)
-            notional = qty * mid if mid > 0 else 0
-
             order = await self.place_order(
-                initiator_id=self.cfg.admin_user_id,
-                symbol=symbol,
-                side="sell",
-                qty=qty,
-                order_type="market",
+                initiator_id=self.cfg.admin_user_id, symbol=symbol, side="sell", qty=qty, order_type="market",
             )
             self._write_thought(
                 f"Exit order placed: SELL {symbol} qty={qty} -> {order.get('status', 'submitted')} | reason={exit_signal.reason.value}",
-                thought_type="exit_order",
-                symbol=symbol,
+                thought_type="exit_order", symbol=symbol,
                 metadata={"order_id": order.get("id"), "exit": exit_signal.to_dict()},
             )
             self.exit_manager.unregister_position(symbol)
         except Exception as e:
             self._write_thought(
                 f"Exit order FAILED: SELL {symbol} -- {e}",
-                thought_type="exit_error",
-                symbol=symbol,
+                thought_type="exit_error", symbol=symbol,
                 metadata={"error": str(e), "exit": exit_signal.to_dict()},
             )
             print(f"[ZOE] EXIT ORDER FAILED for {symbol}: {e}")
@@ -654,41 +600,34 @@ class CryptoTraderService:
             pass
 
     async def _tick_price_cache(self) -> None:
-        """Quick price cache update — fetch batch bid/ask and record ticks.
-
-        Runs more frequently than the full scan to build up price history
-        faster. Does NOT score or generate signals (that's _run_scan's job).
-        """
         from .scanner import WATCHLIST
         try:
-            batch = await self.client.get_best_bid_ask_batch(WATCHLIST)
-            for result in batch.get("results", []):
-                symbol = result.get("symbol", "")
-                bid = float(result.get("bid_inclusive_of_sell_spread", result.get("bid_price", 0)))
-                ask = float(result.get("ask_inclusive_of_buy_spread", result.get("ask_price", 0)))
-                if bid > 0 and ask > 0:
-                    self.price_cache.record(symbol, bid, ask)
+            if isinstance(self.broker, KrakenBroker):
+                prices = await self.broker.get_ticker_prices(WATCHLIST)
+                for symbol, mid in prices.items():
+                    if mid > 0:
+                        self.price_cache.record(symbol, mid * 0.999, mid * 1.001)
+            else:
+                batch = await self.broker.client.get_best_bid_ask_batch(WATCHLIST)
+                for result in batch.get("results", []):
+                    symbol = result.get("symbol", "")
+                    bid = float(result.get("bid_inclusive_of_sell_spread", result.get("bid_price", 0)))
+                    ask = float(result.get("ask_inclusive_of_buy_spread", result.get("ask_price", 0)))
+                    if bid > 0 and ask > 0:
+                        self.price_cache.record(symbol, bid, ask)
         except Exception:
-            pass  # non-critical — full scan will retry
+            pass
 
     async def _persist_candles(self) -> None:
-        """Persist newly finalized candles to Supabase."""
         pending = self.candle_manager.drain_pending()
         if not pending:
             return
         try:
             rows = [
                 {
-                    "symbol": c.symbol,
-                    "timeframe": c.timeframe,
-                    "open_time": c.open_time,
-                    "open": c.open,
-                    "high": c.high,
-                    "low": c.low,
-                    "close": c.close,
-                    "volume": c.volume,
-                    "patterns": None,
-                    "mode": self.mode,
+                    "symbol": c.symbol, "timeframe": c.timeframe, "open_time": c.open_time,
+                    "open": c.open, "high": c.high, "low": c.low, "close": c.close,
+                    "volume": c.volume, "patterns": None, "mode": self.mode,
                 }
                 for c in pending
             ]
@@ -697,29 +636,28 @@ class CryptoTraderService:
             print(f"[ZOE] Candle persist error: {e}")
 
     async def _refresh_historical(self) -> None:
-        """Refresh CoinGecko historical data every 4 hours."""
         now = time.time()
         if now < self._next_historical_refresh:
             return
         try:
             count = await self.candle_manager.load_historical()
-            self._next_historical_refresh = now + 4 * 3600  # 4 hours
+            self._next_historical_refresh = now + 4 * 3600
             print(f"[ZOE] Historical candle refresh: {count} candles loaded")
         except Exception as e:
             print(f"[ZOE] Historical refresh failed: {e}")
-            self._next_historical_refresh = now + 600  # retry in 10 min
+            self._next_historical_refresh = now + 600
 
     async def run_forever(self) -> None:
         next_order_poll = 0.0
         next_scan = 0.0
         next_tick = 0.0
-        scan_interval = 300   # full scan + signal pipeline every 5 min
-        tick_interval = 60    # price cache tick every 60s (fast history build)
-        print(f"[ZOE] Crypto trader service started (mode={self.mode})")
+        scan_interval = 300
+        tick_interval = 60
+        print(f"[ZOE] Crypto trader service started (mode={self.mode}, exchange={self.cfg.exchange})")
         print(f"[ZOE] Pipeline: tick={tick_interval}s -> scan={scan_interval}s -> signals -> auto-execute")
 
         self._write_thought(
-            f"Crypto trader service started (mode={self.mode}). "
+            f"Crypto trader service started (mode={self.mode}, exchange={self.cfg.exchange}). "
             f"Pipeline: price tick every {tick_interval}s, full scan every {scan_interval}s, signal engine active.",
             thought_type="health",
         )
@@ -728,12 +666,10 @@ class CryptoTraderService:
             now = time.time()
             self._cycle_count += 1
             try:
-                # Fast price tick — build history between scans
                 if now >= next_tick:
                     await self._tick_price_cache()
                     next_tick = now + tick_interval
 
-                # Exit checks run EVERY tick — critical for stop-loss/TP
                 await self._check_exits()
 
                 if now >= next_order_poll and not self._paused:
@@ -741,25 +677,19 @@ class CryptoTraderService:
                     next_order_poll = now + self.cfg.order_poll_interval_seconds
 
                 health = await self.reconcile()
-
                 self._write_heartbeats(health)
 
                 cash_snap = self.repo.latest_cash_snapshot(self.mode)
                 equity = float((cash_snap or {}).get("buying_power", 0))
                 self._write_pnl_snapshot(equity)
 
-                # Full scan + signal pipeline
                 if now >= next_scan:
                     await self._run_scan()
                     next_scan = now + scan_interval
 
-                # Persist finalized candles to Supabase
                 await self._persist_candles()
-
-                # Refresh CoinGecko historical data periodically
                 await self._refresh_historical()
 
-                # Save agent state every 5 cycles
                 if self._cycle_count % 5 == 0:
                     self._save_agent_state_snapshot()
 

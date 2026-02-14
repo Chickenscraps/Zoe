@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable } from './DataTable';
-import { formatCurrency, formatDate, cn } from '../lib/utils';
+import { formatCurrency, formatAge, cn } from '../lib/utils';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { ClipboardList } from 'lucide-react';
 
@@ -11,6 +11,8 @@ interface OrderRow {
   order_type: string;
   notional: number | null;
   qty: number | null;
+  price: number | null;
+  remaining: number | null;
   status: string;
   requested_at: string;
 }
@@ -23,11 +25,24 @@ interface OpenOrdersTableProps {
 const STATUS_COLORS: Record<string, string> = {
   new: 'text-accent',
   submitted: 'text-accent',
+  open: 'text-accent',
   partially_filled: 'text-warning',
   filled: 'text-profit',
+  closed: 'text-profit',
   canceled: 'text-text-dim',
+  expired: 'text-text-dim',
   rejected: 'text-loss',
 };
+
+/** Normalize Kraken order statuses to display-friendly form */
+function normalizeStatus(status: string): string {
+  switch (status) {
+    case 'open': return 'submitted';
+    case 'closed': return 'filled';
+    case 'expired': return 'canceled';
+    default: return status;
+  }
+}
 
 export function OpenOrdersTable({ hideHeader, className }: OpenOrdersTableProps) {
   const { cryptoOrders } = useDashboardData();
@@ -37,14 +52,16 @@ export function OpenOrdersTable({ hideHeader, className }: OpenOrdersTableProps)
     if (!cryptoOrders || cryptoOrders.length === 0) return [];
 
     return cryptoOrders
-      .filter(o => ['new', 'submitted', 'partially_filled'].includes(o.status))
+      .filter(o => ['new', 'submitted', 'partially_filled', 'open'].includes(o.status))
       .map(o => ({
         symbol: o.symbol,
         side: o.side,
         order_type: o.order_type,
         notional: o.notional,
         qty: o.qty,
-        status: o.status,
+        price: (o as any).price ?? null,
+        remaining: (o as any).remaining ?? null,
+        status: normalizeStatus(o.status),
         requested_at: o.requested_at,
       }));
   }, [cryptoOrders]);
@@ -54,7 +71,7 @@ export function OpenOrdersTable({ hideHeader, className }: OpenOrdersTableProps)
     if (!cryptoOrders || cryptoOrders.length === 0) return [];
 
     return cryptoOrders
-      .filter(o => ['filled', 'canceled', 'rejected'].includes(o.status))
+      .filter(o => ['filled', 'canceled', 'rejected', 'closed', 'expired'].includes(o.status))
       .slice(0, 10)
       .map(o => ({
         symbol: o.symbol,
@@ -62,7 +79,9 @@ export function OpenOrdersTable({ hideHeader, className }: OpenOrdersTableProps)
         order_type: o.order_type,
         notional: o.notional,
         qty: o.qty,
-        status: o.status,
+        price: (o as any).price ?? null,
+        remaining: (o as any).remaining ?? null,
+        status: normalizeStatus(o.status),
         requested_at: o.requested_at,
       }));
   }, [cryptoOrders]);
@@ -100,6 +119,16 @@ export function OpenOrdersTable({ hideHeader, className }: OpenOrdersTableProps)
       )
     },
     {
+      header: 'Price',
+      accessorKey: 'price',
+      cell: info => {
+        const val = info.getValue() as number | null;
+        return val && val > 0
+          ? <span className="tabular-nums">{formatCurrency(val)}</span>
+          : <span className="text-text-dim">market</span>;
+      }
+    },
+    {
       header: 'Amount',
       accessorKey: 'notional',
       cell: info => {
@@ -107,7 +136,17 @@ export function OpenOrdersTable({ hideHeader, className }: OpenOrdersTableProps)
         const row = info.row.original;
         if (notional) return <span className="tabular-nums">{formatCurrency(notional)}</span>;
         if (row.qty) return <span className="tabular-nums text-text-secondary">{row.qty.toFixed(6)} qty</span>;
-        return <span className="text-text-dim">—</span>;
+        return <span className="text-text-dim">&mdash;</span>;
+      }
+    },
+    {
+      header: 'Remaining',
+      accessorKey: 'remaining',
+      cell: info => {
+        const val = info.getValue() as number | null;
+        return val != null && val > 0
+          ? <span className="tabular-nums text-text-secondary">{val.toFixed(6)}</span>
+          : <span className="text-text-dim">&mdash;</span>;
       }
     },
     {
@@ -121,17 +160,17 @@ export function OpenOrdersTable({ hideHeader, className }: OpenOrdersTableProps)
             'font-semibold uppercase text-[10px] tracking-wider',
             STATUS_COLORS[status] || 'text-text-dim'
           )}>
-            {status === 'new' || status === 'submitted' ? '● ' : ''}{display}
+            {status === 'new' || status === 'submitted' ? '\u25CF ' : ''}{display}
           </span>
         );
       }
     },
     {
-      header: 'Time',
+      header: 'Age',
       accessorKey: 'requested_at',
       cell: info => (
         <span className="text-text-dim text-[10px] tabular-nums">
-          {formatDate(info.getValue() as string)}
+          {formatAge(info.getValue() as string)}
         </span>
       )
     },

@@ -316,6 +316,19 @@ export function useDashboardData(discordId: string = "292890243852664855") {
     return 0;
   }, [cashHistory, pnlDaily]);
 
+  // BTC price from live scans (for BTC sublabel on Total card)
+  const btcPrice = useMemo(() => {
+    const btcScan = livePrices.find(s => s.symbol === 'BTC-USD');
+    if (btcScan) {
+      const mid = (btcScan.info as any)?.mid;
+      if (mid && isFinite(mid) && mid > 0) return mid;
+    }
+    return 0;
+  }, [livePrices]);
+
+  // Flag: not enough equity history to draw a meaningful chart
+  const noHistoryYet = equityHistory.length < 2;
+
   return {
     accountOverview,
     recentEvents,
@@ -332,6 +345,8 @@ export function useDashboardData(discordId: string = "292890243852664855") {
     equityHistory,
     initialDeposit,
     livePrices,
+    btcPrice,
+    noHistoryYet,
     loading,
     error,
   };

@@ -1,11 +1,11 @@
-import { Coins, DollarSign, TrendingUp, Wallet } from "lucide-react";
+import { DollarSign, TrendingUp } from "lucide-react";
 import { EquityChart } from "../components/EquityChart";
 import { KPICard } from "../components/KPICard";
 import { OpenOrdersTable } from "../components/OpenOrdersTable";
 import { PositionsTable } from "../components/PositionsTable";
 import { Skeleton } from "../components/Skeleton";
 import { useDashboardData } from "../hooks/useDashboardData";
-import { formatCurrency, cn } from "../lib/utils";
+import { formatCurrency, formatBTC, cn } from "../lib/utils";
 import { useMemo } from "react";
 
 export default function Overview() {
@@ -15,6 +15,8 @@ export default function Overview() {
     livePrices,
     equityHistory,
     initialDeposit,
+    btcPrice,
+    noHistoryYet,
     loading,
   } = useDashboardData();
 
@@ -26,7 +28,6 @@ export default function Overview() {
     if (!holdingsRows.length || !livePrices.length) return 0;
     let total = 0;
     for (const row of holdingsRows) {
-      // Find matching live price from scans
       const scan = livePrices.find(s => s.symbol === row.asset);
       const mid = scan ? ((scan.info as any)?.mid ?? 0) : 0;
       total += row.qty * mid;
@@ -36,9 +37,13 @@ export default function Overview() {
 
   const totalValue = cashValue + cryptoValue;
 
-  // P&L calculations
+  // P&L calculations — guard against NaN/Infinity
   const allTimePnl = initialDeposit > 0 ? totalValue - initialDeposit : 0;
-  const allTimePnlPct = initialDeposit > 0 ? ((totalValue - initialDeposit) / initialDeposit) * 100 : 0;
+  const rawPct = initialDeposit > 0 ? ((totalValue - initialDeposit) / initialDeposit) * 100 : 0;
+  const allTimePnlPct = isFinite(rawPct) ? rawPct : 0;
+
+  // BTC equivalent of total portfolio value
+  const totalValueBtc = btcPrice > 0 ? totalValue / btcPrice : 0;
 
   // Daily P&L: today's total portfolio value vs start-of-day equity
   const dailyPnl = useMemo(() => {
@@ -46,7 +51,8 @@ export default function Overview() {
     const pastPoints = equityHistory.filter(p => p.date < today);
     if (pastPoints.length > 0) {
       const yesterdayEquity = pastPoints[pastPoints.length - 1].equity;
-      return totalValue - yesterdayEquity;
+      const result = totalValue - yesterdayEquity;
+      return isFinite(result) ? result : 0;
     }
     return allTimePnl;
   }, [equityHistory, totalValue, allTimePnl]);
@@ -67,36 +73,26 @@ export default function Overview() {
   return (
     <div className="space-y-8">
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         <KPICard
-          label="Crypto"
-          value={formatCurrency(cryptoValue)}
-          subValue={holdingsRows.length > 0 ? `${holdingsRows.length} position${holdingsRows.length !== 1 ? 's' : ''}` : "No positions"}
-          trend={cryptoValue > 0 ? "Invested" : "Empty"}
-          trendDir={cryptoValue > 0 ? 'up' : 'neutral'}
-          icon={Coins}
+          label="Total Account Value"
+          value={formatCurrency(totalValue)}
+          subValue={totalValueBtc > 0 ? formatBTC(totalValueBtc) : `${holdingsRows.length} position${holdingsRows.length !== 1 ? 's' : ''}`}
+          trend={holdingsRows.length > 0 ? `${holdingsRows.length} position${holdingsRows.length !== 1 ? 's' : ''}` : "Empty"}
+          trendDir={totalValue > 0 ? 'up' : 'neutral'}
+          icon={DollarSign}
           className="card-stagger"
           style={{ '--stagger-delay': '0ms' } as React.CSSProperties}
         />
         <KPICard
-          label="Cash"
-          value={formatCurrency(cashValue)}
-          subValue="Available Buying Power"
-          trend={totalValue > 0 ? ((cashValue / totalValue) * 100).toFixed(1) + "% of total" : "—"}
-          trendDir="neutral"
-          icon={Wallet}
+          label="All-Time P&L"
+          value={allTimePnl !== 0 ? `${allTimePnl >= 0 ? '+' : ''}${formatCurrency(allTimePnl)}` : "$0.00"}
+          subValue={noHistoryYet ? "Not enough history yet" : "Since inception"}
+          trend={allTimePnlPct !== 0 ? `${allTimePnlPct >= 0 ? '+' : ''}${allTimePnlPct.toFixed(2)}%` : undefined}
+          trendDir={allTimePnl >= 0 ? 'up' : 'down'}
+          icon={TrendingUp}
           className="card-stagger"
           style={{ '--stagger-delay': '80ms' } as React.CSSProperties}
-        />
-        <KPICard
-          label="Total"
-          value={formatCurrency(totalValue)}
-          subValue="Portfolio Value"
-          trend={allTimePnl !== 0 ? `${allTimePnl >= 0 ? '+' : ''}${formatCurrency(allTimePnl)} P&L` : "—"}
-          trendDir={allTimePnl >= 0 ? 'up' : 'down'}
-          icon={DollarSign}
-          className="card-stagger"
-          style={{ '--stagger-delay': '160ms' } as React.CSSProperties}
         />
       </div>
 

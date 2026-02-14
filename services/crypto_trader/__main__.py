@@ -21,7 +21,7 @@ load_dotenv(os.path.join(_root, ".env"))
 load_dotenv(os.path.join(_root, ".env.secrets"), override=True)
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"), override=True)
 
-from integrations.robinhood_crypto_client import RobinhoodCryptoClient, RobinhoodCryptoConfig
+from services.crypto_trader.broker import Broker, KrakenBroker, RobinhoodBroker, PaperBroker
 from services.crypto_trader.config import CryptoTraderConfig
 from services.crypto_trader.supabase_repository import SupabaseCryptoRepository
 from services.crypto_trader.trader import CryptoTraderService
@@ -47,6 +47,29 @@ def _fmt_age(iso_str: str | None) -> str:
         return str(iso_str)[:19]
 
 
+def _create_broker(config: CryptoTraderConfig, repo: SupabaseCryptoRepository) -> Broker:
+    """Create the appropriate broker based on exchange config."""
+    if config.exchange == "kraken":
+        from integrations.kraken_client import KrakenClient, KrakenConfig, USDConverter
+        kraken_cfg = KrakenConfig(
+            api_key=config.kraken_api_key,
+            api_secret=config.kraken_api_secret,
+        )
+        if not kraken_cfg.api_key or not kraken_cfg.api_secret:
+            print("[ZOE] ERROR: Set KRAKEN_API_KEY and KRAKEN_API_SECRET env vars")
+            sys.exit(1)
+        client = KrakenClient(kraken_cfg)
+        usd_converter = USDConverter(client)
+        return KrakenBroker(client, usd_converter)
+    else:
+        from integrations.robinhood_crypto_client import RobinhoodCryptoClient, RobinhoodCryptoConfig
+        rh_config = RobinhoodCryptoConfig.from_env()
+        if not rh_config.api_key or not rh_config.private_key_seed:
+            print("[ZOE] ERROR: Set RH_CRYPTO_API_KEY and RH_CRYPTO_PRIVATE_KEY_SEED env vars")
+            sys.exit(1)
+        return RobinhoodBroker(RobinhoodCryptoClient(rh_config))
+
+
 def _print_boot_context(repo: SupabaseCryptoRepository, config: CryptoTraderConfig) -> dict:
     """Load and print everything the bot needs to know on startup.
 
@@ -55,7 +78,7 @@ def _print_boot_context(repo: SupabaseCryptoRepository, config: CryptoTraderConf
     mode = config.mode
     print("")
     print("=" * 64)
-    print(f"  ZOE CRYPTO TRADER - BOOT CONTEXT (mode={mode})")
+    print(f"  ZOE CRYPTO TRADER - BOOT CONTEXT (mode={mode}, exchange={config.exchange})")
     print("=" * 64)
 
     # ── 1. Previous Agent State ──
@@ -188,23 +211,28 @@ def _print_boot_context(repo: SupabaseCryptoRepository, config: CryptoTraderConf
 
 
 async def _warm_price_cache(service: CryptoTraderService) -> None:
-    """Do an initial price fetch to seed the cache before the main loop starts.
-
-    This way the first scan (at t=0) already has at least 1 tick per symbol,
-    and we're not waiting a full 60s for the first data point.
-    """
+    """Do an initial price fetch to seed the cache before the main loop starts."""
     from services.crypto_trader.scanner import WATCHLIST
     try:
-        batch = await service.client.get_best_bid_ask_batch(WATCHLIST)
-        count = 0
-        for result in batch.get("results", []):
-            symbol = result.get("symbol", "")
-            bid = float(result.get("bid_inclusive_of_sell_spread", result.get("bid_price", 0)))
-            ask = float(result.get("ask_inclusive_of_buy_spread", result.get("ask_price", 0)))
-            if bid > 0 and ask > 0:
-                service.price_cache.record(symbol, bid, ask)
-                count += 1
-        print(f"[ZOE] Price cache warmed: {count}/{len(WATCHLIST)} symbols seeded")
+        if isinstance(service.broker, KrakenBroker):
+            prices = await service.broker.get_ticker_prices(WATCHLIST)
+            count = 0
+            for symbol, mid in prices.items():
+                if mid > 0:
+                    service.price_cache.record(symbol, mid * 0.999, mid * 1.001)
+                    count += 1
+            print(f"[ZOE] Price cache warmed: {count}/{len(WATCHLIST)} symbols seeded (Kraken)")
+        else:
+            batch = await service.broker.client.get_best_bid_ask_batch(WATCHLIST)
+            count = 0
+            for result in batch.get("results", []):
+                symbol = result.get("symbol", "")
+                bid = float(result.get("bid_inclusive_of_sell_spread", result.get("bid_price", 0)))
+                ask = float(result.get("ask_inclusive_of_buy_spread", result.get("ask_price", 0)))
+                if bid > 0 and ask > 0:
+                    service.price_cache.record(symbol, bid, ask)
+                    count += 1
+            print(f"[ZOE] Price cache warmed: {count}/{len(WATCHLIST)} symbols seeded")
     except Exception as e:
         print(f"[ZOE] Price cache warm-up failed (non-fatal): {e}")
 
@@ -212,25 +240,21 @@ async def _warm_price_cache(service: CryptoTraderService) -> None:
 async def main() -> None:
     print("[ZOE] Initializing crypto trader service...")
 
-    # Robinhood client
-    rh_config = RobinhoodCryptoConfig.from_env()
-    if not rh_config.api_key or not rh_config.private_key_seed:
-        print("[ZOE] ERROR: Set RH_CRYPTO_API_KEY and RH_CRYPTO_PRIVATE_KEY_SEED env vars")
-        sys.exit(1)
-
-    rh_client = RobinhoodCryptoClient(rh_config)
-
     # Supabase repository
     repo = SupabaseCryptoRepository()
 
     # Trader config
     trader_config = CryptoTraderConfig()
 
+    # Create broker based on exchange config
+    broker = _create_broker(trader_config, repo)
+    print(f"[ZOE] Exchange: {trader_config.exchange}")
+
     # ── Print rich boot context ──
     prev_state = _print_boot_context(repo, trader_config)
 
     # Create service
-    service = CryptoTraderService(client=rh_client, repository=repo, config=trader_config)
+    service = CryptoTraderService(broker=broker, repository=repo, config=trader_config)
 
     # ── Restore previous state flags ──
     if prev_state:
@@ -247,7 +271,7 @@ async def main() -> None:
     print(f"[ZOE] Order poll interval: {trader_config.order_poll_interval_seconds}s")
 
     # ── Boot reconciliation — runs BEFORE the main loop ──
-    boot_result = await run_boot_reconciliation(rh_client, repo, trader_config)
+    boot_result = await run_boot_reconciliation(broker, repo, trader_config)
 
     if boot_result.action == "halt":
         print(f"[ZOE] HALTED: {boot_result.reason}")
@@ -257,7 +281,6 @@ async def main() -> None:
         service._safe_mode_until = time.time() + boot_result.safe_mode_seconds
     else:
         print("[ZOE] Boot reconciliation: NORMAL -- ready to trade")
-        # Clear any stale degraded/paused from previous state if boot is clean
         if prev_state.get("degraded") and not service._degraded:
             service._degraded = False
             print("[ZOE] Cleared stale degraded flag (boot checks passed)")
@@ -275,7 +298,8 @@ async def main() -> None:
 
     # ── Write boot thought ──
     service._write_thought(
-        f"Service booted (mode={trader_config.mode}, run_id={boot_result.run_id}). "
+        f"Service booted (mode={trader_config.mode}, exchange={trader_config.exchange}, "
+        f"run_id={boot_result.run_id}). "
         f"Boot: {boot_result.action} in {boot_result.duration_ms}ms. "
         f"Paused={service._paused}, Degraded={service._degraded}. "
         f"Price cache seeded with {len(service.price_cache.symbols)} symbols. "
@@ -288,10 +312,9 @@ async def main() -> None:
     except KeyboardInterrupt:
         print("\n[ZOE] Shutting down...")
     finally:
-        # Save final state before exit
         service._save_agent_state_snapshot()
         print("[ZOE] Agent state saved.")
-        await rh_client.close()
+        await broker.close()
         print("[ZOE] Closed.")
 
 

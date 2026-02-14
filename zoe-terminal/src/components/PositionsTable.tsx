@@ -14,6 +14,7 @@ interface PositionRow {
   market_value: number;
   pnl_percent: number;
   unrealized_pnl: number;
+  portfolio_pct: number;
 }
 
 interface PositionsTableProps {
@@ -47,14 +48,15 @@ export function PositionsTable({ hideHeader, className }: PositionsTableProps) {
       if (info.mid) priceMap[scan.symbol] = info.mid;
     }
 
-    return holdingsRows.map(h => {
+    // First pass: compute market values for portfolio % calculation
+    const rows = holdingsRows.map(h => {
       const avg = avgPrices[h.asset] ? avgPrices[h.asset].totalCost / avgPrices[h.asset].totalQty : 0;
-      const current = priceMap[h.asset] ?? avg;
+      const current = priceMap[h.asset] ?? (avg > 0 ? avg : 0);
       const mktVal = h.qty * current;
       const cost = h.qty * avg;
-      const exitFee = mktVal * FEE_RATE_PER_SIDE; // estimated exit fee
-      const pnl = mktVal - cost - exitFee;
-      const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0; // as percentage (e.g., -2.04 for -2.04%)
+      const exitFee = mktVal * FEE_RATE_PER_SIDE;
+      const pnl = avg > 0 ? mktVal - cost - exitFee : 0;
+      const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
 
       return {
         symbol: h.asset,
@@ -62,10 +64,17 @@ export function PositionsTable({ hideHeader, className }: PositionsTableProps) {
         avg_price: avg,
         current_price: current,
         market_value: mktVal,
-        pnl_percent: pnlPct,
-        unrealized_pnl: pnl,
+        pnl_percent: isFinite(pnlPct) ? pnlPct : 0,
+        unrealized_pnl: isFinite(pnl) ? pnl : 0,
+        portfolio_pct: 0, // computed below
       };
     });
+
+    const totalMktVal = rows.reduce((s, r) => s + r.market_value, 0);
+    for (const r of rows) {
+      r.portfolio_pct = totalMktVal > 0 ? (r.market_value / totalMktVal) * 100 : 0;
+    }
+    return rows;
   }, [holdingsRows, livePrices, cryptoFills]);
 
   const columns = useMemo<ColumnDef<PositionRow>[]>(() => [
@@ -82,23 +91,38 @@ export function PositionsTable({ hideHeader, className }: PositionsTableProps) {
     {
       header: 'Avg Price',
       accessorKey: 'avg_price',
-      cell: info => <span className="tabular-nums">{formatCurrency(info.getValue() as number)}</span>
+      cell: info => {
+        const val = info.getValue() as number;
+        return val > 0
+          ? <span className="tabular-nums">{formatCurrency(val)}</span>
+          : <span className="text-text-dim">&mdash;</span>;
+      }
     },
     {
-      header: 'Current Mark',
+      header: 'Price (USD)',
       accessorKey: 'current_price',
       cell: info => <span className="tabular-nums">{formatCurrency(info.getValue() as number)}</span>
     },
     {
-      header: 'Market Value',
+      header: 'Value (USD)',
       accessorKey: 'market_value',
       cell: info => <span className="text-text-primary font-medium tabular-nums">{formatCurrency(info.getValue() as number)}</span>
+    },
+    {
+      header: '% of Portfolio',
+      accessorKey: 'portfolio_pct',
+      cell: info => {
+        const val = info.getValue() as number;
+        return <span className="text-text-secondary tabular-nums">{val.toFixed(1)}%</span>;
+      }
     },
     {
       header: 'P&L (%)',
       accessorKey: 'pnl_percent',
       cell: info => {
         const val = info.getValue() as number;
+        const row = info.row.original;
+        if (row.avg_price <= 0) return <span className="text-text-dim">&mdash;</span>;
         return (
           <span className={val >= 0 ? "text-profit tabular-nums" : "text-loss tabular-nums"}>
             {formatPercentage(val)}
@@ -111,6 +135,8 @@ export function PositionsTable({ hideHeader, className }: PositionsTableProps) {
       accessorKey: 'unrealized_pnl',
       cell: info => {
         const val = info.getValue() as number;
+        const row = info.row.original;
+        if (row.avg_price <= 0) return <span className="text-text-dim">&mdash;</span>;
         return (
           <span className={val >= 0 ? "text-profit tabular-nums" : "text-loss tabular-nums"}>
             {formatCurrency(val)}

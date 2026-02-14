@@ -18,8 +18,24 @@ def _bool(name: str, default: bool) -> bool:
 class CryptoTraderConfig:
     admin_user_id: str = os.getenv("ADMIN_USER_ID", "")
     mode: str = os.getenv("MODE_LOCK", "paper")
+
+    # Exchange selection
+    exchange: str = os.getenv("CRYPTO_EXCHANGE", "kraken")
+
+    # Kraken credentials
+    kraken_api_key: str = os.getenv("KRAKEN_API_KEY", "")
+    kraken_api_secret: str = os.getenv("KRAKEN_API_SECRET", "")
+    kraken_use_websocket: bool = _bool("KRAKEN_USE_WEBSOCKET", True)
+
+    # Robinhood credentials (legacy)
     rh_live_trading: bool = _bool("RH_LIVE_TRADING", False)
     rh_live_confirm: str = os.getenv("RH_LIVE_CONFIRM", "")
+
+    # Live trading gate
+    live_trading: bool = _bool("LIVE_TRADING", False)
+    live_confirm: str = os.getenv("LIVE_CONFIRM", "")
+
+    # Risk limits
     max_notional_per_trade: float = float(os.getenv("MAX_NOTIONAL_PER_TRADE", "25"))
     max_daily_notional: float = float(os.getenv("MAX_DAILY_NOTIONAL", "50"))
     max_open_positions: int = int(os.getenv("MAX_OPEN_POSITIONS", "3"))
@@ -32,10 +48,18 @@ class CryptoTraderConfig:
     def __post_init__(self) -> None:
         if self.mode not in ("paper", "live"):
             raise ValueError(f"MODE_LOCK must be 'paper' or 'live', got '{self.mode}'")
+        if self.exchange not in ("kraken", "robinhood"):
+            raise ValueError(f"CRYPTO_EXCHANGE must be 'kraken' or 'robinhood', got '{self.exchange}'")
 
     def live_ready(self) -> bool:
+        if self.exchange == "kraken":
+            return self.live_trading and self.live_confirm == CONFIRM_PHRASE
+        # Legacy Robinhood path
         return self.rh_live_trading and self.rh_live_confirm == CONFIRM_PHRASE
 
     def validate_mode(self) -> None:
         if self.mode == "live" and not self.live_ready():
-            raise RuntimeError("MODE_LOCK=live but live_ready() is False — set RH_LIVE_TRADING=1 and RH_LIVE_CONFIRM")
+            raise RuntimeError(
+                f"MODE_LOCK=live but live_ready() is False — "
+                f"set LIVE_TRADING=1 and LIVE_CONFIRM for {self.exchange}"
+            )
