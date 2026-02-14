@@ -715,7 +715,7 @@ function KPIBlock({ icon: Icon, label, value, color }: { icon: typeof DollarSign
   const bgMap: Record<string, string> = { profit: 'bg-profit/10', loss: 'bg-loss/10', warning: 'bg-warning/10', white: 'bg-earth-700/5' };
   return (
     <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-3 sm:p-5 flex items-center gap-3 sm:gap-4">
-      <div className={cn("w-8 sm:w-10 h-8 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0", bgMap[color] ?? 'bg-earth-700/5')}>
+      <div className={cn("w-8 sm:w-10 h-8 sm:h-10 rounded-[4px] flex items-center justify-center flex-shrink-0", bgMap[color] ?? 'bg-earth-700/5')}>
         <Icon className={cn("w-4 sm:w-5 h-4 sm:h-5", colorMap[color] ?? 'text-earth-700/40')} />
       </div>
       <div className="min-w-0">

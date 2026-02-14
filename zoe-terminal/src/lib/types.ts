@@ -360,6 +360,7 @@ export interface Database {
           submitted_at: string | null;
           updated_at: string;
           raw_response: Json;
+          replace_count: number | null;
         };
         Insert: {
           id?: string;
@@ -369,11 +370,13 @@ export interface Database {
           order_type: "market" | "limit";
           qty?: number | null;
           notional?: number | null;
-          status?: "new" | "submitted" | "partially_filled" | "filled" | "canceled" | "rejected";
+          limit_price?: number | null;
+          status?: "new" | "submitted" | "partially_filled" | "filled" | "canceled" | "rejected" | "cancel_pending" | "working";
           requested_at?: string;
           submitted_at?: string | null;
           updated_at?: string;
           raw_response?: Json;
+          replace_count?: number | null;
         };
         Update: {
           id?: string;
@@ -383,11 +386,13 @@ export interface Database {
           order_type?: "market" | "limit";
           qty?: number | null;
           notional?: number | null;
-          status?: "new" | "submitted" | "partially_filled" | "filled" | "canceled" | "rejected";
+          limit_price?: number | null;
+          status?: "new" | "submitted" | "partially_filled" | "filled" | "canceled" | "rejected" | "cancel_pending" | "working";
           requested_at?: string;
           submitted_at?: string | null;
           updated_at?: string;
           raw_response?: Json;
+          replace_count?: number | null;
         };
         Relationships: [];
       };
@@ -1076,6 +1081,43 @@ export interface Database {
           discovered_at: string;
           updated_at: string;
         };
+        Insert: {
+          symbol: string;
+          exchange_symbol: string;
+          ws_symbol?: string | null;
+          base: string;
+          quote: string;
+          exchange: string;
+          status?: "active" | "delisted" | "halted";
+          min_qty: number;
+          lot_size: number;
+          tick_size: number;
+          fee_maker_pct: number;
+          fee_taker_pct: number;
+          ordermin: number;
+          metadata?: Json;
+          discovered_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          symbol?: string;
+          exchange_symbol?: string;
+          ws_symbol?: string | null;
+          base?: string;
+          quote?: string;
+          exchange?: string;
+          status?: "active" | "delisted" | "halted";
+          min_qty?: number;
+          lot_size?: number;
+          tick_size?: number;
+          fee_maker_pct?: number;
+          fee_taker_pct?: number;
+          ordermin?: number;
+          metadata?: Json;
+          discovered_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       market_snapshot_focus: {
         Row: {
@@ -1091,6 +1133,33 @@ export interface Database {
           low_24h: number;
           updated_at: string;
         };
+        Insert: {
+          symbol: string;
+          bid: number;
+          ask: number;
+          mid: number;
+          spread_pct: number;
+          volume_24h: number;
+          change_24h_pct: number;
+          vwap: number;
+          high_24h: number;
+          low_24h: number;
+          updated_at?: string;
+        };
+        Update: {
+          symbol?: string;
+          bid?: number;
+          ask?: number;
+          mid?: number;
+          spread_pct?: number;
+          volume_24h?: number;
+          change_24h_pct?: number;
+          vwap?: number;
+          high_24h?: number;
+          low_24h?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       market_snapshot_scout: {
         Row: {
@@ -1102,6 +1171,25 @@ export interface Database {
           change_24h_pct: number;
           updated_at: string;
         };
+        Insert: {
+          symbol: string;
+          bid: number;
+          ask: number;
+          mid: number;
+          volume_24h: number;
+          change_24h_pct: number;
+          updated_at?: string;
+        };
+        Update: {
+          symbol?: string;
+          bid?: number;
+          ask?: number;
+          mid?: number;
+          volume_24h?: number;
+          change_24h_pct?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       market_sparkline_points: {
         Row: {
@@ -1109,6 +1197,17 @@ export interface Database {
           ts: string;
           price: number;
         };
+        Insert: {
+          symbol: string;
+          ts: string;
+          price: number;
+        };
+        Update: {
+          symbol?: string;
+          ts?: string;
+          price?: number;
+        };
+        Relationships: [];
       };
       mover_events: {
         Row: {
@@ -1120,6 +1219,25 @@ export interface Database {
           metadata: Json;
           detected_at: string;
         };
+        Insert: {
+          id?: string;
+          symbol: string;
+          event_type: string;
+          magnitude: number;
+          direction: "up" | "down";
+          metadata?: Json;
+          detected_at?: string;
+        };
+        Update: {
+          id?: string;
+          symbol?: string;
+          event_type?: string;
+          magnitude?: number;
+          direction?: "up" | "down";
+          metadata?: Json;
+          detected_at?: string;
+        };
+        Relationships: [];
       };
       market_focus_config: {
         Row: {
@@ -1129,6 +1247,21 @@ export interface Database {
           expires_at: string | null;
           metadata: Json;
         };
+        Insert: {
+          symbol: string;
+          reason: string;
+          promoted_at?: string;
+          expires_at?: string | null;
+          metadata?: Json;
+        };
+        Update: {
+          symbol?: string;
+          reason?: string;
+          promoted_at?: string;
+          expires_at?: string | null;
+          metadata?: Json;
+        };
+        Relationships: [];
       };
       cash_events: {
         Row: {
@@ -1140,6 +1273,25 @@ export interface Database {
           external_ref: string;
           created_at: string;
         };
+        Insert: {
+          id?: string;
+          event_type: "deposit" | "withdrawal" | "transfer_in" | "transfer_out";
+          amount: number;
+          currency: string;
+          description: string;
+          external_ref: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          event_type?: "deposit" | "withdrawal" | "transfer_in" | "transfer_out";
+          amount?: number;
+          currency?: string;
+          description?: string;
+          external_ref?: string;
+          created_at?: string;
+        };
+        Relationships: [];
       };
       fee_ledger: {
         Row: {
@@ -1152,6 +1304,27 @@ export interface Database {
           fee_type: "trading" | "withdrawal" | "deposit" | "other";
           created_at: string;
         };
+        Insert: {
+          id?: string;
+          fill_id: string;
+          order_id: string;
+          symbol: string;
+          fee_amount: number;
+          fee_currency: string;
+          fee_type: "trading" | "withdrawal" | "deposit" | "other";
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          fill_id?: string;
+          order_id?: string;
+          symbol?: string;
+          fee_amount?: number;
+          fee_currency?: string;
+          fee_type?: "trading" | "withdrawal" | "deposit" | "other";
+          created_at?: string;
+        };
+        Relationships: [];
       };
       order_intents: {
         Row: {
@@ -1171,6 +1344,41 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
+        Insert: {
+          id?: string;
+          idempotency_key: string;
+          symbol: string;
+          side: "buy" | "sell";
+          order_type: "limit" | "market";
+          qty?: number | null;
+          notional?: number | null;
+          limit_price?: number | null;
+          status?: "created" | "submitted" | "acked" | "partial_fill" | "cancel_requested" | "cancelled" | "replaced" | "filled" | "rejected" | "expired" | "error";
+          broker_order_id?: string | null;
+          fill_price?: number | null;
+          fill_qty?: number | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          idempotency_key?: string;
+          symbol?: string;
+          side?: "buy" | "sell";
+          order_type?: "limit" | "market";
+          qty?: number | null;
+          notional?: number | null;
+          limit_price?: number | null;
+          status?: "created" | "submitted" | "acked" | "partial_fill" | "cancel_requested" | "cancelled" | "replaced" | "filled" | "rejected" | "expired" | "error";
+          broker_order_id?: string | null;
+          fill_price?: number | null;
+          fill_qty?: number | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       order_events: {
         Row: {
@@ -1184,6 +1392,29 @@ export interface Database {
           metadata: Json;
           created_at: string;
         };
+        Insert: {
+          id?: string;
+          intent_id: string;
+          event_type: string;
+          broker_order_id?: string | null;
+          fill_price?: number | null;
+          fill_qty?: number | null;
+          fee?: number | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          intent_id?: string;
+          event_type?: string;
+          broker_order_id?: string | null;
+          fill_price?: number | null;
+          fill_qty?: number | null;
+          fee?: number | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
       };
       trade_locks: {
         Row: {
@@ -1193,6 +1424,21 @@ export interface Database {
           ttl_seconds: number;
           instance_id: string;
         };
+        Insert: {
+          symbol: string;
+          locked_at?: string;
+          lock_holder: string;
+          ttl_seconds: number;
+          instance_id: string;
+        };
+        Update: {
+          symbol?: string;
+          locked_at?: string;
+          lock_holder?: string;
+          ttl_seconds?: number;
+          instance_id?: string;
+        };
+        Relationships: [];
       };
     };
     Views: {
