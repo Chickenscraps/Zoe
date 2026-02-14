@@ -45,7 +45,9 @@ function formatTooltipLabel(val: string) {
 
 export function EquityChart({ data, dailyPnl, allTimePnl, allTimePnlPct, height = 300, className }: EquityChartProps) {
   const [view, setView] = useState<ChartView>('alltime');
+  const [showGross, setShowGross] = useState(false);
   const hasData = data.length > 1;
+  const hasGrossData = data.some(p => p.grossEquity != null && p.grossEquity !== p.equity);
 
   // Filter data based on view
   const filteredData = useMemo(() => {
@@ -65,15 +67,18 @@ export function EquityChart({ data, dailyPnl, allTimePnl, allTimePnlPct, height 
 
   const isProfit = view === 'today' ? dailyPnl >= 0 : allTimePnl >= 0;
   const color = isProfit ? "#2ee59d" : "#ff5b6e";
+  const grossColor = "#60a5fa"; // blue for gross equity line
 
   // Convert to P&L data (delta from first point in view)
   const pnlData = useMemo(() => {
     if (filteredData.length === 0) return [];
     const base = filteredData[0].equity;
+    const grossBase = filteredData[0].grossEquity ?? filteredData[0].equity;
     return filteredData.map(point => ({
       date: point.date,
       equity: point.equity,
       pnl: point.equity - base,
+      grossPnl: (point.grossEquity ?? point.equity) - grossBase,
     }));
   }, [filteredData]);
 
@@ -118,22 +123,39 @@ export function EquityChart({ data, dailyPnl, allTimePnl, allTimePnlPct, height 
           </div>
         </div>
 
-        {/* View Toggle */}
-        <div className="flex items-center gap-0 bg-surface-base border border-border rounded-full p-0.5">
-          {(['today', '7d', 'alltime'] as ChartView[]).map((v) => (
+        <div className="flex items-center gap-2">
+          {/* Gross/Net Toggle (only when gross data exists) */}
+          {hasGrossData && (
             <button
-              key={v}
-              onClick={() => setView(v)}
+              onClick={() => setShowGross(!showGross)}
               className={cn(
-                "px-3 py-1 rounded-full text-[9px] font-black tracking-widest uppercase transition-all",
-                view === v
-                  ? "bg-text-primary text-background"
-                  : "text-text-muted hover:text-text-primary"
+                "px-2 py-1 rounded-full text-[9px] font-black tracking-widest uppercase transition-all border",
+                showGross
+                  ? "border-blue-400/50 text-blue-400 bg-blue-400/10"
+                  : "border-border text-text-dim hover:text-text-muted"
               )}
             >
-              {v === 'today' ? '1D' : v === '7d' ? '7D' : 'All'}
+              Gross
             </button>
-          ))}
+          )}
+
+          {/* View Toggle */}
+          <div className="flex items-center gap-0 bg-surface-base border border-border rounded-full p-0.5">
+            {(['today', '7d', 'alltime'] as ChartView[]).map((v) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={cn(
+                  "px-3 py-1 rounded-full text-[9px] font-black tracking-widest uppercase transition-all",
+                  view === v
+                    ? "bg-text-primary text-background"
+                    : "text-text-muted hover:text-text-primary"
+                )}
+              >
+                {v === 'today' ? '1D' : v === '7d' ? '7D' : 'All'}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -158,6 +180,10 @@ export function EquityChart({ data, dailyPnl, allTimePnl, allTimePnlPct, height 
                   <stop offset="5%" stopColor={color} stopOpacity={0.2} />
                   <stop offset="50%" stopColor={color} stopOpacity={0.05} />
                   <stop offset="95%" stopColor={color} stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="colorGross" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={grossColor} stopOpacity={0.15} />
+                  <stop offset="95%" stopColor={grossColor} stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid
@@ -199,14 +225,33 @@ export function EquityChart({ data, dailyPnl, allTimePnl, allTimePnlPct, height 
                 }}
                 itemStyle={{ color: '#f3f4f6' }}
                 formatter={(value: number, name: string) => {
+                  if (name === 'grossPnl') {
+                    const prefix = value >= 0 ? '+' : '';
+                    return [`${prefix}${formatCurrency(value)}`, 'Gross P&L'];
+                  }
                   if (name === 'pnl') {
                     const prefix = value >= 0 ? '+' : '';
-                    return [`${prefix}${formatCurrency(value)}`, 'P&L'];
+                    return [`${prefix}${formatCurrency(value)}`, showGross ? 'Net P&L' : 'P&L'];
                   }
                   return [formatCurrency(value), 'Total Value'];
                 }}
                 labelFormatter={(label) => formatTooltipLabel(label as string)}
               />
+              {/* Gross equity line (behind net) */}
+              {showGross && hasGrossData && (
+                <Area
+                  type="monotone"
+                  dataKey="grossPnl"
+                  stroke={grossColor}
+                  fillOpacity={0.5}
+                  fill="url(#colorGross)"
+                  strokeWidth={1.5}
+                  strokeDasharray="4 3"
+                  dot={false}
+                  animationDuration={800}
+                  animationEasing="ease-out"
+                />
+              )}
               <Area
                 type="monotone"
                 dataKey="pnl"

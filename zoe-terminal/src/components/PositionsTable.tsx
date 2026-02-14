@@ -23,13 +23,13 @@ interface PositionsTableProps {
 }
 
 export function PositionsTable({ hideHeader, className }: PositionsTableProps) {
-  const { holdingsRows, livePrices, cryptoFills } = useDashboardData();
+  const { holdingsRows, livePrices, cryptoFills, focusSnapshotMap } = useDashboardData();
 
   // Build position rows from holdings + live prices
   const positions = useMemo<PositionRow[]>(() => {
     if (!holdingsRows || holdingsRows.length === 0) return [];
 
-    // Compute avg price from fills (include fees in cost basis)
+    // Compute avg price from fills (include fees in cost basis) — fallback if avg_cost not on position
     const avgPrices: Record<string, { totalCost: number; totalQty: number }> = {};
     for (const fill of (cryptoFills || [])) {
       if (fill.side === 'buy') {
@@ -40,21 +40,29 @@ export function PositionsTable({ hideHeader, className }: PositionsTableProps) {
       }
     }
 
-    // Map live prices by symbol
+    // Map live prices by symbol — prefer focus snapshots (Kraken), fallback to candidate_scans
     const priceMap: Record<string, number> = {};
+    // Focus snapshots (Kraken WS)
+    for (const [sym, snap] of Object.entries(focusSnapshotMap)) {
+      if (snap.mid) priceMap[sym] = snap.mid;
+    }
+    // Legacy candidate_scans fallback
     for (const scan of (livePrices || [])) {
       const info = scan.info as any ?? {};
-      if (info.mid) priceMap[scan.symbol] = info.mid;
+      if (info.mid && !priceMap[scan.symbol]) priceMap[scan.symbol] = info.mid;
     }
 
     return holdingsRows.map(h => {
-      const avg = avgPrices[h.asset] ? avgPrices[h.asset].totalCost / avgPrices[h.asset].totalQty : 0;
+      // Use avg_cost from crypto_positions if available, otherwise compute from fills
+      const avg = h.avg_cost > 0
+        ? h.avg_cost
+        : (avgPrices[h.asset] ? avgPrices[h.asset].totalCost / avgPrices[h.asset].totalQty : 0);
       const current = priceMap[h.asset] ?? avg;
       const mktVal = h.qty * current;
       const cost = h.qty * avg;
       const exitFee = mktVal * FEE_RATE_PER_SIDE; // estimated exit fee
       const pnl = mktVal - cost - exitFee;
-      const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0; // as percentage (e.g., -2.04 for -2.04%)
+      const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
 
       return {
         symbol: h.asset,
@@ -66,13 +74,18 @@ export function PositionsTable({ hideHeader, className }: PositionsTableProps) {
         unrealized_pnl: pnl,
       };
     });
-  }, [holdingsRows, livePrices, cryptoFills]);
+  }, [holdingsRows, livePrices, cryptoFills, focusSnapshotMap]);
 
   const columns = useMemo<ColumnDef<PositionRow>[]>(() => [
     {
       header: 'Symbol',
       accessorKey: 'symbol',
-      cell: info => <span className="font-semibold text-white">{info.getValue() as string}</span>
+      cell: info => {
+        const sym = info.getValue() as string;
+        // Clean up symbol display: BTC/USD → BTC, BTC-USD → BTC
+        const display = sym.replace('/USD', '').replace('-USD', '').replace('/USDT', '').replace('/USDC', '');
+        return <span className="font-semibold text-white">{display}</span>;
+      }
     },
     {
       header: 'Qty',
@@ -80,7 +93,7 @@ export function PositionsTable({ hideHeader, className }: PositionsTableProps) {
       cell: info => <span className="text-text-secondary tabular-nums">{(info.getValue() as number).toFixed(6)}</span>
     },
     {
-      header: 'Avg Price',
+      header: 'Avg Cost',
       accessorKey: 'avg_price',
       cell: info => <span className="tabular-nums">{formatCurrency(info.getValue() as number)}</span>
     },

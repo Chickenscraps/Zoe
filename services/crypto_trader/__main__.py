@@ -2,6 +2,9 @@
 
 Starts the async crypto trader service with full boot reconciliation,
 state restoration, and context-aware startup summary.
+
+Supports broker backends: paper, robinhood, kraken (via BROKER_TYPE env).
+Supports market data sources: polling, kraken_ws (via MARKET_DATA_SOURCE env).
 """
 from __future__ import annotations
 
@@ -21,11 +24,11 @@ load_dotenv(os.path.join(_root, ".env"))
 load_dotenv(os.path.join(_root, ".env.secrets"), override=True)
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"), override=True)
 
-from integrations.robinhood_crypto_client import RobinhoodCryptoClient, RobinhoodCryptoConfig
 from services.crypto_trader.config import CryptoTraderConfig
 from services.crypto_trader.supabase_repository import SupabaseCryptoRepository
 from services.crypto_trader.trader import CryptoTraderService
 from services.crypto_trader.boot import run_boot_reconciliation
+from services.crypto_trader.broker_factory import create_broker
 
 
 def _fmt_age(iso_str: str | None) -> str:
@@ -48,14 +51,11 @@ def _fmt_age(iso_str: str | None) -> str:
 
 
 def _print_boot_context(repo: SupabaseCryptoRepository, config: CryptoTraderConfig) -> dict:
-    """Load and print everything the bot needs to know on startup.
-
-    Returns the previous agent_state dict (or empty dict) for state restoration.
-    """
+    """Load and print everything the bot needs to know on startup."""
     mode = config.mode
     print("")
     print("=" * 64)
-    print(f"  ZOE CRYPTO TRADER - BOOT CONTEXT (mode={mode})")
+    print(f"  ZOE CRYPTO TRADER - BOOT CONTEXT (mode={mode}, broker={config.broker_type})")
     print("=" * 64)
 
     # ── 1. Previous Agent State ──
@@ -187,15 +187,11 @@ def _print_boot_context(repo: SupabaseCryptoRepository, config: CryptoTraderConf
     return prev_state
 
 
-async def _warm_price_cache(service: CryptoTraderService) -> None:
-    """Do an initial price fetch to seed the cache before the main loop starts.
-
-    This way the first scan (at t=0) already has at least 1 tick per symbol,
-    and we're not waiting a full 60s for the first data point.
-    """
+async def _warm_price_cache_rh(service: CryptoTraderService, rh_client) -> None:
+    """Warm price cache via Robinhood batch API (legacy path)."""
     from services.crypto_trader.scanner import WATCHLIST
     try:
-        batch = await service.client.get_best_bid_ask_batch(WATCHLIST)
+        batch = await rh_client.get_best_bid_ask_batch(WATCHLIST)
         count = 0
         for result in batch.get("results", []):
             symbol = result.get("symbol", "")
@@ -209,28 +205,167 @@ async def _warm_price_cache(service: CryptoTraderService) -> None:
         print(f"[ZOE] Price cache warm-up failed (non-fatal): {e}")
 
 
+async def _warm_price_cache_kraken(service: CryptoTraderService, rest_client) -> None:
+    """Warm price cache via Kraken REST ticker (Kraken path)."""
+    from services.crypto_trader.symbol_map import to_internal
+    try:
+        tickers = await rest_client.get_ticker(["XBTUSD", "ETHUSD", "SOLUSD", "DOGEUSD", "ADAUSD", "XRPUSD", "LTCUSD"])
+        count = 0
+        for key, t in tickers.items():
+            bid = float(t.bid)
+            ask = float(t.ask)
+            if bid > 0 and ask > 0:
+                internal_sym = to_internal(key) if "/" in key else key
+                service.price_cache.record(internal_sym, bid, ask)
+                count += 1
+        print(f"[ZOE] Price cache warmed (Kraken REST): {count} symbols seeded")
+    except Exception as e:
+        print(f"[ZOE] Price cache warm-up failed (non-fatal): {e}")
+
+
+def _build_kraken_components(config: CryptoTraderConfig, repo: SupabaseCryptoRepository, broker):
+    """Build Kraken-specific components (market data, WS, order executor, etc.)."""
+    components = {}
+
+    # REST client for market data (may differ from broker's client)
+    from services.crypto_trader.kraken_client import KrakenRestClient
+    rest_client = KrakenRestClient(
+        api_key=config.kraken_api_key,
+        api_secret=config.kraken_api_secret,
+        base_url=config.kraken_base_url or None,
+    )
+    components["rest_client"] = rest_client
+
+    if config.market_data_source == "kraken_ws":
+        # WS Manager (public)
+        from services.crypto_trader.kraken_ws_manager import KrakenWsManager
+        ws_manager = KrakenWsManager(url=config.kraken_ws_url)
+        components["ws_manager"] = ws_manager
+
+        # MarketDataService
+        from services.crypto_trader.market_data_service import MarketDataService
+        market_data = MarketDataService(
+            rest_client=rest_client,
+            ws_manager=ws_manager,
+            repository=repo,
+        )
+        components["market_data_service"] = market_data
+
+    if config.kraken_api_key and config.kraken_api_secret:
+        # WS Private (authenticated) — for fill tracking
+        from services.crypto_trader.kraken_ws_private import KrakenWsPrivate
+        ws_private = KrakenWsPrivate(
+            rest_client=rest_client,
+            ws_auth_url=config.kraken_ws_auth_url,
+        )
+        components["ws_private"] = ws_private
+
+    # Order executor
+    from services.crypto_trader.order_executor import OrderExecutor
+    order_executor = OrderExecutor(broker=broker, repository=repo, mode=config.mode)
+    components["order_executor"] = order_executor
+
+    # Fill processor
+    from services.crypto_trader.fill_processor import FillProcessor
+    fill_processor = FillProcessor(repository=repo, mode=config.mode)
+    components["fill_processor"] = fill_processor
+
+    # PnL service
+    from services.crypto_trader.pnl_service import PnlService
+    pnl_service = PnlService(repository=repo, mode=config.mode)
+    components["pnl_service"] = pnl_service
+
+    # Repositioner
+    from services.crypto_trader.repositioner import Repositioner
+    repositioner = Repositioner(
+        broker=broker,
+        repository=repo,
+        mode=config.mode,
+        timeout_s=config.repositioner_timeout_s,
+    )
+    components["repositioner"] = repositioner
+
+    # Circuit breaker
+    from services.crypto_trader.circuit_breaker import CircuitBreaker
+    circuit_breaker = CircuitBreaker(threshold_s=config.stale_data_threshold_s)
+    components["circuit_breaker"] = circuit_breaker
+
+    return components
+
+
 async def main() -> None:
     print("[ZOE] Initializing crypto trader service...")
 
-    # Robinhood client
-    rh_config = RobinhoodCryptoConfig.from_env()
-    if not rh_config.api_key or not rh_config.private_key_seed:
-        print("[ZOE] ERROR: Set RH_CRYPTO_API_KEY and RH_CRYPTO_PRIVATE_KEY_SEED env vars")
-        sys.exit(1)
-
-    rh_client = RobinhoodCryptoClient(rh_config)
+    # Trader config (reads BROKER_TYPE, MARKET_DATA_SOURCE, etc.)
+    trader_config = CryptoTraderConfig()
+    print(f"[ZOE] Broker type: {trader_config.broker_type}")
+    print(f"[ZOE] Market data source: {trader_config.market_data_source}")
 
     # Supabase repository
     repo = SupabaseCryptoRepository()
 
-    # Trader config
-    trader_config = CryptoTraderConfig()
+    # ── Create broker via factory ──
+    rh_client = None
+    if trader_config.broker_type == "robinhood":
+        # Legacy path: also need raw client for polling
+        from integrations.robinhood_crypto_client import RobinhoodCryptoClient, RobinhoodCryptoConfig
+        rh_config = RobinhoodCryptoConfig.from_env()
+        if not rh_config.api_key or not rh_config.private_key_seed:
+            print("[ZOE] ERROR: Set RH_CRYPTO_API_KEY and RH_CRYPTO_PRIVATE_KEY_SEED env vars")
+            sys.exit(1)
+        rh_client = RobinhoodCryptoClient(rh_config)
+
+    broker = await create_broker(trader_config, repo=repo, market_data_provider=None)
+
+    # For paper broker, we need a market data provider — use a simple wrapper
+    if trader_config.broker_type == "paper":
+        # PaperBroker is created inside create_broker; it needs a market_data_provider
+        # The factory already handles this, but for price-cache-only paper mode,
+        # we pass the price_cache later via service. Re-create with proper provider.
+        from services.crypto_trader.broker import PaperBroker
+
+        class _PriceCacheProvider:
+            """Minimal provider that exposes get_current_price for PaperBroker."""
+            def __init__(self):
+                self.price_cache = None
+
+            async def get_current_price(self, symbol: str) -> float:
+                if self.price_cache:
+                    snap = self.price_cache.snapshot(symbol)
+                    return snap.get("mid", 0)
+                return 0.0
+
+        mdp = _PriceCacheProvider()
+        broker = PaperBroker(mdp, repo, starting_cash=trader_config.starting_equity)
+
+    # ── Build Kraken components if needed ──
+    kraken_components: dict = {}
+    if trader_config.broker_type == "kraken" or trader_config.market_data_source == "kraken_ws":
+        print("[ZOE] Building Kraken components...")
+        kraken_components = _build_kraken_components(trader_config, repo, broker)
 
     # ── Print rich boot context ──
     prev_state = _print_boot_context(repo, trader_config)
 
-    # Create service
-    service = CryptoTraderService(client=rh_client, repository=repo, config=trader_config)
+    # ── Create service ──
+    service = CryptoTraderService(
+        broker=broker,
+        repository=repo,
+        config=trader_config,
+        market_data_service=kraken_components.get("market_data_service"),
+        order_executor=kraken_components.get("order_executor"),
+        fill_processor=kraken_components.get("fill_processor"),
+        pnl_service=kraken_components.get("pnl_service"),
+        repositioner=kraken_components.get("repositioner"),
+        circuit_breaker=kraken_components.get("circuit_breaker"),
+        ws_private=kraken_components.get("ws_private"),
+        ws_manager=kraken_components.get("ws_manager"),
+        rh_client=rh_client,
+    )
+
+    # Wire PaperBroker's market data provider to service's price cache
+    if trader_config.broker_type == "paper" and hasattr(broker, "mdp") and hasattr(broker.mdp, "price_cache"):
+        broker.mdp.price_cache = service.price_cache
 
     # ── Restore previous state flags ──
     if prev_state:
@@ -247,7 +382,11 @@ async def main() -> None:
     print(f"[ZOE] Order poll interval: {trader_config.order_poll_interval_seconds}s")
 
     # ── Boot reconciliation — runs BEFORE the main loop ──
-    boot_result = await run_boot_reconciliation(rh_client, repo, trader_config)
+    if rh_client:
+        boot_result = await run_boot_reconciliation(rh_client, repo, trader_config)
+    else:
+        # For Kraken/paper, use broker-based boot
+        boot_result = await run_boot_reconciliation(broker, repo, trader_config)
 
     if boot_result.action == "halt":
         print(f"[ZOE] HALTED: {boot_result.reason}")
@@ -257,13 +396,15 @@ async def main() -> None:
         service._safe_mode_until = time.time() + boot_result.safe_mode_seconds
     else:
         print("[ZOE] Boot reconciliation: NORMAL -- ready to trade")
-        # Clear any stale degraded/paused from previous state if boot is clean
         if prev_state.get("degraded") and not service._degraded:
             service._degraded = False
             print("[ZOE] Cleared stale degraded flag (boot checks passed)")
 
     # ── Warm the price cache before starting the main loop ──
-    await _warm_price_cache(service)
+    if rh_client and trader_config.market_data_source == "polling":
+        await _warm_price_cache_rh(service, rh_client)
+    elif "rest_client" in kraken_components:
+        await _warm_price_cache_kraken(service, kraken_components["rest_client"])
 
     # ── Load historical candle data from CoinGecko ──
     try:
@@ -275,7 +416,8 @@ async def main() -> None:
 
     # ── Write boot thought ──
     service._write_thought(
-        f"Service booted (mode={trader_config.mode}, run_id={boot_result.run_id}). "
+        f"Service booted (mode={trader_config.mode}, broker={trader_config.broker_type}, "
+        f"data={trader_config.market_data_source}, run_id={boot_result.run_id}). "
         f"Boot: {boot_result.action} in {boot_result.duration_ms}ms. "
         f"Paused={service._paused}, Degraded={service._degraded}. "
         f"Price cache seeded with {len(service.price_cache.symbols)} symbols. "
@@ -291,7 +433,11 @@ async def main() -> None:
         # Save final state before exit
         service._save_agent_state_snapshot()
         print("[ZOE] Agent state saved.")
-        await rh_client.close()
+        # Close clients
+        if rh_client:
+            await rh_client.close()
+        if "rest_client" in kraken_components:
+            await kraken_components["rest_client"].close()
         print("[ZOE] Closed.")
 
 

@@ -178,7 +178,7 @@ export interface Database {
           taken_at: string;
           holdings: Json;
           total_crypto_value: number;
-          source: "robinhood";
+          source: "robinhood" | "kraken";
           mode: "paper" | "live";
         };
       };
@@ -188,7 +188,7 @@ export interface Database {
           taken_at: string;
           cash_available: number;
           buying_power: number;
-          source: "robinhood";
+          source: "robinhood" | "kraken";
           mode: "paper" | "live";
         };
       };
@@ -197,14 +197,99 @@ export interface Database {
           id: string;
           taken_at: string;
           local_cash: number;
-          rh_cash: number;
+          broker_cash: number;
           cash_diff: number;
           local_holdings: Json;
-          rh_holdings: Json;
+          broker_holdings: Json;
           holdings_diff: Json;
           status: "ok" | "degraded";
           reason: string | null;
           mode: "paper" | "live";
+        };
+      };
+      market_catalog: {
+        Row: {
+          symbol: string;
+          base_asset: string;
+          quote_asset: string;
+          lot_decimals: number;
+          pair_decimals: number;
+          lot_min: number;
+          cost_min: number;
+          tick_size: number | null;
+          status: string;
+          ordermin: number | null;
+          updated_at: string;
+        };
+      };
+      market_snapshot_focus: {
+        Row: {
+          symbol: string;
+          bid: number | null;
+          ask: number | null;
+          mid: number | null;
+          last_price: number | null;
+          volume_24h: number | null;
+          change_pct_24h: number | null;
+          spread_bps: number | null;
+          updated_at: string;
+        };
+      };
+      market_snapshot_scout: {
+        Row: {
+          symbol: string;
+          mid: number | null;
+          volume_24h: number | null;
+          change_pct_24h: number | null;
+          updated_at: string;
+        };
+      };
+      order_intents: {
+        Row: {
+          intent_id: string;
+          symbol: string;
+          side: "buy" | "sell";
+          qty: number;
+          limit_price: number | null;
+          order_type: string;
+          strategy: string | null;
+          reason: string | null;
+          status: "pending" | "submitted" | "filled" | "partially_filled" | "cancelled" | "rejected" | "expired";
+          client_order_id: string | null;
+          submitted_at: string | null;
+          resolved_at: string | null;
+          mode: "paper" | "live";
+          created_at: string;
+        };
+      };
+      crypto_positions: {
+        Row: {
+          symbol: string;
+          qty: number;
+          avg_cost: number;
+          mode: "paper" | "live";
+          updated_at: string;
+        };
+      };
+      fee_ledger: {
+        Row: {
+          id: string;
+          fill_id: string;
+          symbol: string;
+          fee: number;
+          fee_currency: string;
+          fee_usd: number;
+          mode: "paper" | "live";
+          created_at: string;
+        };
+      };
+      trade_locks: {
+        Row: {
+          symbol: string;
+          mode: string;
+          locked_by: string;
+          locked_at: string;
+          expires_at: string;
         };
       };
       daily_notional: {

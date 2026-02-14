@@ -14,6 +14,8 @@ type CryptoFill = Database["public"]["Tables"]["crypto_fills"]["Row"];
 type DailyNotional = Database["public"]["Tables"]["daily_notional"]["Row"];
 type PnlDaily = Database["public"]["Tables"]["pnl_daily"]["Row"];
 type CandidateScan = Database["public"]["Tables"]["candidate_scans"]["Row"];
+type FocusSnapshot = Database["public"]["Tables"]["market_snapshot_focus"]["Row"];
+type CryptoPosition = Database["public"]["Tables"]["crypto_positions"]["Row"];
 
 const LIVE_WINDOW_MS = 60_000;
 const POLL_INTERVAL_MS = 30_000;
@@ -22,6 +24,7 @@ const PRICE_POLL_MS = 5_000; // fast poll just for live prices
 export interface EquityPoint {
   date: string;
   equity: number;
+  grossEquity?: number;
 }
 
 export function useDashboardData(discordId: string = "292890243852664855") {
@@ -38,6 +41,9 @@ export function useDashboardData(discordId: string = "292890243852664855") {
   const [cashHistory, setCashHistory] = useState<CryptoCashSnapshot[]>([]);
   const [pnlDaily, setPnlDaily] = useState<PnlDaily[]>([]);
   const [livePrices, setLivePrices] = useState<CandidateScan[]>([]);
+  // New Kraken-era state
+  const [focusSnapshots, setFocusSnapshots] = useState<FocusSnapshot[]>([]);
+  const [cryptoPositions, setCryptoPositions] = useState<CryptoPosition[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -63,6 +69,8 @@ export function useDashboardData(discordId: string = "292890243852664855") {
         dailyNotionalRes,
         pnlDailyRes,
         livePricesRes,
+        focusRes,
+        positionsRes,
       ] = await Promise.all([
         supabase.rpc("get_account_overview" as never, { p_discord_id: discordId, p_mode: mode } as never),
         supabase.rpc("get_activity_feed" as never, { p_limit: 10, p_mode: mode } as never),
@@ -116,11 +124,11 @@ export function useDashboardData(discordId: string = "292890243852664855") {
           .maybeSingle(),
         supabase
           .from("pnl_daily")
-          .select("date, equity, daily_pnl")
+          .select("date, equity, daily_pnl, gross_equity, fees_usd")
           .eq("mode", mode)
           .order("date", { ascending: true })
           .limit(90),
-        // Latest scan batch for live prices
+        // Legacy: latest scan batch for live prices (fallback if market_snapshot_focus empty)
         (async () => {
           const { data: latest } = await supabase
             .from("candidate_scans")
@@ -137,6 +145,16 @@ export function useDashboardData(discordId: string = "292890243852664855") {
             .eq("created_at", latest.created_at)
             .order("score", { ascending: false });
         })(),
+        // New: market_snapshot_focus (Kraken live prices)
+        supabase
+          .from("market_snapshot_focus")
+          .select("*")
+          .order("symbol", { ascending: true }),
+        // New: crypto_positions (Kraken position tracking)
+        supabase
+          .from("crypto_positions")
+          .select("*")
+          .eq("mode", mode),
       ]);
 
       if (overviewRes.data && overviewRes.data.length > 0)
@@ -152,6 +170,8 @@ export function useDashboardData(discordId: string = "292890243852664855") {
       setDailyNotional((dailyNotionalRes.data ?? null) as DailyNotional | null);
       setPnlDaily((pnlDailyRes.data ?? []) as PnlDaily[]);
       setLivePrices((livePricesRes.data ?? []) as CandidateScan[]);
+      setFocusSnapshots((focusRes.data ?? []) as FocusSnapshot[]);
+      setCryptoPositions((positionsRes.data ?? []) as CryptoPosition[]);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("Error fetching dashboard data:", msg);
@@ -161,9 +181,20 @@ export function useDashboardData(discordId: string = "292890243852664855") {
     }
   }, [discordId, mode]);
 
-  // Fast price-only fetch (every 5s)
+  // Fast price-only fetch (every 5s) — prefers market_snapshot_focus, falls back to candidate_scans
   const fetchPrices = useCallback(async () => {
     try {
+      // Try market_snapshot_focus first (Kraken WS-driven)
+      const { data: focusData } = await supabase
+        .from("market_snapshot_focus")
+        .select("*")
+        .order("symbol", { ascending: true });
+      if (focusData && focusData.length > 0) {
+        setFocusSnapshots(focusData as FocusSnapshot[]);
+        return; // Kraken prices available, no need for legacy
+      }
+
+      // Fallback: candidate_scans (legacy Robinhood polling)
       const { data: latest } = await supabase
         .from("candidate_scans")
         .select("created_at")
@@ -208,15 +239,37 @@ export function useDashboardData(discordId: string = "292890243852664855") {
     };
   }, [reconcile]);
 
+  // Focus snapshot map for quick lookup
+  const focusSnapshotMap = useMemo(() => {
+    const map: Record<string, FocusSnapshot> = {};
+    for (const s of focusSnapshots) {
+      map[s.symbol] = s;
+    }
+    return map;
+  }, [focusSnapshots]);
+
   const holdingsRows = useMemo(() => {
+    // Prefer crypto_positions (Kraken) if available
+    if (cryptoPositions.length > 0) {
+      return cryptoPositions
+        .filter(p => p.qty > 0)
+        .map(p => ({
+          asset: p.symbol,
+          qty: p.qty,
+          avg_cost: p.avg_cost,
+          allocation: 0, // computed downstream
+        }));
+    }
+    // Fallback: holdings snapshots (legacy)
     const rows = (cryptoHoldings?.holdings as Record<string, number>) || {};
     const total = Object.values(rows).reduce((sum, qty) => sum + Number(qty), 0);
     return Object.entries(rows).map(([asset, qty]) => ({
       asset,
       qty: Number(qty),
+      avg_cost: 0,
       allocation: total > 0 ? (Number(qty) / total) * 100 : 0,
     }));
-  }, [cryptoHoldings]);
+  }, [cryptoPositions, cryptoHoldings]);
 
   const realizedPnl = useMemo(() => {
     // Compute realized P&L from matched buy→sell round-trips only.
@@ -274,7 +327,11 @@ export function useDashboardData(discordId: string = "292890243852664855") {
         }
       }
 
+      // Compute current crypto value from best available prices
       const currentCryptoVal = holdingsRows.reduce((sum, row) => {
+        // Try focus snapshots first (Kraken), then candidate_scans (legacy)
+        const focusSnap = focusSnapshotMap[row.asset];
+        if (focusSnap?.mid) return sum + row.qty * focusSnap.mid;
         const scan = livePrices.find(s => s.symbol === row.asset);
         const mid = scan ? ((scan.info as any)?.mid ?? 0) : 0;
         return sum + row.qty * mid;
@@ -298,16 +355,17 @@ export function useDashboardData(discordId: string = "292890243852664855") {
       return points;
     }
 
-    // Fallback: pnl_daily (lower granularity)
+    // Fallback: pnl_daily (lower granularity) — includes gross_equity if available
     if (pnlDaily.length > 0) {
       return pnlDaily.map(row => ({
         date: row.date,
         equity: row.equity,
+        grossEquity: (row as any).gross_equity ?? row.equity,
       }));
     }
 
     return [];
-  }, [cashHistory, pnlDaily, holdingsRows, livePrices]);
+  }, [cashHistory, pnlDaily, holdingsRows, livePrices, focusSnapshotMap]);
 
   // Initial deposit = first cash snapshot buying_power (before any trades)
   const initialDeposit = useMemo(() => {
@@ -332,6 +390,10 @@ export function useDashboardData(discordId: string = "292890243852664855") {
     equityHistory,
     initialDeposit,
     livePrices,
+    // New Kraken-era data
+    focusSnapshots,
+    focusSnapshotMap,
+    cryptoPositions,
     loading,
     error,
   };

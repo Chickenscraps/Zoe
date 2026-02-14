@@ -264,3 +264,167 @@ class SupabaseCryptoRepository:
             return resp.data or []
         except Exception:
             return []
+
+    # ── Market data (Kraken) ──
+
+    def upsert_market_catalog(self, rows: list[dict[str, Any]]) -> None:
+        """Upsert pairs into market_catalog from AssetPairs response."""
+        if not rows:
+            return
+        try:
+            self.sb.table("market_catalog").upsert(
+                rows, on_conflict="symbol"
+            ).execute()
+        except Exception as e:
+            print(f"[REPO] market_catalog upsert error: {e}")
+
+    def upsert_market_snapshot_focus(self, rows: list[dict[str, Any]]) -> None:
+        """Upsert focus snapshots (high-frequency, ~500ms cadence)."""
+        if not rows:
+            return
+        try:
+            self.sb.table("market_snapshot_focus").upsert(
+                rows, on_conflict="symbol"
+            ).execute()
+        except Exception as e:
+            print(f"[REPO] market_snapshot_focus upsert error: {e}")
+
+    def upsert_market_snapshot_scout(self, rows: list[dict[str, Any]]) -> None:
+        """Upsert scout snapshots (low-frequency, ~10s cadence)."""
+        if not rows:
+            return
+        try:
+            self.sb.table("market_snapshot_scout").upsert(
+                rows, on_conflict="symbol"
+            ).execute()
+        except Exception as e:
+            print(f"[REPO] market_snapshot_scout upsert error: {e}")
+
+    def get_focus_snapshot(self, symbol: str) -> dict[str, Any] | None:
+        """Get a single focus snapshot by symbol."""
+        try:
+            resp = (
+                self.sb.table("market_snapshot_focus")
+                .select("*")
+                .eq("symbol", symbol)
+                .maybe_single()
+                .execute()
+            )
+            return resp.data if resp else None
+        except Exception:
+            return None
+
+    def get_all_focus_snapshots(self) -> list[dict[str, Any]]:
+        """Get all focus snapshots."""
+        try:
+            resp = (
+                self.sb.table("market_snapshot_focus")
+                .select("*")
+                .order("symbol")
+                .execute()
+            )
+            return resp.data or []
+        except Exception:
+            return []
+
+    # ── Order intents (Phase 2) ──
+
+    def upsert_order_intent(self, intent: dict[str, Any]) -> None:
+        """Insert or update an order intent."""
+        self.sb.table("order_intents").upsert(
+            intent, on_conflict="intent_id"
+        ).execute()
+
+    def update_order_intent_status(self, intent_id: str, status: str, **kwargs: Any) -> None:
+        """Update the status of an order intent."""
+        updates: dict[str, Any] = {"status": status}
+        updates.update(kwargs)
+        self.sb.table("order_intents").update(updates).eq("intent_id", intent_id).execute()
+
+    # ── Positions (Phase 2) ──
+
+    def upsert_position(self, position: dict[str, Any]) -> None:
+        """Upsert a position row (symbol, mode composite key)."""
+        self.sb.table("positions").upsert(
+            position, on_conflict="symbol,mode"
+        ).execute()
+
+    def get_position(self, symbol: str, mode: str) -> dict[str, Any] | None:
+        """Get a single position by symbol and mode."""
+        try:
+            resp = (
+                self.sb.table("positions")
+                .select("*")
+                .eq("symbol", symbol)
+                .eq("mode", mode)
+                .maybe_single()
+                .execute()
+            )
+            return resp.data if resp else None
+        except Exception:
+            return None
+
+    def list_positions(self, mode: str) -> list[dict[str, Any]]:
+        """List all positions for a mode."""
+        try:
+            resp = (
+                self.sb.table("positions")
+                .select("*")
+                .eq("mode", mode)
+                .gt("qty", 0)
+                .execute()
+            )
+            return resp.data or []
+        except Exception:
+            return []
+
+    # ── Trade locks (Phase 2) ──
+
+    def acquire_trade_lock(self, symbol: str, mode: str, locked_by: str, ttl_s: int = 30) -> bool:
+        """Try to acquire a trade lock. Returns True if lock was acquired."""
+        from datetime import timedelta
+        expires = datetime.now(timezone.utc) + timedelta(seconds=ttl_s)
+        try:
+            # Delete expired locks first
+            self.sb.table("trade_locks").delete().lt(
+                "expires_at", datetime.now(timezone.utc).isoformat()
+            ).execute()
+            # Try to insert (will fail if lock exists and not expired)
+            self.sb.table("trade_locks").insert({
+                "symbol": symbol,
+                "mode": mode,
+                "locked_by": locked_by,
+                "locked_at": datetime.now(timezone.utc).isoformat(),
+                "expires_at": expires.isoformat(),
+            }).execute()
+            return True
+        except Exception:
+            return False
+
+    def release_trade_lock(self, symbol: str, mode: str) -> None:
+        """Release a trade lock."""
+        try:
+            self.sb.table("trade_locks").delete().eq(
+                "symbol", symbol
+            ).eq("mode", mode).execute()
+        except Exception:
+            pass
+
+    # ── Fee ledger (Phase 3) ──
+
+    def insert_fee_ledger(self, entry: dict[str, Any]) -> None:
+        """Insert a fee ledger entry."""
+        self.sb.table("fee_ledger").insert(entry).execute()
+
+    def get_cumulative_fees(self, mode: str) -> float:
+        """Sum all fees in the fee ledger for a mode."""
+        try:
+            resp = (
+                self.sb.table("fee_ledger")
+                .select("fee_usd")
+                .eq("mode", mode)
+                .execute()
+            )
+            return sum(float(r.get("fee_usd", 0)) for r in (resp.data or []))
+        except Exception:
+            return 0.0

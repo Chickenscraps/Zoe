@@ -246,25 +246,55 @@ async def on_ready():
     except Exception as e:
         print(f"   ⚠️ Failed to link PaperBroker to DB: {e}")
 
-    # Initialize Crypto Trader (Robinhood)
+    # Initialize Crypto Trader (broker-agnostic: paper / robinhood / kraken)
     global crypto_trader
     try:
-        from integrations.robinhood_crypto_client import RobinhoodCryptoClient, RobinhoodCryptoConfig
         from services.crypto_trader import CryptoTraderService, SupabaseCryptoRepository
         from services.crypto_trader.config import CryptoTraderConfig
+        from services.crypto_trader.broker_factory import create_broker
         from supabase_memory import supabase_memory
 
         if supabase_memory.initialized:
-            # New Async Trader Logic
-            trader_config = CryptoTraderConfig() # Loads defaults + envs
+            trader_config = CryptoTraderConfig()
             rh_repo = SupabaseCryptoRepository(supabase_memory.client)
 
-            crypto_trader = CryptoTraderService(trader_config, rh_repo)
+            # Create broker via factory (paper/robinhood/kraken)
+            broker = await create_broker(trader_config, repo=rh_repo, market_data_provider=None)
 
-            # Start the async loop (background task — run_forever is infinite)
+            # For paper broker, wire a price-cache provider
+            if trader_config.broker_type == "paper":
+                from services.crypto_trader.broker import PaperBroker
+                class _MDP:
+                    def __init__(self): self.price_cache = None
+                    async def get_current_price(self, symbol):
+                        if self.price_cache:
+                            snap = self.price_cache.snapshot(symbol)
+                            return snap.get("mid", 0)
+                        return 0.0
+                mdp = _MDP()
+                broker = PaperBroker(mdp, rh_repo, starting_cash=trader_config.starting_equity)
+
+            # Legacy RH client for polling path
+            rh_client = None
+            if trader_config.broker_type == "robinhood":
+                from integrations.robinhood_crypto_client import RobinhoodCryptoClient, RobinhoodCryptoConfig
+                rh_config = RobinhoodCryptoConfig.from_env()
+                rh_client = RobinhoodCryptoClient(rh_config)
+
+            crypto_trader = CryptoTraderService(
+                broker=broker,
+                repository=rh_repo,
+                config=trader_config,
+                rh_client=rh_client,
+            )
+
+            # Wire PaperBroker's market data provider to price cache
+            if trader_config.broker_type == "paper" and hasattr(broker, "mdp") and hasattr(broker.mdp, "price_cache"):
+                broker.mdp.price_cache = crypto_trader.price_cache
+
             asyncio.create_task(crypto_trader.run_forever())
 
-            print("   🪙 Crypto Trader active (Async + Supabase)")
+            print(f"   🪙 Crypto Trader active (broker={trader_config.broker_type}, data={trader_config.market_data_source})")
         else:
             print("   ⚠️ Crypto Trader skipped: Supabase not ready")
     except Exception as e:
