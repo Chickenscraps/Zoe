@@ -261,7 +261,7 @@ export default function Scanner() {
           </div>
         </div>
         <div className="flex flex-col items-end gap-3">
-          <div className="bg-paper-100/80 px-4 py-2 border-2 border-earth-700/10 rounded-[4px] font-pixel text-[0.35rem] text-earth-700 uppercase tracking-[0.2em]">
+          <div className="bg-paper-100/80 px-4 py-2 border-2 border-earth-700/10 font-pixel text-[0.35rem] text-earth-700 uppercase tracking-[0.2em]">
             {candidates[0]?.created_at ? `Last scan: ${new Date(candidates[0].created_at).toLocaleTimeString()}` : 'Waiting...'}
           </div>
         </div>
@@ -275,7 +275,7 @@ export default function Scanner() {
           <select
             value={sortMode}
             onChange={e => setSortMode(e.target.value as SortMode)}
-            className="bg-cream-100 border-2 border-earth-700/10 rounded-[4px] px-3 py-2 text-[11px] font-bold text-earth-700 focus:outline-none focus:border-sakura-500/40 cursor-pointer appearance-none min-h-[40px]"
+            className="bg-cream-100 border-2 border-earth-700/10 px-3 py-2 text-[11px] font-bold text-earth-700 focus:outline-none focus:border-sakura-500/40 cursor-pointer appearance-none min-h-[40px]"
           >
             {SORT_OPTIONS.map(opt => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -290,7 +290,7 @@ export default function Scanner() {
               key={opt.value}
               onClick={() => setFilterMode(opt.value)}
               className={cn(
-                'text-[10px] font-bold uppercase tracking-wider px-3 py-2 rounded-[4px] border transition-all duration-150 min-h-[40px]',
+                'text-[10px] font-bold uppercase tracking-wider px-3 py-2 border transition-all duration-150 min-h-[40px]',
                 filterMode === opt.value
                   ? 'bg-sakura-500/15 text-earth-700 border-sakura-500/30'
                   : 'bg-transparent text-text-muted border-earth-700/10 hover:text-earth-700 hover:border-earth-700/20'
@@ -313,7 +313,7 @@ export default function Scanner() {
             onToggleExpand={() => toggleExpand(candidate.symbol)}
           />
         )) : (
-          <div className="col-span-full text-center py-20 text-text-muted italic border border-dashed border-earth-700/15 rounded-[4px] bg-paper-100/50">
+          <div className="col-span-full text-center py-20 text-text-muted italic border border-dashed border-earth-700/15 bg-paper-100/50">
             <Activity className="w-8 h-8 text-earth-700/20 mx-auto mb-4 opacity-50" />
             {filterMode !== 'all'
               ? 'No symbols match the current filter.'
@@ -345,7 +345,7 @@ function ScannerCard({ candidate, heat, expanded, onToggleExpand }: ScannerCardP
     <div
       data-symbol={candidate.symbol}
       className={cn(
-        'relative overflow-hidden rounded-[4px] p-4 sm:p-7 group',
+        'relative overflow-hidden p-4 sm:p-7 group',
         'bg-paper-100/80 transition-all duration-250',
         heat.tier === 'GOLD' && 'scanner-card-gold',
         heat.tier === 'BLOCKED' && 'scanner-card-blocked',

@@ -101,7 +101,7 @@ export function OpenOrdersTable({ hideHeader, className }: OpenOrdersTableProps)
         const side = info.getValue() as string;
         return (
           <span className={cn(
-            'font-bold uppercase text-[10px] tracking-wider px-1.5 py-0.5 rounded-[4px]',
+            'font-bold uppercase text-[10px] tracking-wider px-1.5 py-0.5',
             side === 'buy' ? 'text-profit bg-profit/10' : 'text-loss bg-loss/10'
           )}>
             {side}
@@ -199,7 +199,7 @@ export function OpenOrdersTable({ hideHeader, className }: OpenOrdersTableProps)
           emptyMessage="No orders"
         />
       ) : (
-        <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-8 text-center">
+        <div className="bg-paper-100/80 border-2 border-earth-700/10 p-8 text-center">
           <p className="text-text-dim text-xs">No orders yet</p>
           <p className="text-text-dim/60 text-[9px] mt-1">Orders will appear when the bot submits trades</p>
         </div>

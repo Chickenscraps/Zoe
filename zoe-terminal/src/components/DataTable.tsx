@@ -33,7 +33,7 @@ export function DataTable<TData>({ columns, data, onRowClick, className, emptyMe
   });
 
   return (
-    <div className={cn("bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] overflow-hidden", className)}>
+    <div className={cn("bg-paper-100/80 border-2 border-earth-700/10 overflow-hidden", className)}>
       <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-border-strong scrollbar-track-transparent">
         <table className="w-full text-sm text-left min-w-[480px] border-collapse">
           <thead className="bg-cream-100/60 text-text-muted uppercase font-pixel text-[0.35rem] tracking-[0.08em] border-b border-earth-700/10 sticky top-0 z-10">

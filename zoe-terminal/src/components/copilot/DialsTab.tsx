@@ -177,14 +177,14 @@ export default function DialsTab() {
     <div className="flex flex-col h-full">
       <div className="p-3 space-y-4 overflow-y-auto flex-1 min-h-0">
         {isGuest && (
-          <div className="flex items-center gap-2 px-3 py-2 bg-amber-800/10 border border-amber-800/15 rounded-[4px] text-[10px] font-bold text-amber-500/70 uppercase tracking-wider">
+          <div className="flex items-center gap-2 px-3 py-2 bg-amber-800/10 border border-amber-800/15 text-[10px] font-bold text-amber-500/70 uppercase tracking-wider">
             <Lock className="w-3 h-3" /> View Only — Guest Access
           </div>
         )}
 
         {/* Active Preset / Regime Banner */}
         <div className={cn(
-          "px-3 py-2 rounded-[4px] border",
+          "px-3 py-2 border",
           displayPreset?.color ?? 'text-text-muted bg-surface-base border-border',
         )}>
           <div className="flex items-center justify-between">
@@ -206,7 +206,7 @@ export default function DialsTab() {
         </div>
 
         {/* Auto-Adjust Toggle */}
-        <div className="bg-surface-base border border-border rounded-[4px] p-3">
+        <div className="bg-surface-base border border-border p-3">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
               <Wand2 className="w-3.5 h-3.5 text-purple-400" />
@@ -250,7 +250,7 @@ export default function DialsTab() {
                   onClick={() => !isGuest && applyPreset(preset)}
                   disabled={!!applyingPreset || isGuest}
                   className={cn(
-                    "w-full text-left px-3 py-2.5 rounded-[4px] border transition-all",
+                    "w-full text-left px-3 py-2.5 border transition-all",
                     "hover:scale-[0.99] active:scale-[0.98]",
                     preset.color,
                     isApplying && "ring-1 ring-white/20",
@@ -285,7 +285,7 @@ export default function DialsTab() {
             const currentValue = values[dial.key];
 
             return (
-              <div key={dial.key} className="bg-surface-base border border-border rounded-[4px] p-3 mb-2">
+              <div key={dial.key} className="bg-surface-base border border-border p-3 mb-2">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[11px] font-bold text-text-primary">{dial.label}</span>
                 </div>
@@ -336,12 +336,12 @@ export default function DialsTab() {
 
       {/* Sticky Apply / Discard Bar — only visible when changes exist */}
       {hasChanges && !isGuest && (
-        <div className="border-t border-border bg-surface/95 backdrop-blur-sm px-3 py-3 flex items-center gap-2 shrink-0">
+        <div className="border-t border-border bg-surface/95 px-3 py-3 flex items-center gap-2 shrink-0">
           <button
             onClick={applyChanges}
             disabled={applying}
             className={cn(
-              "flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-[4px] text-[10px] font-black uppercase tracking-widest transition-all border",
+              "flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all border",
               "bg-profit/15 text-profit border-profit/30 hover:bg-profit/25",
               applying && "opacity-60 cursor-wait",
             )}
@@ -356,7 +356,7 @@ export default function DialsTab() {
           <button
             onClick={discardChanges}
             disabled={applying}
-            className="p-2.5 rounded-[4px] text-text-muted hover:text-loss border border-border hover:border-loss/20 transition-all"
+            className="p-2.5 text-text-muted hover:text-loss border border-border hover:border-loss/20 transition-all"
             title="Discard changes"
           >
             <RotateCcw className="w-3.5 h-3.5" />

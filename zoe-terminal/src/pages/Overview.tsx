@@ -1,4 +1,4 @@
-import { Coins, DollarSign, Receipt, ShoppingCart, TrendingUp, Wallet } from "lucide-react";
+import { Coins, DollarSign, Receipt, ShoppingCart, TrendingUp } from "lucide-react";
 import { AlertBanner } from "../components/AlertBanner";
 import { EquityChart } from "../components/EquityChart";
 import FocusPanel from "../components/FocusPanel";
@@ -23,12 +23,11 @@ export default function Overview() {
     unrealizedPnl,
     totalFees,
     btcPrice,
-    noHistoryYet,
     loading,
   } = useDashboardData();
 
   // Cash from latest snapshot
-  const cashValue = cryptoCash?.buying_power ?? 0;
+  const cashValue = cryptoCash?.cash_available ?? cryptoCash?.buying_power ?? 0;
 
   // Compute crypto value: sum holdings * live prices
   const cryptoValue = useMemo(() => {
@@ -43,7 +42,7 @@ export default function Overview() {
     return total;
   }, [holdingsRows, livePrices]);
 
-  // Money allocated to pending buy orders (reserved by broker, not in buying_power)
+  // Money allocated to pending buy orders (reserved by broker, not in cash balance)
   const pendingBuyNotional = useMemo(() => {
     if (!cryptoOrders?.length) return 0;
     return cryptoOrders
@@ -119,7 +118,7 @@ export default function Overview() {
           subValue="Available Balance"
           trend={totalValue > 0 ? ((cashValue / totalValue) * 100).toFixed(1) + "% of total" : "—"}
           trendDir="neutral"
-          icon={Wallet}
+          icon={Coins}
           className="card-stagger"
           style={{ '--stagger-delay': '120ms' } as React.CSSProperties}
         />
@@ -191,7 +190,7 @@ export default function Overview() {
 
       {/* Legacy Live Crypto Prices (from candidate_scans polling) */}
       {livePrices.length > 0 && (
-        <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-6">
+        <div className="bg-paper-100/80 border-2 border-earth-700/10 p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h3 className="font-pixel text-[0.4rem] uppercase tracking-[0.08em] text-text-muted flex items-center gap-2">
               <TrendingUp className="w-3 h-3 text-sakura-700" /> Live Prices
@@ -209,7 +208,7 @@ export default function Overview() {
               return (
                 <div
                   key={scan.symbol}
-                  className="flex flex-col items-center p-2.5 sm:p-3 bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] hover:border-sakura-500/30 transition-all duration-200 card-stagger"
+                  className="flex flex-col items-center p-2.5 sm:p-3 bg-cream-100/60 border-2 border-earth-700/10 hover:border-sakura-500/30 transition-all duration-200 card-stagger"
                   style={{ '--stagger-delay': `${i * 50}ms` } as React.CSSProperties}
                 >
                   <span className="text-[9px] sm:text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">

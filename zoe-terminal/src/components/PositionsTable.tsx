@@ -166,7 +166,7 @@ export function PositionsTable({ hideHeader, className }: PositionsTableProps) {
           emptyMessage="No open positions"
         />
       ) : (
-        <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-8 text-center">
+        <div className="bg-paper-100/80 border-2 border-earth-700/10 p-8 text-center">
           <p className="text-text-dim text-xs">No open positions</p>
           <p className="text-text-dim/60 text-[9px] mt-1">Positions will appear when the bot executes trades</p>
         </div>

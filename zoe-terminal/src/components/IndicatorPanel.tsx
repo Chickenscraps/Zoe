@@ -78,7 +78,7 @@ export default function IndicatorPanel({
   const hasAnyData = macd || bollinger || consensus || regime || goldenDeathCross || (divergences && divergences.length > 0);
 
   return (
-    <div className="bg-surface border border-border rounded-[4px] overflow-hidden">
+    <div className="bg-surface border border-border overflow-hidden">
       <div className="px-6 py-4 border-b border-border bg-surface-highlight/20 flex items-center gap-2">
         <Activity className="w-4 h-4 text-text-muted" />
         <h3 className="font-pixel text-[0.45rem] uppercase tracking-[0.08em] text-earth-700">Advanced Indicators</h3>
