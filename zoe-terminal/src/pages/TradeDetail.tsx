@@ -76,10 +76,10 @@ export default function TradeDetail() {
   if (!trade) {
     return (
       <div className="space-y-6 max-w-5xl mx-auto">
-        <button onClick={() => navigate(-1)} className="flex items-center text-sm text-text-secondary hover:text-white transition-colors">
+        <button onClick={() => navigate(-1)} className="flex items-center text-sm text-text-secondary hover:text-text-primary transition-colors">
           <ArrowLeft className="w-4 h-4 mr-1" /> Back to Trades
         </button>
-        <div className="card-premium p-12 text-center text-text-muted">Trade not found.</div>
+        <div className="bg-surface-base border-2 border-earth-700/20 rounded-[4px] shadow-soft p-12 text-center text-text-muted">Trade not found.</div>
       </div>
     );
   }
@@ -90,17 +90,17 @@ export default function TradeDetail() {
     <div className="space-y-6 max-w-5xl mx-auto">
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center text-sm text-text-secondary hover:text-white transition-colors"
+        className="flex items-center text-sm text-text-secondary hover:text-text-primary transition-colors"
       >
         <ArrowLeft className="w-4 h-4 mr-1" /> Back to Trades
       </button>
 
       {/* Header */}
-      <div className="bg-surface border border-border rounded-lg p-6">
+      <div className="bg-surface border border-border rounded-[4px] p-6">
         <div className="flex justify-between items-start min-w-0">
             <div>
                 <div className="flex items-center gap-3 mb-2">
-                    <h1 className="text-3xl font-semibold text-white">{trade.symbol}</h1>
+                    <h1 className="text-3xl font-semibold text-text-primary">{trade.symbol}</h1>
                     <StatusChip status={trade.outcome === 'win' ? 'ok' : trade.outcome === 'loss' ? 'error' : 'neutral'} label={trade.outcome.toUpperCase()} />
                 </div>
                 <div className="flex gap-4 text-sm text-text-secondary">
@@ -120,7 +120,7 @@ export default function TradeDetail() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-2 space-y-6">
               {trade.legs.length > 0 && (
-              <div className="bg-surface border border-border rounded-lg overflow-hidden">
+              <div className="bg-surface border border-border rounded-[4px] overflow-hidden">
                   <div className="px-4 py-3 border-b border-border bg-surface-highlight/50">
                       <h3 className="font-medium text-sm">Legs</h3>
                   </div>
@@ -150,7 +150,7 @@ export default function TradeDetail() {
               )}
 
               {trade.rationale && (
-              <div className="bg-surface border border-border rounded-lg p-6">
+              <div className="bg-surface border border-border rounded-[4px] p-6">
                   <h3 className="font-medium text-sm text-text-secondary mb-3 flex items-center gap-2">
                       <FileText className="w-4 h-4" /> Rationale
                   </h3>
@@ -159,7 +159,7 @@ export default function TradeDetail() {
               )}
 
                {trade.timeline.length > 0 && (
-               <div className="bg-surface border border-border rounded-lg p-6">
+               <div className="bg-surface border border-border rounded-[4px] p-6">
                   <h3 className="font-medium text-sm text-text-secondary mb-4 flex items-center gap-2">
                       <Clock className="w-4 h-4" /> Timeline
                   </h3>
@@ -171,7 +171,7 @@ export default function TradeDetail() {
                               </div>
                               <div className="flex-1 pb-4 border-l border-border pl-4 relative">
                                   <div className="absolute w-2 h-2 bg-text-secondary rounded-full -left-[5px] top-1.5" />
-                                  <p className="text-sm font-medium text-white">{event.event}</p>
+                                  <p className="text-sm font-medium text-text-primary">{event.event}</p>
                                   <p className="text-sm text-text-muted">{event.details}</p>
                               </div>
                           </div>
@@ -183,19 +183,19 @@ export default function TradeDetail() {
 
           <div className="space-y-6">
               {Object.keys(snap).length > 0 && (
-              <div className="bg-surface border border-border rounded-lg p-4">
+              <div className="bg-surface border border-border rounded-[4px] p-4">
                   <h3 className="font-medium text-sm text-text-secondary mb-4 flex items-center gap-2">
                       <Target className="w-4 h-4" /> Entry Snapshot
                   </h3>
                   <div className="space-y-3">
-                      {snap.ivr != null && <div className="flex justify-between text-sm"><span className="text-text-muted">IVR</span><span className="text-white font-mono">{snap.ivr}</span></div>}
-                      {snap.rsi != null && <div className="flex justify-between text-sm"><span className="text-text-muted">RSI</span><span className="text-white font-mono">{snap.rsi}</span></div>}
-                      {snap.delta != null && <div className="flex justify-between text-sm"><span className="text-text-muted">Delta</span><span className="text-white font-mono">{snap.delta}</span></div>}
-                      {snap.dte != null && <div className="flex justify-between text-sm"><span className="text-text-muted">DTE</span><span className="text-white font-mono">{snap.dte}</span></div>}
+                      {snap.ivr != null && <div className="flex justify-between text-sm"><span className="text-text-muted">IVR</span><span className="text-text-primary font-mono">{snap.ivr}</span></div>}
+                      {snap.rsi != null && <div className="flex justify-between text-sm"><span className="text-text-muted">RSI</span><span className="text-text-primary font-mono">{snap.rsi}</span></div>}
+                      {snap.delta != null && <div className="flex justify-between text-sm"><span className="text-text-muted">Delta</span><span className="text-text-primary font-mono">{snap.delta}</span></div>}
+                      {snap.dte != null && <div className="flex justify-between text-sm"><span className="text-text-muted">DTE</span><span className="text-text-primary font-mono">{snap.dte}</span></div>}
                       {(snap.max_risk != null || snap.max_profit != null) && (
                       <div className="pt-2 border-t border-border mt-2">
-                           {snap.max_risk != null && <div className="flex justify-between text-sm"><span className="text-text-muted">Max Risk</span><span className="text-white font-mono">{formatCurrency(snap.max_risk)}</span></div>}
-                           {snap.max_profit != null && <div className="flex justify-between text-sm"><span className="text-text-muted">Max Profit</span><span className="text-white font-mono">{formatCurrency(snap.max_profit)}</span></div>}
+                           {snap.max_risk != null && <div className="flex justify-between text-sm"><span className="text-text-muted">Max Risk</span><span className="text-text-primary font-mono">{formatCurrency(snap.max_risk)}</span></div>}
+                           {snap.max_profit != null && <div className="flex justify-between text-sm"><span className="text-text-muted">Max Profit</span><span className="text-text-primary font-mono">{formatCurrency(snap.max_profit)}</span></div>}
                       </div>
                       )}
                   </div>
@@ -203,7 +203,7 @@ export default function TradeDetail() {
               )}
 
               {trade.artifacts.length > 0 && (
-              <div className="bg-surface border border-border rounded-lg p-4">
+              <div className="bg-surface border border-border rounded-[4px] p-4">
                   <h3 className="font-medium text-sm text-text-secondary mb-4">Evidence</h3>
                   <div className="space-y-2">
                       {trade.artifacts.map((art: any, i: number) => (

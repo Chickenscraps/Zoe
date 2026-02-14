@@ -10,8 +10,8 @@ const statusChipVariants = cva(
         ok: "bg-profit/10 text-profit border-profit/20",
         warning: "bg-warning/10 text-warning border-warning/20",
         error: "bg-loss/10 text-loss border-loss/20",
-        down: "bg-white/5 text-text-muted border-white/10",
-        neutral: "bg-surface-highlight/50 text-white border-border",
+        down: "bg-earth-700/5 text-text-muted border-earth-700/10",
+        neutral: "bg-surface-highlight/50 text-cream-100 border-border",
       },
     },
     defaultVariants: {

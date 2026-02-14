@@ -13,6 +13,7 @@ import Scanner from './pages/Scanner';
 import Charts from './pages/Charts';
 import Intelligence from './pages/Intelligence';
 import Settings from './pages/Settings';
+import NotFound from './pages/NotFound';
 
 import ShareTrade from './pages/share/ShareTrade';
 import SharePnL from './pages/share/SharePnL';
@@ -45,6 +46,7 @@ function AppContent() {
         <Route path="/charts" element={<Charts />} />
         <Route path="/intelligence" element={<Intelligence />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </AppShell>
   );

@@ -10,7 +10,7 @@ interface FilterBarProps {
 }
 
 const SOURCE_OPTIONS: { value: 'all' | FeedItem['source']; label: string; color: string }[] = [
-  { value: 'all', label: 'Show All', color: 'text-white' },
+  { value: 'all', label: 'Show All', color: 'text-text-primary' },
   { value: 'trade', label: 'Trades', color: SOURCE_CONFIG.trade.color },
   { value: 'system', label: 'System', color: SOURCE_CONFIG.system.color },
   { value: 'thought', label: 'Thoughts', color: SOURCE_CONFIG.thought.color },
@@ -50,8 +50,8 @@ export default function FilterBar({ filter, updateFilter }: FilterBarProps) {
           value={currentSourceValue}
           onChange={e => handleSourceChange(e.target.value)}
           className={cn(
-            "w-full appearance-none bg-surface-base border border-border rounded-lg px-3 py-1.5 pr-7",
-            "text-[10px] font-black uppercase tracking-widest text-white",
+            "w-full appearance-none bg-surface-base border border-border rounded-[4px] px-3 py-1.5 pr-7",
+            "text-[10px] font-black uppercase tracking-widest text-text-primary",
             "focus:outline-none focus:border-border-strong cursor-pointer",
           )}
         >
@@ -68,8 +68,8 @@ export default function FilterBar({ filter, updateFilter }: FilterBarProps) {
           value={filter.severity}
           onChange={e => updateFilter({ severity: e.target.value as FeedFilter['severity'] })}
           className={cn(
-            "appearance-none bg-surface-base border border-border rounded-lg px-3 py-1.5 pr-7",
-            "text-[10px] font-black uppercase tracking-widest text-white",
+            "appearance-none bg-surface-base border border-border rounded-[4px] px-3 py-1.5 pr-7",
+            "text-[10px] font-black uppercase tracking-widest text-text-primary",
             "focus:outline-none focus:border-border-strong cursor-pointer",
           )}
         >
@@ -86,7 +86,7 @@ export default function FilterBar({ filter, updateFilter }: FilterBarProps) {
         placeholder="Symbol..."
         value={filter.symbol}
         onChange={e => updateFilter({ symbol: e.target.value.toUpperCase() })}
-        className="w-20 bg-surface-base border border-border rounded-lg px-2 py-1.5 text-[10px] font-bold text-white placeholder:text-text-dim focus:outline-none focus:border-border-strong"
+        className="w-20 bg-surface-base border border-border rounded-[4px] px-2 py-1.5 text-[10px] font-bold text-text-primary placeholder:text-text-dim focus:outline-none focus:border-border-strong"
       />
     </div>
   );

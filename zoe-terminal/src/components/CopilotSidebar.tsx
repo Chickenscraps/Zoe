@@ -32,12 +32,12 @@ export default function CopilotSidebar() {
 
       {/* Sidebar panel — fixed at root level, always above content */}
       <aside className={cn(
-        "fixed right-0 top-0 bottom-0 z-[70] w-80 bg-surface border-l border-border flex flex-col shadow-soft transition-transform duration-200 ease-in-out",
+        "fixed right-0 top-0 bottom-0 z-[70] w-80 bg-paper-100 border-l border-border flex flex-col shadow-soft transition-transform duration-200 ease-in-out",
         isOpen ? "translate-x-0" : "translate-x-full",
       )}>
         {/* Header */}
         <div className="h-14 flex items-center justify-between px-4 border-b border-border">
-          <h2 className="text-sm font-bold tracking-tighter text-text-primary">
+          <h2 className="font-pixel text-[0.5rem] uppercase tracking-[0.08em] text-text-primary">
             ZOE<span className="text-text-muted">_</span>COPILOT
           </h2>
           <button

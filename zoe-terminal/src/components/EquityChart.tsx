@@ -81,7 +81,7 @@ export function EquityChart({ data, dailyPnl, allTimePnl, allTimePnlPct, height 
   const displayPct = view === 'today' ? 0 : allTimePnlPct;
 
   return (
-    <div className={cn("card-premium card-shimmer-sweep p-4 sm:p-6", className)}>
+    <div className={cn("bg-surface-base border-2 border-earth-700/20 rounded-[4px] shadow-soft card-shimmer-sweep p-4 sm:p-6", className)}>
       {/* Header with toggle */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 sm:mb-6">
         <div>
@@ -131,7 +131,7 @@ export function EquityChart({ data, dailyPnl, allTimePnl, allTimePnlPct, height 
 
       {!hasData ? (
         <div
-          className="flex items-center justify-center border border-dashed border-border rounded-lg"
+          className="flex items-center justify-center border border-dashed border-border rounded-[4px]"
           style={{ height }}
         >
           <div className="text-center">
