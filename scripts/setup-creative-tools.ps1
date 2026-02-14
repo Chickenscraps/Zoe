@@ -122,7 +122,6 @@ Write-Host "  Opening download pages for PS plugins ...`n"
 $psPlugins = @(
     @{ Name = 'Auto-Photoshop-SD Plugin (Stable Diffusion in PS)'; Url = 'https://github.com/AbdullahAlfaraj/Auto-Photoshop-StableDiffusion-Plugin' }
     @{ Name = 'ComfyUI-Photoshop bridge';      Url = 'https://github.com/NimaNzrii/comfyui-photoshop' }
-    @{ Name = 'adb-mcp (AI agent control for Adobe apps)'; Url = 'https://github.com/mikechambers/adb-mcp' }
     @{ Name = 'ZXP/UXP Installer (plugin installer)'; Url = 'https://aescripts.com/learn/post/zxp-installer/' }
     @{ Name = 'Pexels stock photos plugin';    Url = 'https://exchange.adobe.com/' }
     @{ Name = 'Alpaca AI (search Adobe Exchange)'; Url = 'https://exchange.adobe.com/' }
@@ -159,6 +158,100 @@ Write-Host "    * Wan 2.2 1.3B (video generation, only needs ~8GB VRAM)" -Foregr
 Write-Host ""
 
 # ============================================================
+# 8. adb-mcp — AI agent control for Photoshop, After Effects,
+#    Illustrator, Premiere, and InDesign
+# ============================================================
+Write-Host "`n--- Setting up adb-mcp (AI agent <-> Adobe apps bridge) ---" -ForegroundColor Yellow
+
+$adbMcpDir = Join-Path $env:USERPROFILE 'adb-mcp'
+
+# Install uv (Python package runner) if missing
+if (-not (Get-Command 'uv' -ErrorAction SilentlyContinue)) {
+    Write-Host "  Installing uv (Python package runner) ..."
+    winget install -e --id astral-sh.uv --source winget --accept-package-agreements --accept-source-agreements
+    # Refresh PATH so uv is available in this session
+    $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' +
+                [System.Environment]::GetEnvironmentVariable('Path', 'User')
+}
+
+# Clone the repo
+if (Test-Path (Join-Path $adbMcpDir '.git')) {
+    Write-Host "  adb-mcp already cloned at $adbMcpDir — pulling latest ..." -ForegroundColor DarkGray
+    git -C $adbMcpDir pull --rebase origin main 2>$null
+} else {
+    Write-Host "  Cloning adb-mcp ..."
+    git clone https://github.com/mikechambers/adb-mcp $adbMcpDir
+}
+
+if (Test-Path $adbMcpDir) {
+    # Install MCP servers for Photoshop and After Effects
+    Push-Location $adbMcpDir
+
+    $mcpDeps = '--with', 'fonttools', '--with', 'python-socketio', '--with', 'mcp',
+               '--with', 'requests', '--with', 'websocket-client'
+
+    Write-Host "  Installing Photoshop MCP server ..."
+    & uv run mcp install @mcpDeps --with numpy ps-mcp.py 2>$null
+
+    Write-Host "  Installing After Effects MCP server ..."
+    & uv run mcp install @mcpDeps --with numpy ae-mcp.py 2>$null
+
+    Write-Host "  Installing Illustrator MCP server ..."
+    & uv run mcp install @mcpDeps --with numpy ai-mcp.py 2>$null
+
+    # Install proxy server dependencies
+    $proxyDir = Join-Path $adbMcpDir 'adb-proxy-socket'
+    if (Test-Path $proxyDir) {
+        Write-Host "  Installing proxy server dependencies ..."
+        Push-Location $proxyDir
+        npm install --silent 2>$null
+        Pop-Location
+    }
+
+    Pop-Location
+
+    # Set up CEP extension junctions for After Effects + Illustrator
+    $cepBase = Join-Path $env:APPDATA 'Adobe\CEP\extensions'
+    if (-not (Test-Path $cepBase)) {
+        New-Item -ItemType Directory -Path $cepBase -Force | Out-Null
+    }
+
+    $cepPlugins = @(
+        @{ Name = 'com.mikechambers.ae'; Desc = 'After Effects' }
+        @{ Name = 'com.mikechambers.ai'; Desc = 'Illustrator' }
+    )
+
+    foreach ($cep in $cepPlugins) {
+        $src  = Join-Path $adbMcpDir "cep\$($cep.Name)"
+        $dest = Join-Path $cepBase $cep.Name
+        if ((Test-Path $src) -and -not (Test-Path $dest)) {
+            Write-Host "  Creating CEP junction for $($cep.Desc) ..."
+            cmd /c mklink /D "`"$dest`"" "`"$src`"" 2>$null | Out-Null
+        } elseif (Test-Path $dest) {
+            Write-Host "  CEP junction for $($cep.Desc) already exists." -ForegroundColor DarkGray
+        }
+    }
+
+    Write-Host ""
+    Write-Host "  adb-mcp installed at: $adbMcpDir" -ForegroundColor White
+    Write-Host ""
+    Write-Host "  To use adb-mcp:" -ForegroundColor White
+    Write-Host "    1. Start the proxy:  node $proxyDir\proxy.js" -ForegroundColor White
+    Write-Host "    2. Open Adobe UXP Developer Tool (install from Creative Cloud)" -ForegroundColor White
+    Write-Host "    3. File > Add Plugin > select the manifest.json for your app:" -ForegroundColor White
+    Write-Host "         Photoshop:  $adbMcpDir\uxp\ps\manifest.json" -ForegroundColor White
+    Write-Host "         Premiere:   $adbMcpDir\uxp\pr\manifest.json" -ForegroundColor White
+    Write-Host "         InDesign:   $adbMcpDir\uxp\id\manifest.json" -ForegroundColor White
+    Write-Host "    4. Click Load, then open the plugin panel in the Adobe app and hit Connect" -ForegroundColor White
+    Write-Host "    5. AE + Illustrator use CEP (junctions already created above)" -ForegroundColor White
+    Write-Host "       Enable: Edit > Preferences > Scripting > Allow Scripts to Write Files" -ForegroundColor White
+    Write-Host ""
+} else {
+    Write-Host "  Failed to clone adb-mcp — install manually from:" -ForegroundColor Red
+    Write-Host "    https://github.com/mikechambers/adb-mcp" -ForegroundColor Red
+}
+
+# ============================================================
 # Summary
 # ============================================================
 Write-Host "=== Creative Tools Setup Complete ===" -ForegroundColor Green
@@ -176,7 +269,5 @@ Write-Host "  2. Download AE/PS plugins from the pages that opened" -ForegroundC
 Write-Host "  3. Install ZXP/UXP Installer first, then use it to install .zxp/.ccx plugins" -ForegroundColor White
 Write-Host "  4. Launch ComfyUI and install recommended custom nodes via Manager" -ForegroundColor White
 Write-Host "  5. Download DaVinci Resolve from the page that opened" -ForegroundColor White
-Write-Host "  6. Set up adb-mcp for AI agent control of Photoshop/AE:" -ForegroundColor White
-Write-Host "       git clone https://github.com/mikechambers/adb-mcp" -ForegroundColor White
-Write-Host "       Follow README for Python + Node.js + UXP plugin setup" -ForegroundColor White
+Write-Host "  6. Start the adb-mcp proxy and load UXP plugins (see instructions above)" -ForegroundColor White
 Write-Host ""
