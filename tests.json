@@ -1,0 +1,121 @@
+{
+  "version": "1.0",
+  "description": "Test commands and expected outputs for Kraken migration phases",
+  "tests": {
+    "phase_0": {
+      "description": "Baseline — repo builds and lints",
+      "commands": [
+        {
+          "name": "typecheck_dashboard",
+          "command": "cd zoe-terminal && npx tsc --noEmit",
+          "expected": "No errors",
+          "last_run": null,
+          "status": "not_run"
+        }
+      ]
+    },
+    "phase_1": {
+      "description": "Kraken credentials wiring + connectivity smoke tests",
+      "commands": [
+        {
+          "name": "kraken_system_status",
+          "command": "python -m integrations.kraken_client.test_connectivity system_status",
+          "expected": "Kraken system status: online",
+          "last_run": null,
+          "status": "not_run"
+        },
+        {
+          "name": "kraken_tradable_pairs",
+          "command": "python -m integrations.kraken_client.test_connectivity tradable_pairs",
+          "expected": "Found N tradable pairs",
+          "last_run": null,
+          "status": "not_run"
+        },
+        {
+          "name": "kraken_balance",
+          "command": "python -m integrations.kraken_client.test_connectivity balance",
+          "expected": "Balance retrieved successfully (N assets)",
+          "last_run": null,
+          "status": "not_run"
+        },
+        {
+          "name": "kraken_open_orders",
+          "command": "python -m integrations.kraken_client.test_connectivity open_orders",
+          "expected": "Open orders retrieved (N orders)",
+          "last_run": null,
+          "status": "not_run"
+        },
+        {
+          "name": "kraken_ws_public",
+          "command": "python -m integrations.kraken_client.test_connectivity ws_public",
+          "expected": "WS public ticker received for BTC/USD",
+          "last_run": null,
+          "status": "not_run"
+        },
+        {
+          "name": "kraken_ws_private",
+          "command": "python -m integrations.kraken_client.test_connectivity ws_private",
+          "expected": "WS private auth token obtained, subscribed to executions",
+          "last_run": null,
+          "status": "not_run"
+        }
+      ]
+    },
+    "phase_2": {
+      "description": "Market catalog + adaptive market watch",
+      "commands": []
+    },
+    "phase_3": {
+      "description": "Accounting overhaul",
+      "commands": []
+    },
+    "phase_4": {
+      "description": "Order lifecycle + repositioning",
+      "commands": []
+    },
+    "phase_5": {
+      "description": "Performance + reliability hardening",
+      "commands": []
+    },
+    "phase_6": {
+      "description": "Tests + gating",
+      "commands": [
+        {
+          "name": "all_unit_tests",
+          "command": "python -m pytest tests/test_fifo_matcher.py tests/test_order_intent.py tests/test_coalescer.py tests/test_symbol_normalization.py -v",
+          "expected": "66 passed",
+          "last_run": "2026-02-13",
+          "status": "pass"
+        },
+        {
+          "name": "fifo_matcher_tests",
+          "command": "python -m pytest tests/test_fifo_matcher.py -v",
+          "expected": "12 passed — FIFO cost-basis matching",
+          "last_run": "2026-02-13",
+          "status": "pass"
+        },
+        {
+          "name": "order_intent_tests",
+          "command": "python -m pytest tests/test_order_intent.py -v",
+          "expected": "9 passed — order lifecycle state machine",
+          "last_run": "2026-02-13",
+          "status": "pass"
+        },
+        {
+          "name": "coalescer_tests",
+          "command": "python -m pytest tests/test_coalescer.py -v",
+          "expected": "8 passed — market data coalescer",
+          "last_run": "2026-02-13",
+          "status": "pass"
+        },
+        {
+          "name": "symbol_normalization_tests",
+          "command": "python -m pytest tests/test_symbol_normalization.py -v",
+          "expected": "37 passed — Kraken symbol normalization + round-trip",
+          "last_run": "2026-02-13",
+          "status": "pass"
+        }
+      ]
+    }
+  }
+}

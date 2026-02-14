@@ -78,9 +78,12 @@ memory/
 .agent/*.json
 !.agent/workflows/
 .env
-.env.secrets
+.env.*
 credentials.json
 token.json
+kraken.txt
+*.key
+*.pem
 *.db
 *.log
 logs/

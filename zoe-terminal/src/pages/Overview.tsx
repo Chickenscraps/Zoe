@@ -1,5 +1,7 @@
-import { Coins, DollarSign, TrendingUp, Wallet } from "lucide-react";
+import { Coins, DollarSign, Receipt, ShoppingCart, TrendingUp, Wallet } from "lucide-react";
+import { AlertBanner } from "../components/AlertBanner";
 import { EquityChart } from "../components/EquityChart";
+import FocusPanel from "../components/FocusPanel";
 import { KPICard } from "../components/KPICard";
 
 import { PositionsTable } from "../components/PositionsTable";
@@ -11,10 +13,14 @@ import { useMemo } from "react";
 export default function Overview() {
   const {
     cryptoCash,
+    cryptoOrders,
     holdingsRows,
     livePrices,
     equityHistory,
     initialDeposit,
+    realizedPnl,
+    unrealizedPnl,
+    totalFees,
     loading,
   } = useDashboardData();
 
@@ -34,7 +40,15 @@ export default function Overview() {
     return total;
   }, [holdingsRows, livePrices]);
 
-  const totalValue = cashValue + cryptoValue;
+  // Money allocated to pending buy orders (reserved by broker, not in buying_power)
+  const pendingBuyNotional = useMemo(() => {
+    if (!cryptoOrders?.length) return 0;
+    return cryptoOrders
+      .filter(o => ['new', 'submitted', 'partially_filled'].includes(o.status) && o.side === 'buy')
+      .reduce((sum, o) => sum + (o.notional ?? 0), 0);
+  }, [cryptoOrders]);
+
+  const totalValue = cashValue + cryptoValue + pendingBuyNotional;
 
   // P&L calculations
   const allTimePnl = initialDeposit > 0 ? totalValue - initialDeposit : 0;
@@ -66,8 +80,11 @@ export default function Overview() {
 
   return (
     <div className="space-y-8">
+      {/* Alert Banners */}
+      <AlertBanner />
+
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
         <KPICard
           label="Crypto"
           value={formatCurrency(cryptoValue)}
@@ -79,6 +96,16 @@ export default function Overview() {
           style={{ '--stagger-delay': '0ms' } as React.CSSProperties}
         />
         <KPICard
+          label="In Orders"
+          value={formatCurrency(pendingBuyNotional)}
+          subValue={pendingBuyNotional > 0 ? "Allocated to open orders" : "No pending orders"}
+          trend={pendingBuyNotional > 0 ? "Pending fill" : "—"}
+          trendDir={pendingBuyNotional > 0 ? 'neutral' : 'neutral'}
+          icon={ShoppingCart}
+          className="card-stagger"
+          style={{ '--stagger-delay': '60ms' } as React.CSSProperties}
+        />
+        <KPICard
           label="Cash"
           value={formatCurrency(cashValue)}
           subValue="Available Balance"
@@ -86,7 +113,7 @@ export default function Overview() {
           trendDir="neutral"
           icon={Wallet}
           className="card-stagger"
-          style={{ '--stagger-delay': '80ms' } as React.CSSProperties}
+          style={{ '--stagger-delay': '120ms' } as React.CSSProperties}
         />
         <KPICard
           label="Total"
@@ -96,9 +123,45 @@ export default function Overview() {
           trendDir={allTimePnl >= 0 ? 'up' : 'down'}
           icon={DollarSign}
           className="card-stagger"
-          style={{ '--stagger-delay': '160ms' } as React.CSSProperties}
+          style={{ '--stagger-delay': '180ms' } as React.CSSProperties}
         />
       </div>
+
+      {/* P&L Breakdown */}
+      {(realizedPnl !== 0 || unrealizedPnl !== 0 || totalFees > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+          <KPICard
+            label="Realized P&L"
+            value={`${realizedPnl >= 0 ? '+' : ''}${formatCurrency(realizedPnl)}`}
+            subValue="Closed Positions (FIFO)"
+            trend={realizedPnl !== 0 ? (realizedPnl >= 0 ? "Profit" : "Loss") : "—"}
+            trendDir={realizedPnl >= 0 ? 'up' : 'down'}
+            icon={TrendingUp}
+            className="card-stagger"
+            style={{ '--stagger-delay': '0ms' } as React.CSSProperties}
+          />
+          <KPICard
+            label="Unrealized P&L"
+            value={`${unrealizedPnl >= 0 ? '+' : ''}${formatCurrency(unrealizedPnl)}`}
+            subValue="Open Positions (MTM)"
+            trend={unrealizedPnl !== 0 ? (unrealizedPnl >= 0 ? "Paper Gain" : "Paper Loss") : "—"}
+            trendDir={unrealizedPnl >= 0 ? 'up' : 'down'}
+            icon={Coins}
+            className="card-stagger"
+            style={{ '--stagger-delay': '80ms' } as React.CSSProperties}
+          />
+          <KPICard
+            label="Fees Paid"
+            value={formatCurrency(totalFees)}
+            subValue="Trading Fees"
+            trend={totalFees > 0 ? "Total Cost" : "—"}
+            trendDir="neutral"
+            icon={Receipt}
+            className="card-stagger"
+            style={{ '--stagger-delay': '160ms' } as React.CSSProperties}
+          />
+        </div>
+      )}
 
       {/* Open Positions */}
       <PositionsTable />
@@ -112,7 +175,10 @@ export default function Overview() {
         height={280}
       />
 
-      {/* Live Crypto Prices */}
+      {/* Focus Universe Live Prices (from market_data_ws service) */}
+      <FocusPanel />
+
+      {/* Legacy Live Crypto Prices (from candidate_scans polling) */}
       {livePrices.length > 0 && (
         <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
