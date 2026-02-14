@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import type { LucideIcon } from 'lucide-react';
+import cursorPill from '../../assets/sakura/menu/cursor_pill.png';
 
 interface NavItem {
   label: string;
@@ -14,8 +15,8 @@ interface SnesNavProps {
 }
 
 /**
- * Pixel-styled sidebar navigation.
- * Active item gets a sakura highlight bar and a blinking triangle cursor.
+ * Pixel-styled sidebar navigation using PixelChill menu assets.
+ * Active item uses the cursor pill PNG as a selection highlight.
  * Zero border-radius, pixel aesthetic throughout.
  */
 export default function SnesNav({ items, collapsed = false }: SnesNavProps) {
@@ -35,17 +36,28 @@ export default function SnesNav({ items, collapsed = false }: SnesNavProps) {
             key={item.path}
             to={item.path}
             className={cn(
-              'group flex items-center gap-3 px-3 py-2.5 transition-colors duration-100 relative border-2',
+              'group flex items-center gap-3 px-3 py-2.5 transition-colors duration-100 relative',
               active
-                ? 'bg-sakura-500/18 text-earth-700 border-sakura-500/30'
-                : 'text-text-secondary hover:bg-sakura-500/8 hover:text-text-primary border-transparent hover:border-earth-700/8',
+                ? 'text-earth-700'
+                : 'text-text-secondary hover:bg-sakura-500/8 hover:text-text-primary',
             )}
             style={{ borderRadius: 0 }}
           >
+            {/* Cursor pill highlight for active item */}
+            {active && (
+              <img
+                src={cursorPill}
+                alt=""
+                aria-hidden
+                className="absolute inset-0 w-full h-full object-fill pointer-events-none"
+                style={{ imageRendering: 'pixelated', opacity: 0.6 }}
+              />
+            )}
+
             {/* Blinking cursor triangle for active item */}
             {active && (
               <span
-                className="absolute left-1 text-sakura-700 font-pixel text-[0.5rem] animate-pulse"
+                className="absolute left-1 text-sakura-700 font-pixel text-[0.5rem] animate-pulse z-10"
                 aria-hidden
               >
                 &#9654;
@@ -55,7 +67,7 @@ export default function SnesNav({ items, collapsed = false }: SnesNavProps) {
             <Icon
               size={collapsed ? 20 : 16}
               className={cn(
-                'flex-shrink-0',
+                'flex-shrink-0 relative z-10',
                 active ? 'text-sakura-700' : 'text-text-muted group-hover:text-text-secondary',
                 collapsed ? 'mx-auto' : 'ml-4',
               )}
@@ -64,7 +76,7 @@ export default function SnesNav({ items, collapsed = false }: SnesNavProps) {
             {!collapsed && (
               <span
                 className={cn(
-                  'font-pixel text-[0.5rem] uppercase tracking-[0.08em]',
+                  'font-pixel text-[0.5rem] uppercase tracking-[0.08em] relative z-10',
                   active ? 'text-earth-700 font-bold' : '',
                 )}
               >
@@ -75,7 +87,7 @@ export default function SnesNav({ items, collapsed = false }: SnesNavProps) {
             {/* Active highlight bar — pixel style */}
             {active && (
               <span
-                className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-sakura-500"
+                className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-sakura-500 z-10"
                 style={{ borderRadius: 0 }}
                 aria-hidden
               />

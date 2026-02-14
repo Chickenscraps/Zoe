@@ -1,4 +1,5 @@
 import { cn } from '../../lib/utils';
+import windowKit from '../../assets/sakura/overlays/window_kit.png';
 
 interface SnesWindowProps {
   title?: string;
@@ -16,8 +17,8 @@ const VARIANT_STYLES = {
 } as const;
 
 /**
- * 9-slice style pixel window panel.
- * Uses crisp pixel borders with no border-radius and pixel shadows.
+ * 9-slice style pixel window panel using PixelChill window kit.
+ * Uses the window_kit.png as a border-image for authentic pixel framing.
  * Variants: normal, focused (sakura border), disabled (dimmed), danger (red border).
  */
 export default function SnesWindow({ title, variant = 'normal', children, className, noPad }: SnesWindowProps) {
@@ -30,6 +31,9 @@ export default function SnesWindow({ title, variant = 'normal', children, classN
       )}
       style={{
         borderRadius: 0,
+        borderImage: variant === 'normal' ? `url(${windowKit}) 12 fill / 12px / 0 stretch` : undefined,
+        borderImageRepeat: 'stretch',
+        imageRendering: 'pixelated',
         boxShadow: variant === 'focused'
           ? '3px 3px 0 rgba(239, 163, 168, 0.20)'
           : '3px 3px 0 rgba(69, 43, 39, 0.15)',
