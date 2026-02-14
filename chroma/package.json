@@ -1,0 +1,17 @@
+{
+  "name": "chroma-game",
+  "version": "1.0.0",
+  "description": "Chroma - The Color Vision Challenge. How sharp are your eyes?",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": ["color", "game", "vision", "challenge"],
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
+  }
+}
