@@ -4,10 +4,11 @@ import { EquityChart } from "../components/EquityChart";
 import FocusPanel from "../components/FocusPanel";
 import { KPICard } from "../components/KPICard";
 
+import { OpenOrdersTable } from "../components/OpenOrdersTable";
 import { PositionsTable } from "../components/PositionsTable";
 import { Skeleton } from "../components/Skeleton";
 import { useDashboardData } from "../hooks/useDashboardData";
-import { formatCurrency, cn } from "../lib/utils";
+import { formatCurrency, formatBTC, cn } from "../lib/utils";
 import { useMemo } from "react";
 
 export default function Overview() {
@@ -21,6 +22,8 @@ export default function Overview() {
     realizedPnl,
     unrealizedPnl,
     totalFees,
+    btcPrice,
+    noHistoryYet,
     loading,
   } = useDashboardData();
 
@@ -50,9 +53,13 @@ export default function Overview() {
 
   const totalValue = cashValue + cryptoValue + pendingBuyNotional;
 
-  // P&L calculations
+  // P&L calculations — guard against NaN/Infinity
   const allTimePnl = initialDeposit > 0 ? totalValue - initialDeposit : 0;
-  const allTimePnlPct = initialDeposit > 0 ? ((totalValue - initialDeposit) / initialDeposit) * 100 : 0;
+  const rawPct = initialDeposit > 0 ? ((totalValue - initialDeposit) / initialDeposit) * 100 : 0;
+  const allTimePnlPct = isFinite(rawPct) ? rawPct : 0;
+
+  // BTC equivalent of total portfolio value
+  const totalValueBtc = btcPrice > 0 ? totalValue / btcPrice : 0;
 
   // Daily P&L: today's total portfolio value vs start-of-day equity
   const dailyPnl = useMemo(() => {
@@ -60,7 +67,8 @@ export default function Overview() {
     const pastPoints = equityHistory.filter(p => p.date < today);
     if (pastPoints.length > 0) {
       const yesterdayEquity = pastPoints[pastPoints.length - 1].equity;
-      return totalValue - yesterdayEquity;
+      const result = totalValue - yesterdayEquity;
+      return isFinite(result) ? result : 0;
     }
     return allTimePnl;
   }, [equityHistory, totalValue, allTimePnl]);
@@ -118,7 +126,7 @@ export default function Overview() {
         <KPICard
           label="Total"
           value={formatCurrency(totalValue)}
-          subValue="Portfolio Value"
+          subValue={totalValueBtc > 0 ? formatBTC(totalValueBtc) : "Portfolio Value"}
           trend={allTimePnl !== 0 ? `${allTimePnl >= 0 ? '+' : ''}${formatCurrency(allTimePnl)} P&L` : "—"}
           trendDir={allTimePnl >= 0 ? 'up' : 'down'}
           icon={DollarSign}
@@ -165,6 +173,9 @@ export default function Overview() {
 
       {/* Open Positions */}
       <PositionsTable />
+
+      {/* Active Orders */}
+      <OpenOrdersTable />
 
       {/* Equity Curve with Day + Overall P&L */}
       <EquityChart
