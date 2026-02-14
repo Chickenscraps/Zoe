@@ -1,5 +1,5 @@
 // ─── Analytics & Event Logging ───
-// Logs events to Supabase for tracking engagement
+// Logs events to Supabase zoe_events table with source="chroma"
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -8,7 +8,6 @@ let sessionId: string = '';
 
 function getSessionId(): string {
   if (sessionId) return sessionId;
-  // Reuse session ID for the browser tab
   const stored = sessionStorage.getItem('chroma_session_id');
   if (stored) {
     sessionId = stored;
@@ -30,36 +29,25 @@ function getChallengeLevel(): number | null {
   return c ? parseInt(c, 10) : null;
 }
 
-interface EventPayload {
-  session_id: string;
-  event: string;
-  referrer: string;
-  challenge_level: number | null;
-  level: number | null;
-  score: number | null;
-  metadata: Record<string, unknown> | null;
-  created_at: string;
-}
-
 async function logEvent(
   event: string,
   data?: { level?: number; score?: number; metadata?: Record<string, unknown> }
 ): Promise<void> {
   if (!SUPABASE_URL || !SUPABASE_KEY) return;
 
-  const payload: EventPayload = {
+  const metadata = {
     session_id: getSessionId(),
-    event,
     referrer: getReferrer(),
     challenge_level: getChallengeLevel(),
     level: data?.level ?? null,
     score: data?.score ?? null,
-    metadata: data?.metadata ?? null,
-    created_at: new Date().toISOString(),
+    user_agent: navigator.userAgent,
+    screen: `${screen.width}x${screen.height}`,
+    ...data?.metadata,
   };
 
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/chroma_events`, {
+    await fetch(`${SUPABASE_URL}/rest/v1/zoe_events`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -67,7 +55,16 @@ async function logEvent(
         Authorization: `Bearer ${SUPABASE_KEY}`,
         Prefer: 'return=minimal',
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        source: 'chroma',
+        type: 'CHROMA',
+        subtype: event,
+        severity: 'info',
+        title: event,
+        body: `Chroma: ${event}`,
+        metadata,
+        mode: 'live',
+      }),
     });
   } catch {
     // Silently fail - don't break the game
@@ -77,38 +74,22 @@ async function logEvent(
 async function submitScore(
   level: number,
   score: number,
-  nickname?: string
+  _nickname?: string
 ): Promise<void> {
-  if (!SUPABASE_URL || !SUPABASE_KEY) return;
-
-  try {
-    await fetch(`${SUPABASE_URL}/rest/v1/chroma_leaderboard`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`,
-        Prefer: 'return=minimal',
-      },
-      body: JSON.stringify({
-        session_id: getSessionId(),
-        nickname: nickname || 'Anonymous',
-        level,
-        score,
-        created_at: new Date().toISOString(),
-      }),
-    });
-  } catch {
-    // Silently fail
-  }
+  // Submit score as a game_over event with score data
+  await logEvent('score_submit', {
+    level,
+    score,
+    metadata: { nickname: _nickname || 'Anonymous' },
+  });
 }
 
-async function getTopScores(limit = 10): Promise<Array<{ nickname: string; level: number; score: number }>> {
+async function getTopScores(_limit = 10): Promise<Array<{ nickname: string; level: number; score: number }>> {
   if (!SUPABASE_URL || !SUPABASE_KEY) return [];
 
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/chroma_leaderboard?select=nickname,level,score&order=level.desc,score.desc&limit=${limit}`,
+      `${SUPABASE_URL}/rest/v1/zoe_events?source=eq.chroma&subtype=eq.score_submit&select=metadata&order=created_at.desc&limit=${_limit}`,
       {
         headers: {
           apikey: SUPABASE_KEY,
@@ -117,7 +98,14 @@ async function getTopScores(limit = 10): Promise<Array<{ nickname: string; level
       }
     );
     if (!res.ok) return [];
-    return await res.json();
+    const rows: Array<{ metadata: { nickname: string; level: number; score: number } }> = await res.json();
+    return rows
+      .map(r => ({
+        nickname: r.metadata?.nickname || 'Anonymous',
+        level: r.metadata?.level || 0,
+        score: r.metadata?.score || 0,
+      }))
+      .sort((a, b) => b.level - a.level || b.score - a.score);
   } catch {
     return [];
   }
