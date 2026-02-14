@@ -1,10 +1,10 @@
 import { useRef, useEffect, useState } from 'react';
-import farLayer from '../../assets/sakura/far_layer.png';
-import midLayer from '../../assets/sakura/mid_layer_tree.png';
-import foreLayer from '../../assets/sakura/fore_layer_petals.png';
+import farLayer from '../../assets/sakura/overlays/far_layer.png';
+import treeLayer from '../../assets/sakura/overlays/tree_layer.png';
+import petalsLayer from '../../assets/sakura/overlays/petals_layer.png';
 
 /**
- * 3-layer parallax background with mouse-move offset.
+ * 3-layer parallax background using PixelChill overlay PNGs.
  * Layers shift ±5/10/15px based on cursor position.
  * Respects prefers-reduced-motion (disables parallax, shows static).
  */
@@ -37,8 +37,8 @@ export default function ParallaxBackground() {
 
   const layers = [
     { src: farLayer, mult: 5, opacity: 0.4, z: 0 },
-    { src: midLayer, mult: 10, opacity: 0.6, z: 1 },
-    { src: foreLayer, mult: 15, opacity: 0.3, z: 2 },
+    { src: treeLayer, mult: 10, opacity: 0.6, z: 1 },
+    { src: petalsLayer, mult: 15, opacity: 0.3, z: 2 },
   ];
 
   return (
@@ -57,6 +57,7 @@ export default function ParallaxBackground() {
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
+            imageRendering: 'pixelated',
             opacity,
             transform: reducedMotion
               ? 'none'

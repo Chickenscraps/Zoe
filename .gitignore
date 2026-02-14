@@ -98,7 +98,7 @@ temp*/
 *.mp3
 *.wav
 *.png
-!zoe-terminal/src/assets/sakura/*.png
+!zoe-terminal/src/assets/sakura/**/*.png
 group_dm_export.json
 
 # Local Netlify folder

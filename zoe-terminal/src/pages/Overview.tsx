@@ -57,7 +57,7 @@ export default function Overview() {
   const rawPct = initialDeposit > 0 ? ((totalValue - initialDeposit) / initialDeposit) * 100 : 0;
   const allTimePnlPct = isFinite(rawPct) ? rawPct : 0;
 
-  // BTC equivalent of total portfolio value
+  // BTC equivalent of total portfolio value (for sublabel)
   const totalValueBtc = btcPrice > 0 ? totalValue / btcPrice : 0;
 
   // Daily P&L: today's total portfolio value vs start-of-day equity
@@ -125,7 +125,7 @@ export default function Overview() {
         <KPICard
           label="Total"
           value={formatCurrency(totalValue)}
-          subValue={totalValueBtc > 0 ? formatBTC(totalValueBtc) : "Portfolio Value"}
+          subValue={totalValueBtc > 0 ? `≈ ${formatBTC(totalValueBtc)}` : "Portfolio Value"}
           trend={allTimePnl !== 0 ? `${allTimePnl >= 0 ? '+' : ''}${formatCurrency(allTimePnl)} P&L` : "—"}
           trendDir={allTimePnl >= 0 ? 'up' : 'down'}
           icon={DollarSign}

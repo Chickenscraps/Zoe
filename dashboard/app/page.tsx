@@ -1,64 +1,143 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useEffect, useState, useCallback } from "react";
+import { StatusPanel } from "@/components/status-panel";
+import { PositionsTable } from "@/components/positions-table";
+import { SignalsTable } from "@/components/signals-table";
+import { EquityChart } from "@/components/equity-chart";
+import { EventsFeed } from "@/components/events-feed";
+import { CircuitBreakers } from "@/components/circuit-breakers";
+import {
+  fetchPositions,
+  fetchSignals,
+  fetchLatestRegime,
+  fetchState,
+  fetchCashSnapshots,
+  fetchPnlDaily,
+  fetchHeartbeats,
+  fetchRecentEvents,
+} from "@/lib/queries";
+import type {
+  Position,
+  Signal,
+  Regime,
+  EfState,
+  CashSnapshot,
+  PnlDaily,
+  HealthHeartbeat,
+  ZoeEvent,
+} from "@/lib/types";
+import { RefreshCw } from "lucide-react";
+
+const REFRESH_INTERVAL = 15_000; // 15s auto-refresh
+
+export default function Dashboard() {
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [signals, setSignals] = useState<Signal[]>([]);
+  const [regime, setRegime] = useState<Regime | null>(null);
+  const [state, setState] = useState<EfState[]>([]);
+  const [cashSnapshots, setCashSnapshots] = useState<CashSnapshot[]>([]);
+  const [pnlDaily, setPnlDaily] = useState<PnlDaily[]>([]);
+  const [heartbeats, setHeartbeats] = useState<HealthHeartbeat[]>([]);
+  const [events, setEvents] = useState<ZoeEvent[]>([]);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    try {
+      const [pos, sig, reg, st, cash, pnl, hb, ev] = await Promise.all([
+        fetchPositions(),
+        fetchSignals(),
+        fetchLatestRegime(),
+        fetchState(),
+        fetchCashSnapshots(),
+        fetchPnlDaily(),
+        fetchHeartbeats(),
+        fetchRecentEvents(),
+      ]);
+      setPositions(pos);
+      setSignals(sig);
+      setRegime(reg);
+      setState(st);
+      setCashSnapshots(cash);
+      setPnlDaily(pnl);
+      setHeartbeats(hb);
+      setEvents(ev);
+      setLastRefresh(new Date());
+    } catch (err) {
+      console.error("Refresh failed:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+    const id = setInterval(refresh, REFRESH_INTERVAL);
+    return () => clearInterval(id);
+  }, [refresh]);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <h1 className="text-lg font-semibold tracking-tight">
+              Edge Factory
+            </h1>
+            <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-400">
+              LIVE
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground">
+              {lastRefresh.toLocaleTimeString()}
+            </span>
+            <button
+              onClick={refresh}
+              className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+              title="Refresh now"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              <RefreshCw
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              />
+            </button>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+      </header>
+
+      {/* Main grid */}
+      <main className="mx-auto max-w-7xl px-4 py-6">
+        {loading && positions.length === 0 ? (
+          <div className="flex items-center justify-center py-32">
+            <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {/* Row 1: Status (full width on lg) */}
+            <StatusPanel
+              regime={regime}
+              heartbeats={heartbeats}
+              state={state}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+
+            {/* Row 2: Equity + Circuit Breakers */}
+            <EquityChart
+              cashSnapshots={cashSnapshots}
+              pnlDaily={pnlDaily}
+            />
+            <CircuitBreakers state={state} />
+
+            {/* Row 3: Positions (full width) */}
+            <PositionsTable positions={positions} />
+
+            {/* Row 4: Signals + Events */}
+            <SignalsTable signals={signals} />
+            <EventsFeed events={events} />
+          </div>
+        )}
       </main>
     </div>
   );

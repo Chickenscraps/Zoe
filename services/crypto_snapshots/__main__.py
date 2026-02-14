@@ -68,13 +68,14 @@ def _build_exchange_client():
     return KrakenClient(config)
 
 
+# Fiat currencies to exclude from holdings
+_FIAT = {"USD", "EUR", "GBP", "CAD", "AUD", "JPY", "CHF"}
+
 # ── Snapshot writers ────────────────────────────────────────────────────
 
-async def _write_cash_snapshot(sb: Any, exchange: Any) -> None:
-    """Fetch USD balance from Kraken → insert into crypto_cash_snapshots."""
+async def _write_cash_snapshot(sb: Any, balances: dict[str, str]) -> None:
+    """Write USD balance from raw Kraken balances → crypto_cash_snapshots."""
     try:
-        balances = await exchange.get_account_balances()
-
         # Kraken uses "ZUSD" for USD; fallback to "USD"
         usd = 0.0
         for key in ("ZUSD", "USD"):
@@ -98,26 +99,41 @@ async def _write_cash_snapshot(sb: Any, exchange: Any) -> None:
         logger.error("Cash snapshot failed: %s", e, exc_info=True)
 
 
-async def _write_holdings_snapshot(sb: Any, exchange: Any, converter: Any) -> None:
-    """Fetch crypto holdings from Kraken → insert into crypto_holdings_snapshots."""
-    try:
-        resp = await exchange.get_holdings()
-        results = resp.get("results", [])
+async def _write_holdings_snapshot(
+    sb: Any, balances: dict[str, str], converter: Any
+) -> None:
+    """Derive crypto holdings from raw Kraken balances → crypto_holdings_snapshots.
 
-        # Build holdings dict: {"BTC-USD": 0.5, "ETH-USD": 1.2}
+    Uses the same Balance response as the cash writer so we never miss assets
+    that Kraken returns.  Normalises asset names inline (XXBT→BTC, XETH→ETH).
+    """
+    from integrations.kraken_client.symbols import _normalize_asset
+
+    try:
+        # Build holdings dict directly from raw balances
         holdings_dict: dict[str, float] = {}
         balances_for_converter: dict[str, float] = {}
 
-        for h in results:
-            symbol = h["symbol"]        # already normalized by get_holdings()
-            asset = h["asset"]          # e.g. "BTC"
-            qty = h.get("quantity_float", 0.0)
-
-            if not math.isfinite(qty) or qty <= 0:
+        for raw_asset, qty_str in balances.items():
+            qty = float(qty_str)
+            if qty <= 0 or not math.isfinite(qty):
                 continue
 
+            std_name = _normalize_asset(raw_asset)
+            if std_name in _FIAT:
+                continue
+
+            symbol = f"{std_name}-USD"
             holdings_dict[symbol] = qty
-            balances_for_converter[asset] = qty
+            balances_for_converter[std_name] = qty
+
+        # Guard: don't write empty holdings — preserves last-known-good data
+        if not holdings_dict:
+            logger.warning(
+                "Holdings empty (raw keys: %s) — skipping snapshot",
+                list(balances.keys()),
+            )
+            return
 
         # Mark-to-market via USDConverter
         total_value = 0.0
@@ -136,8 +152,8 @@ async def _write_holdings_snapshot(sb: Any, exchange: Any, converter: Any) -> No
         }).execute()
 
         logger.info(
-            "Holdings snapshot: %d assets, $%.2f total",
-            len(holdings_dict), total_value,
+            "Holdings snapshot: %d assets, $%.2f total — %s",
+            len(holdings_dict), total_value, holdings_dict,
         )
     except Exception as e:
         logger.error("Holdings snapshot failed: %s", e, exc_info=True)
@@ -183,9 +199,17 @@ async def _cleanup_old_snapshots(sb: Any) -> None:
 # ── Main loop ───────────────────────────────────────────────────────────
 
 async def _take_snapshot(sb: Any, exchange: Any, converter: Any) -> None:
-    """Single snapshot tick — writes cash, holdings, and heartbeat."""
-    await _write_cash_snapshot(sb, exchange)
-    await _write_holdings_snapshot(sb, exchange, converter)
+    """Single snapshot tick — fetches Kraken balance ONCE, writes cash + holdings + heartbeat."""
+    try:
+        balances = await exchange.get_account_balances()
+        logger.info("Raw Kraken balances: %s", balances)
+    except Exception as e:
+        logger.error("Failed to fetch Kraken balances: %s", e, exc_info=True)
+        await _write_heartbeat(sb, "error", f"Balance fetch failed: {e}")
+        return
+
+    await _write_cash_snapshot(sb, balances)
+    await _write_holdings_snapshot(sb, balances, converter)
     await _write_heartbeat(sb)
 
 
