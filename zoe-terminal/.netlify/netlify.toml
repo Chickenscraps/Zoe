@@ -7,13 +7,15 @@ headers = []
 [functions."*"]
 
 [build]
-publish = "C:\\Users\\josha\\OneDrive\\Desktop\\Clawd\\.claude\\worktrees\\condescending-wozniak\\zoe-terminal\\dist"
+publish = "C:\\Users\\josha\\OneDrive\\Desktop\\Clawd\\.claude\\worktrees\\hopeful-jang\\zoe-terminal\\dist"
 publishOrigin = "config"
 commandOrigin = "config"
-base = "C:\\Users\\josha\\OneDrive\\Desktop\\Clawd\\.claude\\worktrees\\condescending-wozniak\\zoe-terminal"
-command = "npm run build"
+base = "C:\\Users\\josha\\OneDrive\\Desktop\\Clawd\\.claude\\worktrees\\hopeful-jang\\zoe-terminal"
+command = "npm install && npx vite build"
 
 [build.environment]
+VITE_MODE_LOCK = "live"
+NPM_FLAGS = "--include=dev"
 
 [build.processing]
 
