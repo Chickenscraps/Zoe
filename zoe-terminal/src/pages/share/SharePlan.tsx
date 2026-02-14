@@ -57,7 +57,7 @@ const SharePlan: React.FC = () => {
     <ShareLayout title="STRATEGIC_PRE_MARKET_PROTOCOL">
       <div 
         data-testid="plan-ticket" 
-        className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-12 w-[1100px] flex flex-col gap-10 relative overflow-hidden"
+        className="bg-paper-100/80 border-2 border-earth-700/10 p-12 w-[1100px] flex flex-col gap-10 relative overflow-hidden"
       >
         {/* Header */}
         <div className="flex justify-between items-end pb-8 border-b border-earth-700/10 relative z-10">
@@ -91,13 +91,13 @@ const SharePlan: React.FC = () => {
                   </td>
                   <td className="py-6 px-4 font-semibold text-xs text-earth-700 uppercase tracking-tight">{item.preferred_strategy}</td>
                   <td className="py-6 px-4">
-                    <span className="text-[10px] px-3 py-1 rounded-[4px] bg-earth-700/5 text-earth-700 border border-earth-700/10 font-semibold uppercase tracking-widest">
+                    <span className="text-[10px] px-3 py-1 bg-earth-700/5 text-earth-700 border border-earth-700/10 font-semibold uppercase tracking-widest">
                       {item.regime}
                     </span>
                   </td>
                   <td className="py-6 px-4 text-right">
                     <span className={cn(
-                      "text-[10px] px-3 py-1 rounded-[4px] font-semibold uppercase tracking-[0.15em]",
+                      "text-[10px] px-3 py-1 font-semibold uppercase tracking-[0.15em]",
                       item.risk_tier === 'Tier 1' ? 'bg-profit/10 text-profit border border-profit/20' : 'bg-warning/10 text-warning border border-warning/20'
                     )}>
                       {item.risk_tier.toUpperCase()}

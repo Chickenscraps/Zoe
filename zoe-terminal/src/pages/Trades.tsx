@@ -20,7 +20,7 @@ export default function Trades() {
             {cryptoOrders.length} orders
           </div>
         </div>
-        <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] overflow-hidden">
+        <div className="bg-paper-100/80 border-2 border-earth-700/10 overflow-hidden">
           <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[520px]">
             <thead>
@@ -54,7 +54,7 @@ export default function Trades() {
                       {order.notional ? formatCurrency(order.notional) : '-'}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`uppercase text-[10px] font-bold px-2 py-0.5 rounded-[4px] ${
+                      <span className={`uppercase text-[10px] font-bold px-2 py-0.5 ${
                         order.status === 'filled' ? 'bg-profit/15 text-profit' :
                         order.status === 'submitted' || order.status === 'new' ? 'bg-yellow-500/15 text-yellow-400' :
                         order.status === 'canceled' || order.status === 'rejected' ? 'bg-loss/15 text-loss' :
@@ -83,7 +83,7 @@ export default function Trades() {
             {cryptoFills.length} fills
           </div>
         </div>
-        <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] overflow-hidden">
+        <div className="bg-paper-100/80 border-2 border-earth-700/10 overflow-hidden">
           <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[520px]">
             <thead>

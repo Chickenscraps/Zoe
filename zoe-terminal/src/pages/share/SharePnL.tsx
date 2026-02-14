@@ -52,11 +52,11 @@ export default function SharePnL() {
 
   return (
     <ShareLayout title="PNL_SUMMARY">
-      <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-12 w-[1000px] flex flex-col gap-10 relative overflow-hidden">
+      <div className="bg-paper-100/80 border-2 border-earth-700/10 p-12 w-[1000px] flex flex-col gap-10 relative overflow-hidden">
         {/* Header */}
         <div className="flex justify-between items-start relative z-10">
           <div className="flex items-center gap-8">
-            <div className="w-20 h-20 bg-cream-100 border-2 border-earth-700/10 rounded-[4px] flex items-center justify-center">
+            <div className="w-20 h-20 bg-cream-100 border-2 border-earth-700/10 flex items-center justify-center">
               <TrendingUp className="w-10 h-10 text-sakura-700" />
             </div>
             <div>
@@ -77,13 +77,13 @@ export default function SharePnL() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-4 gap-8 relative z-10">
-          <div className="bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] p-6">
+          <div className="bg-cream-100/60 border-2 border-earth-700/10 p-6">
             <div className="flex items-center gap-2 text-text-muted text-[10px] uppercase font-semibold tracking-[0.2em] mb-3">
               <Wallet className="w-3.5 h-3.5" /> Net Equity
             </div>
             <div className="text-2xl font-bold text-earth-700 tabular-nums">{formatCurrency(stats.total_equity)}</div>
           </div>
-          <div className="bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] p-6">
+          <div className="bg-cream-100/60 border-2 border-earth-700/10 p-6">
             <div className="flex items-center gap-2 text-text-muted text-[10px] uppercase font-semibold tracking-[0.2em] mb-3">
               <TrendingUp className="w-3.5 h-3.5 text-profit" /> Today
             </div>
@@ -91,20 +91,20 @@ export default function SharePnL() {
               {stats.today_pnl >= 0 ? '+' : ''}{formatCurrency(stats.today_pnl)}
             </div>
           </div>
-          <div className="bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] p-6">
+          <div className="bg-cream-100/60 border-2 border-earth-700/10 p-6">
             <div className="flex items-center gap-2 text-text-muted text-[10px] uppercase font-semibold tracking-[0.2em] mb-3">
               <Activity className="w-3.5 h-3.5" /> Win Rate
             </div>
             <div className="text-2xl font-bold text-earth-700 tabular-nums">{formatPercentage(stats.win_rate)}</div>
           </div>
-          <div className="bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] p-6">
+          <div className="bg-cream-100/60 border-2 border-earth-700/10 p-6">
             <div className="text-text-muted text-[10px] uppercase font-semibold tracking-[0.2em] mb-3">PDT Status</div>
             <div className="text-2xl font-bold text-earth-700 tabular-nums">{stats.pdt_status}</div>
           </div>
         </div>
 
         {/* Return Summary */}
-        <div className="flex justify-between items-center text-[10px] font-semibold text-text-dim uppercase tracking-[0.2em] bg-cream-100/60 px-6 py-4 rounded-[4px] border-2 border-earth-700/10 relative z-10">
+        <div className="flex justify-between items-center text-[10px] font-semibold text-text-dim uppercase tracking-[0.2em] bg-cream-100/60 px-6 py-4 border-2 border-earth-700/10 relative z-10">
           <span>Daily Return: {formatPercentage(stats.today_return)}</span>
           <div className="w-1 h-1 rounded-full bg-sakura-500/40" />
           <span>Generated: {new Date().toISOString()}</span>

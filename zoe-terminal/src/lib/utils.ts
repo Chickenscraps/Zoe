@@ -5,14 +5,22 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Format a number as currency. Guards against NaN/Infinity — returns "$0.00" for bad values.
+ */
 export function formatCurrency(value: number, currency = 'USD'): string {
+  if (!isFinite(value) || isNaN(value)) return '$0.00';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
   }).format(value);
 }
 
+/**
+ * Format a number as percentage. Guards against NaN/Infinity — returns "0.00%" for bad values.
+ */
 export function formatPercentage(value: number, decimals = 2): string {
+  if (!isFinite(value) || isNaN(value)) return '0.00%';
   return new Intl.NumberFormat('en-US', {
     style: 'percent',
     minimumFractionDigits: decimals,
@@ -45,7 +53,7 @@ export function formatAge(isoStringOrEpoch: string | number): string {
   } else {
     ms = Date.now() - new Date(isoStringOrEpoch).getTime();
   }
-  if (!isFinite(ms) || ms < 0) return "—";
+  if (!isFinite(ms) || ms < 0) return "\u2014";
   const sec = Math.floor(ms / 1000);
   if (sec < 60) return `${sec}s`;
   const min = Math.floor(sec / 60);
@@ -55,4 +63,13 @@ export function formatAge(isoStringOrEpoch: string | number): string {
   if (hr < 24) return remMin > 0 ? `${hr}h ${remMin}m` : `${hr}h`;
   const days = Math.floor(hr / 24);
   return `${days}d`;
+}
+
+/**
+ * Safe number display — returns a dash for NaN/undefined/null values.
+ * Use as a fallback in any data display context.
+ */
+export function safeNumber(value: number | null | undefined): string {
+  if (value == null || !isFinite(value) || isNaN(value)) return '\u2014';
+  return String(value);
 }

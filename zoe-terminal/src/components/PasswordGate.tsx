@@ -107,7 +107,7 @@ export default function PasswordGate({ children }: { children: React.ReactNode }
                 }}
                 placeholder="Enter password"
                 autoFocus
-                className="w-full bg-cream-100 border-2 border-earth-700/15 rounded-[4px] px-4 py-3 text-sm text-text-primary placeholder:text-text-dim focus:outline-none focus:border-sakura-500 focus:ring-1 focus:ring-sakura-500/30 transition-all"
+                className="w-full bg-cream-100 border-2 border-earth-700/15 px-4 py-3 text-sm text-text-primary placeholder:text-text-dim focus:outline-none focus:border-sakura-500 focus:ring-1 focus:ring-sakura-500/30 transition-all"
               />
               {error && (
                 <p className="text-loss text-xs mt-2 pl-1 font-pixel text-[0.4rem]">

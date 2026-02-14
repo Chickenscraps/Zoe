@@ -45,7 +45,7 @@ export default function ActionsTab() {
   return (
     <div className="p-3 space-y-2">
       {isGuest && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-amber-800/10 border border-amber-800/15 rounded-[4px] text-[10px] font-bold text-amber-500/70 uppercase tracking-wider">
+        <div className="flex items-center gap-2 px-3 py-2 bg-amber-800/10 border border-amber-800/15 text-[10px] font-bold text-amber-500/70 uppercase tracking-wider">
           <Lock className="w-3 h-3" /> View Only — Guest Access
         </div>
       )}
@@ -59,7 +59,7 @@ export default function ActionsTab() {
             onClick={() => !isGuest && executeAction(action)}
             disabled={state === 'loading' || isGuest}
             className={cn(
-              "w-full text-left bg-surface-base border border-border rounded-[4px] p-3 transition-all hover:border-border-strong",
+              "w-full text-left bg-surface-base border border-border p-3 transition-all hover:border-border-strong",
               action.destructive && "hover:border-loss/30",
               state === 'success' && "border-profit/30",
               state === 'error' && "border-loss/30",

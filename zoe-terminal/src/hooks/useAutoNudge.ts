@@ -93,7 +93,7 @@ function pickNudge(
     nudges.push({
       subtype: 'STATUS_UPDATE',
       severity: 'info',
-      title: `Current buying power: $${Number(equity).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      title: `Current cash: $${Number(equity).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       body: 'Live funds.',
       metadata: { equity },
     });

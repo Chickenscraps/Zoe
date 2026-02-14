@@ -118,7 +118,7 @@ export default function Charts() {
               key={sym}
               onClick={() => setSelectedSymbol(sym)}
               className={cn(
-                'px-3 py-1.5 rounded-[4px] text-xs font-bold tracking-tight transition-all',
+                'px-3 py-1.5 text-xs font-bold tracking-tight transition-all',
                 selectedSymbol === sym
                   ? 'bg-earth-700 text-cream-100'
                   : 'bg-cream-100/60 text-text-muted border border-earth-700/10 hover:text-earth-700 hover:bg-paper-100'
@@ -139,7 +139,7 @@ export default function Charts() {
               key={tf}
               onClick={() => setSelectedTimeframe(tf)}
               className={cn(
-                'px-4 py-1.5 rounded-[4px] text-xs font-black uppercase tracking-widest transition-all',
+                'px-4 py-1.5 text-xs font-black uppercase tracking-widest transition-all',
                 selectedTimeframe === tf
                   ? 'bg-sakura-500/15 text-sakura-700 border-2 border-sakura-500/30'
                   : 'bg-cream-100/60 text-text-muted hover:text-earth-700 border-2 border-earth-700/10'
@@ -153,7 +153,7 @@ export default function Charts() {
         {/* MTF Alignment Badge */}
         {analysis.mtfAlignment !== null && (
           <div className={cn(
-            'flex items-center gap-2 px-4 py-1.5 rounded-[4px] border text-xs font-bold',
+            'flex items-center gap-2 px-4 py-1.5 border text-xs font-bold',
             analysis.mtfAlignment > 0.3
               ? 'bg-profit/10 border-profit/20 text-profit'
               : analysis.mtfAlignment < -0.3
@@ -168,7 +168,7 @@ export default function Charts() {
       </div>
 
       {/* Main Chart */}
-      <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] overflow-hidden">
+      <div className="bg-paper-100/80 border-2 border-earth-700/10 overflow-hidden">
         <div className="px-6 py-4 border-b border-earth-700/10 bg-cream-100/40 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <BarChart3 className="w-4 h-4 text-text-muted" />
@@ -208,7 +208,7 @@ export default function Charts() {
 
       {/* MACD Sub-Chart */}
       {candles.length >= 26 && (
-        <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] overflow-hidden">
+        <div className="bg-paper-100/80 border-2 border-earth-700/10 overflow-hidden">
           <div className="px-6 py-3 border-b border-earth-700/10 bg-cream-100/40 flex items-center gap-2">
             <Activity className="w-3.5 h-3.5 text-text-muted" />
             <h3 className="font-bold text-xs tracking-tight">MACD (8, 17, 9)</h3>
@@ -241,7 +241,7 @@ export default function Charts() {
         />
 
         {/* Active Patterns */}
-        <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] overflow-hidden">
+        <div className="bg-paper-100/80 border-2 border-earth-700/10 overflow-hidden">
           <div className="px-6 py-4 border-b border-earth-700/10 bg-cream-100/40 flex items-center gap-2">
             <Layers className="w-4 h-4 text-text-muted" />
             <h3 className="font-bold text-sm">Active Patterns</h3>
@@ -279,7 +279,7 @@ export default function Charts() {
         </div>
 
         {/* Multi-Timeframe Summary */}
-        <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] overflow-hidden">
+        <div className="bg-paper-100/80 border-2 border-earth-700/10 overflow-hidden">
           <div className="px-6 py-4 border-b border-earth-700/10 bg-cream-100/40 flex items-center gap-2">
             <Shield className="w-4 h-4 text-text-muted" />
             <h3 className="font-bold text-sm">Multi-Timeframe Summary</h3>
@@ -340,17 +340,17 @@ export default function Charts() {
 
       {/* Support/Resistance Levels */}
       {(analysis.supportLevels.length > 0 || analysis.resistanceLevels.length > 0) && (
-        <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-6">
+        <div className="bg-paper-100/80 border-2 border-earth-700/10 p-6">
           <h3 className="font-bold text-sm mb-4 text-text-secondary">Support &amp; Resistance Levels</h3>
           <div className="flex flex-wrap gap-3">
             {analysis.supportLevels.map((l, i) => (
-              <span key={`s-${i}`} className="px-3 py-1.5 bg-profit/10 text-profit border border-profit/20 rounded-[4px] text-xs font-mono font-bold">
+              <span key={`s-${i}`} className="px-3 py-1.5 bg-profit/10 text-profit border border-profit/20 text-xs font-mono font-bold">
                 S: ${l.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 <span className="text-profit/50 ml-1">({l.strength}x)</span>
               </span>
             ))}
             {analysis.resistanceLevels.map((l, i) => (
-              <span key={`r-${i}`} className="px-3 py-1.5 bg-loss/10 text-loss border border-loss/20 rounded-[4px] text-xs font-mono font-bold">
+              <span key={`r-${i}`} className="px-3 py-1.5 bg-loss/10 text-loss border border-loss/20 text-xs font-mono font-bold">
                 R: ${l.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 <span className="text-loss/50 ml-1">({l.strength}x)</span>
               </span>

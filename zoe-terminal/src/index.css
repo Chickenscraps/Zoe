@@ -29,11 +29,16 @@
   --color-text-muted: rgba(48, 30, 48, 0.50);
   --color-text-dim: rgba(48, 30, 48, 0.30);
 
-  --shadow-soft: 0 4px 12px rgba(69, 43, 39, 0.10);
-  --shadow-crisp: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  /* Pixel shadows — no blur, crisp offset */
+  --shadow-pixel: 3px 3px 0 rgba(69, 43, 39, 0.18);
+  --shadow-pixel-sm: 2px 2px 0 rgba(69, 43, 39, 0.14);
+  --shadow-pixel-lg: 4px 4px 0 rgba(69, 43, 39, 0.22);
+  --shadow-pixel-inset: inset 1px 1px 0 rgba(255, 255, 255, 0.45), inset -1px -1px 0 rgba(69, 43, 39, 0.10);
+  --shadow-pixel-pressed: inset 2px 2px 0 rgba(69, 43, 39, 0.20);
 
-  --radius-cards: 4px;
-  --radius-btns: 4px;
+  /* Zero border radius everywhere — pixel corners */
+  --radius-cards: 0px;
+  --radius-btns: 0px;
 }
 
 @layer base {
@@ -41,26 +46,31 @@
     @apply bg-background text-text-primary antialiased min-h-screen relative overflow-x-hidden;
     font-variant-numeric: tabular-nums;
     font-family: "Inter", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
     selection {
       background: rgba(239, 163, 168, 0.3);
       color: #301E30;
     }
   }
 
-  /* Pixel art rendering for sprites */
-  .pixel-art {
+  /* Pixel art rendering for ALL sprite assets */
+  .pixel-art,
+  .pixel-art img,
+  img[src*="sakura/"] {
     image-rendering: pixelated;
     image-rendering: crisp-edges;
   }
 
-  /* Focus ring */
+  /* Pixel focus ring — no blur, hard outline */
   *:focus-visible {
     outline: 2px solid var(--color-earth-700);
     outline-offset: 2px;
+    border-radius: 0;
   }
 }
 
-/* Custom scrollbar — sakura themed */
+/* Custom scrollbar — pixel themed */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -70,64 +80,82 @@
 }
 ::-webkit-scrollbar-thumb {
   background-color: var(--color-sakura-500);
-  border: 3px solid var(--color-background);
-  border-radius: 4px;
+  border: 2px solid var(--color-background);
+  border-radius: 0;
 }
 ::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-sakura-700);
 }
 
 @layer components {
-  /* Pixel card — tan surface with brown pixel border */
+  /* ===================================================
+     PIXEL CARD — tan surface with brown pixel border
+     =================================================== */
   .card-premium {
-    @apply bg-surface-base border-2 border-earth-700/20 shadow-soft transition-all duration-200 hover:border-earth-700/35 hover:-translate-y-px;
-    border-radius: var(--radius-cards);
+    @apply bg-surface-base border-2 border-earth-700/20 transition-all duration-200 hover:border-earth-700/35 hover:-translate-y-px;
+    border-radius: 0;
+    box-shadow: var(--shadow-pixel);
+  }
+  .card-premium:hover {
+    box-shadow: var(--shadow-pixel-lg);
   }
 
-
-
-  /* Primary button */
+  /* ===================================================
+     PIXEL BUTTON
+     =================================================== */
   .btn-premium {
-    @apply bg-earth-700 text-cream-100 px-6 py-2.5 font-bold shadow-crisp hover:opacity-[0.92] hover:scale-[0.99] active:scale-[0.98] transition-all duration-100;
-    border-radius: var(--radius-btns);
+    @apply bg-earth-700 text-cream-100 px-6 py-2.5 font-bold hover:opacity-[0.92] active:translate-y-[1px] transition-all duration-75;
+    border-radius: 0;
+    box-shadow: var(--shadow-pixel-sm);
     font-family: "Press Start 2P", monospace;
-    font-size: 0.6rem;
+    font-size: 0.55rem;
     letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .btn-premium:active {
+    box-shadow: var(--shadow-pixel-pressed);
   }
 
-  /* Profit/loss subtle glow */
+  /* ===================================================
+     PROFIT/LOSS GLOW — pixel-safe text shadows
+     =================================================== */
   .stat-glow-green {
-    text-shadow: 0 0 12px rgba(74, 140, 92, 0.20);
+    text-shadow: 1px 1px 0 rgba(74, 140, 92, 0.25);
   }
   .stat-glow-red {
-    text-shadow: 0 0 12px rgba(192, 57, 43, 0.20);
+    text-shadow: 1px 1px 0 rgba(192, 57, 43, 0.25);
   }
 
-  /* Percentage change badges */
+  /* ===================================================
+     BADGES — pixel corners, stronger contrast
+     =================================================== */
   .badge-profit {
-    @apply inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold tabular-nums;
-    background: rgba(74, 140, 92, 0.12);
+    @apply inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold tabular-nums;
+    background: rgba(74, 140, 92, 0.15);
     color: var(--color-profit);
-    border: 1px solid rgba(74, 140, 92, 0.20);
-    border-radius: var(--radius-btns);
+    border: 2px solid rgba(74, 140, 92, 0.25);
+    border-radius: 0;
   }
   .badge-loss {
-    @apply inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold tabular-nums;
-    background: rgba(192, 57, 43, 0.12);
+    @apply inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold tabular-nums;
+    background: rgba(192, 57, 43, 0.15);
     color: var(--color-loss);
-    border: 1px solid rgba(192, 57, 43, 0.20);
-    border-radius: var(--radius-btns);
+    border: 2px solid rgba(192, 57, 43, 0.25);
+    border-radius: 0;
   }
 
-  /* Bottom shine on cards */
+  /* ===================================================
+     CARD BOTTOM ACCENT LINE
+     =================================================== */
   .card-shine::after {
     content: '';
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(69, 43, 39, 0.08), transparent);
+    height: 2px;
+    background: var(--color-earth-700);
+    opacity: 0.08;
     pointer-events: none;
   }
 }
@@ -159,7 +187,7 @@
     transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 12px 4px rgba(74, 140, 92, 0.2);
+    box-shadow: 3px 3px 0 rgba(74, 140, 92, 0.2);
     transform: scale(1.02);
   }
   100% {
@@ -179,7 +207,7 @@
     transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 12px 4px rgba(192, 57, 43, 0.2);
+    box-shadow: 3px 3px 0 rgba(192, 57, 43, 0.2);
     transform: scale(1.02);
   }
   100% {
@@ -282,15 +310,9 @@
    FROSTED DIVIDER
    ============================================ */
 .divider-frost {
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(69, 43, 39, 0.12) 20%,
-    rgba(69, 43, 39, 0.12) 80%,
-    transparent
-  );
-  box-shadow: 0 1px 2px rgba(69, 43, 39, 0.05);
+  height: 2px;
+  background: var(--color-earth-700);
+  opacity: 0.1;
 }
 
 /* ============================================
@@ -311,7 +333,7 @@
 }
 
 /* ============================================
-   LIVE INDICATOR PULSE
+   LIVE INDICATOR — pixel square, not circle
    ============================================ */
 @keyframes livePulse {
   0%, 100% { opacity: 1; transform: scale(1); }
@@ -321,10 +343,10 @@
 .live-dot {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: 0;
   background: var(--color-profit);
   animation: livePulse 2s ease-in-out infinite;
-  box-shadow: 0 0 6px rgba(74, 140, 92, 0.3);
+  box-shadow: 1px 1px 0 rgba(74, 140, 92, 0.3);
 }
 
 /* ============================================
@@ -355,7 +377,7 @@
    SCANNER HEAT CONSENSUS
    ============================================ */
 
-/* Gold card — subtle sheen on hover */
+/* Gold card */
 .scanner-card-gold {
   transition: background 250ms ease, border-color 250ms ease, box-shadow 250ms ease;
 }
@@ -365,9 +387,9 @@
 
 /* Gold promotion pulse */
 @keyframes goldPromote {
-  0% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.5); }
-  50% { box-shadow: 0 0 20px 6px rgba(212, 175, 55, 0.25); }
-  100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); }
+  0% { box-shadow: 3px 3px 0 rgba(212, 175, 55, 0.5); }
+  50% { box-shadow: 4px 4px 0 rgba(212, 175, 55, 0.3); }
+  100% { box-shadow: 3px 3px 0 rgba(212, 175, 55, 0); }
 }
 .scanner-card-gold-promote {
   animation: goldPromote 500ms ease-out;

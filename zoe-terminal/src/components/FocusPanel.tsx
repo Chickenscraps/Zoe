@@ -17,7 +17,7 @@ export default function FocusPanel() {
 
   if (loading) {
     return (
-      <div className="rounded-[4px] border border-border bg-surface-base p-4">
+      <div className="border border-border bg-surface-base p-4">
         <div className="flex items-center gap-2 mb-3">
           <Star className="w-4 h-4 text-sakura-500" />
           <h3 className="text-sm font-semibold text-text-primary">Live Prices</h3>
@@ -29,7 +29,7 @@ export default function FocusPanel() {
 
   if (data.length === 0) {
     return (
-      <div className="rounded-[4px] border border-border bg-surface-base p-4">
+      <div className="border border-border bg-surface-base p-4">
         <div className="flex items-center gap-2 mb-3">
           <Star className="w-4 h-4 text-sakura-500" />
           <h3 className="text-sm font-semibold text-text-primary">Live Prices</h3>
@@ -42,7 +42,7 @@ export default function FocusPanel() {
   }
 
   return (
-    <div className="rounded-[4px] border border-border bg-surface-base p-4">
+    <div className="border border-border bg-surface-base p-4">
       <div className="flex items-center gap-2 mb-3">
         <Star className="w-4 h-4 text-sakura-500" />
         <h3 className="text-sm font-semibold text-text-primary">Live Prices</h3>
@@ -75,7 +75,7 @@ function FocusTile({ row }: { row: FocusRow }) {
         : Minus;
 
   return (
-    <div className="rounded-[4px] bg-background/50 border border-border/50 px-3 py-2 hover:border-sakura-500/30 transition-colors">
+    <div className="bg-background/50 border border-border/50 px-3 py-2 hover:border-sakura-500/30 transition-colors">
       <div className="flex items-center justify-between mb-1">
         <span className="text-xs font-semibold text-text-primary">{base}</span>
         <span className={cn("flex items-center gap-0.5 text-xs font-mono", changeColor)}>

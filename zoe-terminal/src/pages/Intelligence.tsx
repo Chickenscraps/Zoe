@@ -223,7 +223,6 @@ export default function Intelligence() {
   const availableTypes = Array.from(new Set(thoughts.map(t => t.type))).sort();
 
   const cashAvailable = cryptoCash?.cash_available ?? 0;
-  const buyingPower = cryptoCash?.buying_power ?? 0;
   const notionalUsed = dailyNotional?.notional_used ?? 0;
 
   // ═════════════════════════════════════════════════════════════════════
@@ -278,7 +277,7 @@ export default function Intelligence() {
           {/* KPI Strip */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <KPIBlock icon={DollarSign} label="Cash Available" value={formatCurrency(cashAvailable)} color="profit" />
-            <KPIBlock icon={TrendingUp} label="Buying Power" value={formatCurrency(buyingPower)} color="white" />
+            <KPIBlock icon={TrendingUp} label="Daily Notional" value={formatCurrency(notionalUsed)} color="white" />
             <KPIBlock icon={DollarSign} label="Realized P&L" value={formatCurrency(realizedPnl)} color={realizedPnl >= 0 ? 'profit' : 'loss'} />
             <KPIBlock icon={ShieldCheck} label="System Status" value={healthSummary.status} color={healthSummary.status === 'LIVE' ? 'profit' : 'warning'} />
           </div>
@@ -293,7 +292,7 @@ export default function Intelligence() {
             <>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 {scannerRows.map((row) => (
-                  <div key={row.symbol} className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-6 group overflow-hidden relative">
+                  <div key={row.symbol} className="bg-paper-100/80 border-2 border-earth-700/10 p-4 sm:p-6 group overflow-hidden relative">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-sakura-500/[0.03] rounded-full -mr-12 -mt-12 transition-all group-hover:bg-sakura-500/[0.06]" />
                     <div className="flex justify-between items-start mb-4 sm:mb-5 relative z-10">
                       <div>
@@ -356,11 +355,11 @@ export default function Intelligence() {
 
               {/* Holdings + Notional */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-6">
+                <div className="bg-paper-100/80 border-2 border-earth-700/10 p-4 sm:p-6">
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-4 sm:mb-5">Current Holdings</h3>
                   <div className="space-y-2">
                     {holdingsRows.length > 0 ? holdingsRows.map((h) => (
-                      <div key={h.asset} className="flex justify-between items-center text-xs bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] px-3 sm:px-4 py-2.5">
+                      <div key={h.asset} className="flex justify-between items-center text-xs bg-cream-100/60 border-2 border-earth-700/10 px-3 sm:px-4 py-2.5">
                         <span className="font-black text-earth-700">{h.asset}</span>
                         <div className="flex gap-3 sm:gap-6">
                           <span className="font-mono text-text-secondary tabular-nums">{h.qty.toFixed(8)}</span>
@@ -372,7 +371,7 @@ export default function Intelligence() {
                     )}
                   </div>
                 </div>
-                <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-5 flex justify-between items-center">
+                <div className="bg-paper-100/80 border-2 border-earth-700/10 p-4 sm:p-5 flex justify-between items-center">
                   <div className="flex items-center gap-3">
                     <ShieldCheck className="w-4 h-4 text-text-muted" />
                     <span className="text-[9px] sm:text-[10px] font-black text-text-muted uppercase tracking-[0.15em] sm:tracking-[0.2em]">Daily Notional Used</span>
@@ -417,7 +416,7 @@ export default function Intelligence() {
                   const regime = info.regime;
                   if (!consensus) {
                     return (
-                      <div key={candidate.id} className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-6 opacity-50">
+                      <div key={candidate.id} className="bg-paper-100/80 border-2 border-earth-700/10 p-4 sm:p-6 opacity-50">
                         <div className="flex items-center gap-3">
                           <h3 className="text-lg sm:text-xl font-black text-earth-700 tracking-tighter">{candidate.symbol}</h3>
                           <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">No consensus data</span>
@@ -428,7 +427,7 @@ export default function Intelligence() {
                   const style = CONSENSUS_STYLES[consensus.result] ?? CONSENSUS_STYLES.neutral;
                   const ResultIcon = style.icon;
                   return (
-                    <div key={candidate.id} className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-6 space-y-4">
+                    <div key={candidate.id} className="bg-paper-100/80 border-2 border-earth-700/10 p-4 sm:p-6 space-y-4">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
                           <h3 className="text-lg sm:text-xl font-black text-earth-700 tracking-tighter">{candidate.symbol}</h3>
@@ -536,13 +535,13 @@ export default function Intelligence() {
             <>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
                 {/* Trendlines */}
-                <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-8">
+                <div className="bg-paper-100/80 border-2 border-earth-700/10 p-4 sm:p-8">
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-6 flex items-center gap-2">
                     <TrendingUp className="w-3 h-3 text-profit" /> Active Trendlines
                   </h3>
                   <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
                     {trendlines.length > 0 ? trendlines.map((tl) => (
-                      <div key={tl.id} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 sm:gap-3 bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] px-3 sm:px-4 py-2.5 sm:py-3 text-xs">
+                      <div key={tl.id} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 sm:gap-3 bg-cream-100/60 border-2 border-earth-700/10 px-3 sm:px-4 py-2.5 sm:py-3 text-xs">
                         <div className="flex items-center gap-2">
                           {tl.side === 'support' ? <TrendingUp className="w-3 h-3 text-profit" /> : <TrendingDown className="w-3 h-3 text-loss" />}
                           <span className="font-black text-earth-700">{tl.symbol}</span>
@@ -557,13 +556,13 @@ export default function Intelligence() {
                 </div>
 
                 {/* Key Levels */}
-                <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-8">
+                <div className="bg-paper-100/80 border-2 border-earth-700/10 p-4 sm:p-8">
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-6 flex items-center gap-2">
                     <Minus className="w-3 h-3 text-warning" /> Key Levels
                   </h3>
                   <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
                     {levels.length > 0 ? levels.map((lv) => (
-                      <div key={lv.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 sm:gap-3 bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] px-3 sm:px-4 py-2.5 sm:py-3 text-xs">
+                      <div key={lv.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 sm:gap-3 bg-cream-100/60 border-2 border-earth-700/10 px-3 sm:px-4 py-2.5 sm:py-3 text-xs">
                         <div className="flex items-center gap-2">
                           <span className="font-black text-earth-700">{lv.symbol}</span>
                           <span className="text-text-muted text-[10px] font-mono">{lv.timeframe}</span>
@@ -580,13 +579,13 @@ export default function Intelligence() {
                 </div>
 
                 {/* Structure Events */}
-                <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-8">
+                <div className="bg-paper-100/80 border-2 border-earth-700/10 p-4 sm:p-8">
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-6 flex items-center gap-2">
                     <Zap className="w-3 h-3 text-warning" /> Structure Events
                   </h3>
                   <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
                     {structureEvents.length > 0 ? structureEvents.map((ev) => (
-                      <div key={ev.id} className="flex items-center gap-3 bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] px-3 sm:px-4 py-2.5 sm:py-3">
+                      <div key={ev.id} className="flex items-center gap-3 bg-cream-100/60 border-2 border-earth-700/10 px-3 sm:px-4 py-2.5 sm:py-3">
                         <EventIcon type={ev.event_type as 'breakout' | 'breakdown' | 'retest'} />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -607,13 +606,13 @@ export default function Intelligence() {
                 </div>
 
                 {/* Bounce State Machine */}
-                <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-8">
+                <div className="bg-paper-100/80 border-2 border-earth-700/10 p-4 sm:p-8">
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-6 flex items-center gap-2">
                     <RotateCcw className="w-3 h-3 text-profit" /> Bounce State Machine
                   </h3>
                   <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
                     {bounceEvents.length > 0 ? bounceEvents.map((be) => (
-                      <div key={be.id} className="flex items-center gap-3 bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] px-3 sm:px-4 py-2.5 sm:py-3">
+                      <div key={be.id} className="flex items-center gap-3 bg-cream-100/60 border-2 border-earth-700/10 px-3 sm:px-4 py-2.5 sm:py-3">
                         <BounceStateIcon state={be.state} />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
@@ -632,7 +631,7 @@ export default function Intelligence() {
               </div>
 
               {/* Trade Intents (full width) */}
-              <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-8">
+              <div className="bg-paper-100/80 border-2 border-earth-700/10 p-4 sm:p-8">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-6 flex items-center gap-2">
                   <Target className="w-3 h-3 text-profit" /> Trade Intents
                 </h3>
@@ -675,7 +674,7 @@ export default function Intelligence() {
               {filteredThoughts.length > 0 ? filteredThoughts.map(thought => {
                 const config = TYPE_CONFIG[thought.type] ?? TYPE_CONFIG.general;
                 return (
-                  <div key={thought.id} className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 flex gap-4">
+                  <div key={thought.id} className="bg-paper-100/80 border-2 border-earth-700/10 p-4 flex gap-4">
                     <div className="flex-shrink-0 pt-1">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold uppercase ${config.bg} ${config.text}`}>
                         {thought.type[0].toUpperCase()}
@@ -714,8 +713,8 @@ function KPIBlock({ icon: Icon, label, value, color }: { icon: typeof DollarSign
   const colorMap: Record<string, string> = { profit: 'text-profit', loss: 'text-loss', warning: 'text-warning', white: 'text-earth-700' };
   const bgMap: Record<string, string> = { profit: 'bg-profit/10', loss: 'bg-loss/10', warning: 'bg-warning/10', white: 'bg-earth-700/5' };
   return (
-    <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-3 sm:p-5 flex items-center gap-3 sm:gap-4">
-      <div className={cn("w-8 sm:w-10 h-8 sm:h-10 rounded-[4px] flex items-center justify-center flex-shrink-0", bgMap[color] ?? 'bg-earth-700/5')}>
+    <div className="bg-paper-100/80 border-2 border-earth-700/10 p-3 sm:p-5 flex items-center gap-3 sm:gap-4">
+      <div className={cn("w-8 sm:w-10 h-8 sm:h-10 flex items-center justify-center flex-shrink-0", bgMap[color] ?? 'bg-earth-700/5')}>
         <Icon className={cn("w-4 sm:w-5 h-4 sm:h-5", colorMap[color] ?? 'text-earth-700/40')} />
       </div>
       <div className="min-w-0">
@@ -728,7 +727,7 @@ function KPIBlock({ icon: Icon, label, value, color }: { icon: typeof DollarSign
 
 function StatCard({ label, value, color, icon }: { label: string; value: number; color: string; icon: React.ReactNode }) {
   return (
-    <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 flex items-center justify-between">
+    <div className="bg-paper-100/80 border-2 border-earth-700/10 p-4 flex items-center justify-between">
       <div>
         <div className="text-[10px] text-text-muted font-bold uppercase tracking-widest">{label}</div>
         <div className={cn('text-2xl font-black tabular-nums mt-1', color)}>{value}</div>
@@ -740,7 +739,7 @@ function StatCard({ label, value, color, icon }: { label: string; value: number;
 
 function SummaryStat({ label, value, icon: Icon }: { label: string; value: number; icon: React.ComponentType<{ className?: string; size?: number }> }) {
   return (
-    <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 flex items-center gap-3">
+    <div className="bg-paper-100/80 border-2 border-earth-700/10 p-4 flex items-center gap-3">
       <div className="w-8 h-8 rounded-full bg-cream-100/60 flex items-center justify-center">
         <Icon size={14} className="text-text-secondary" />
       </div>
@@ -762,7 +761,7 @@ function FilterBar({ label, items, active, onSelect }: { label: string; items: s
             key={s}
             onClick={() => onSelect(s)}
             className={cn(
-              "px-2 sm:px-3 py-1.5 rounded-[4px] text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all",
+              "px-2 sm:px-3 py-1.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all",
               active === s
                 ? "bg-earth-700 text-cream-100"
                 : "bg-cream-100/60 border-2 border-earth-700/10 text-text-muted hover:text-earth-700 hover:border-earth-700/20"
@@ -802,7 +801,7 @@ function BounceStateIcon({ state }: { state: string }) {
 
 function IntentRow({ intent }: { intent: BounceIntent }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 sm:gap-4 bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] px-3 sm:px-5 py-3 sm:py-4 text-xs">
+    <div className="flex flex-wrap items-center gap-3 sm:gap-4 bg-cream-100/60 border-2 border-earth-700/10 px-3 sm:px-5 py-3 sm:py-4 text-xs">
       <div className="w-7 h-7 rounded-full flex items-center justify-center">
         {intent.blocked ? (
           <div className="w-7 h-7 rounded-full bg-loss/10 flex items-center justify-center"><ShieldX size={14} className="text-loss" /></div>
@@ -851,7 +850,7 @@ function EmptyRow({ text }: { text: string }) {
 
 function EmptyPanel({ icon: Icon, text, sub }: { icon: React.ComponentType<{ className?: string }>; text: string; sub: string }) {
   return (
-    <div className="flex flex-col items-center justify-center h-64 text-text-muted bg-paper-100/60 border-2 border-earth-700/10 rounded-[4px] space-y-4 col-span-full">
+    <div className="flex flex-col items-center justify-center h-64 text-text-muted bg-paper-100/60 border-2 border-earth-700/10 space-y-4 col-span-full">
       <Icon className="w-8 h-8 opacity-20" />
       <div className="text-center">
         <p className="font-black text-earth-700 uppercase tracking-widest">{text}</p>

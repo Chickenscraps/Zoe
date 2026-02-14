@@ -25,14 +25,14 @@ export default function CopilotSidebar() {
       {/* Mobile backdrop — only shown when open on mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/60 z-[65] lg:hidden backdrop-blur-md"
+          className="fixed inset-0 bg-black/60 z-[65] lg:hidden"
           onClick={() => setOpen(false)}
         />
       )}
 
       {/* Sidebar panel — fixed at root level, always above content */}
       <aside className={cn(
-        "fixed right-0 top-0 bottom-0 z-[70] w-80 bg-paper-100 border-l border-border flex flex-col shadow-soft transition-transform duration-200 ease-in-out",
+        "fixed right-0 top-0 bottom-0 z-[70] w-80 bg-paper-100 border-l border-border flex flex-col transition-transform duration-200 ease-in-out",
         isOpen ? "translate-x-0" : "translate-x-full",
       )}>
         {/* Header */}

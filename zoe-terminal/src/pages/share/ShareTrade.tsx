@@ -76,12 +76,12 @@ export default function ShareTrade() {
     <ShareLayout title="TRADE_EXECUTION_SETTLED">
       <div
         data-testid="trade-ticket"
-        className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-12 w-[1000px] flex flex-col gap-10 relative overflow-hidden"
+        className="bg-paper-100/80 border-2 border-earth-700/10 p-12 w-[1000px] flex flex-col gap-10 relative overflow-hidden"
       >
         {/* Top Header */}
         <div className="flex justify-between items-start relative z-10">
           <div className="flex items-center gap-8">
-            <div className="w-20 h-20 bg-cream-100 border-2 border-earth-700/10 rounded-[4px] flex items-center justify-center">
+            <div className="w-20 h-20 bg-cream-100 border-2 border-earth-700/10 flex items-center justify-center">
               <TrendingUp className="w-10 h-10 text-sakura-700" />
             </div>
             <div>
@@ -105,25 +105,25 @@ export default function ShareTrade() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-4 gap-8 relative z-10">
-          <div className="bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] p-6">
+          <div className="bg-cream-100/60 border-2 border-earth-700/10 p-6">
             <div className="flex items-center gap-2 text-text-muted text-[10px] uppercase font-semibold tracking-[0.2em] mb-3">
               <Zap className="w-3.5 h-3.5 text-profit" /> Vol / IVR
             </div>
             <div className="text-2xl font-bold text-earth-700 tabular-nums">{trade.entry_snapshot.ivr ?? '--'}</div>
           </div>
-          <div className="bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] p-6">
+          <div className="bg-cream-100/60 border-2 border-earth-700/10 p-6">
             <div className="flex items-center gap-2 text-text-muted text-[10px] uppercase font-semibold tracking-[0.2em] mb-3">
               <Target className="w-3.5 h-3.5" /> Delta Exp
             </div>
             <div className="text-2xl font-bold text-earth-700 tabular-nums">{trade.entry_snapshot.delta ?? '--'}</div>
           </div>
-          <div className="bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] p-6">
+          <div className="bg-cream-100/60 border-2 border-earth-700/10 p-6">
             <div className="flex items-center gap-2 text-text-muted text-[10px] uppercase font-semibold tracking-[0.2em] mb-3">
               <Clock className="w-3.5 h-3.5" /> Duration
             </div>
             <div className="text-2xl font-bold text-earth-700 tabular-nums">{trade.entry_snapshot.dte ?? '--'} DTE</div>
           </div>
-          <div className="bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] p-6">
+          <div className="bg-cream-100/60 border-2 border-earth-700/10 p-6">
             <div className="text-text-muted text-[10px] uppercase font-semibold tracking-[0.2em] mb-3 text-loss">Collateral</div>
             <div className="text-2xl font-bold text-earth-700 tabular-nums">{formatCurrency(trade.entry_snapshot.max_risk ?? 0)}</div>
           </div>
@@ -131,7 +131,7 @@ export default function ShareTrade() {
 
         {/* Leg Summary */}
         {trade.legs.length > 0 && (
-        <div className="bg-cream-100/40 rounded-[4px] p-8 border-2 border-earth-700/10 relative z-10">
+        <div className="bg-cream-100/40 p-8 border-2 border-earth-700/10 relative z-10">
           <div className="text-[10px] text-text-muted uppercase font-semibold tracking-[0.3em] mb-6">Component Breakdown</div>
           <div className="grid grid-cols-2 gap-x-16 gap-y-4">
             {trade.legs.map((leg, i) => (
@@ -151,7 +151,7 @@ export default function ShareTrade() {
         )}
 
         {/* Timeline */}
-        <div className="flex justify-between items-center text-[10px] font-semibold text-text-dim uppercase tracking-[0.2em] bg-cream-100/60 px-6 py-4 rounded-[4px] border-2 border-earth-700/10 relative z-10">
+        <div className="flex justify-between items-center text-[10px] font-semibold text-text-dim uppercase tracking-[0.2em] bg-cream-100/60 px-6 py-4 border-2 border-earth-700/10 relative z-10">
           <span>Executed: {trade.opened_at ? formatDate(trade.opened_at) : '--'}</span>
           <div className="w-1 h-1 rounded-full bg-sakura-500/40" />
           <span>Settled: {trade.closed_at ? formatDate(trade.closed_at) : formatDate(new Date().toISOString())}</span>

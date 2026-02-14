@@ -16,7 +16,7 @@ const DIAL_DEFS: DialConfig[] = [
   { key: 'kill_switch', label: 'Emergency Pause', type: 'boolean', description: 'Pause all automation immediately' },
   { key: 'scan_interval_s', label: 'Scan Interval', type: 'number', min: 15, max: 300, step: 15, description: 'Seconds between scanner sweeps' },
   { key: 'min_score', label: 'Min Score', type: 'number', min: 0, max: 100, step: 5, description: 'Minimum scanner score to consider' },
-  { key: 'max_pct_per_trade', label: 'Max % Per Trade', type: 'number', min: 1, max: 100, step: 1, description: '% of buying power allowed per single trade (1-100%)' },
+  { key: 'max_pct_per_trade', label: 'Max % Per Trade', type: 'number', min: 1, max: 100, step: 1, description: '% of available cash allowed per single trade (1-100%)' },
   { key: 'stop_loss_pct', label: 'Stop Loss %', type: 'number', min: 0.5, max: 10, step: 0.5, description: 'Default stop loss percentage' },
 ];
 

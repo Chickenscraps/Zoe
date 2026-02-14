@@ -68,19 +68,19 @@ const SharePosition: React.FC = () => {
     <ShareLayout title="OPEN_MARKET_EXPOSURE">
       <div
         data-testid="position-ticket"
-        className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-12 w-[1000px] flex flex-col gap-10 relative overflow-hidden"
+        className="bg-paper-100/80 border-2 border-earth-700/10 p-12 w-[1000px] flex flex-col gap-10 relative overflow-hidden"
       >
         {/* Header Section */}
         <div className="flex justify-between items-start relative z-10">
           <div className="flex items-center gap-8">
-            <div className="w-20 h-20 bg-cream-100 border-2 border-earth-700/10 rounded-[4px] flex items-center justify-center">
+            <div className="w-20 h-20 bg-cream-100 border-2 border-earth-700/10 flex items-center justify-center">
               <Activity className="w-10 h-10 text-sakura-700" />
             </div>
             <div>
               <div className="flex items-center gap-4">
                 <h2 className="text-6xl font-bold text-earth-700 tracking-tighter tabular-nums">{position.symbol}</h2>
                 <span className={cn(
-                  "text-[10px] px-3 py-1 rounded-[4px] border font-semibold uppercase tracking-[0.2em]",
+                  "text-[10px] px-3 py-1 border font-semibold uppercase tracking-[0.2em]",
                   position.direction === 'long' ? "bg-profit/10 text-profit border-profit/20" : "bg-loss/10 text-loss border-loss/20"
                 )}>
                   {position.direction.toUpperCase()}
@@ -110,7 +110,7 @@ const SharePosition: React.FC = () => {
 
         {/* Body Section - Market Data */}
         <div className="grid grid-cols-2 gap-10 relative z-10">
-          <div className="bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] p-8 flex flex-col gap-4">
+          <div className="bg-cream-100/60 border-2 border-earth-700/10 p-8 flex flex-col gap-4">
             <div className="text-text-muted text-[10px] uppercase font-semibold tracking-[0.2em] mb-2">Entry Intelligence</div>
             <div className="flex justify-between items-center">
               <span className="text-text-dim text-xs font-semibold uppercase tracking-widest">Entry Benchmark</span>
@@ -126,7 +126,7 @@ const SharePosition: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] p-8 flex flex-col gap-4">
+          <div className="bg-cream-100/60 border-2 border-earth-700/10 p-8 flex flex-col gap-4">
             <div className="text-text-muted text-[10px] uppercase font-semibold tracking-[0.2em] mb-2">Market Dynamics</div>
             <div className="flex justify-between items-center">
               <span className="text-text-dim text-xs font-semibold uppercase tracking-widest">Current Mark</span>
@@ -144,7 +144,7 @@ const SharePosition: React.FC = () => {
         </div>
 
         {/* Footer Info */}
-        <div className="flex justify-between items-center text-[10px] font-semibold text-text-dim uppercase tracking-[0.2em] bg-cream-100/60 px-6 py-4 rounded-[4px] border-2 border-earth-700/10 relative z-10">
+        <div className="flex justify-between items-center text-[10px] font-semibold text-text-dim uppercase tracking-[0.2em] bg-cream-100/60 px-6 py-4 border-2 border-earth-700/10 relative z-10">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-3">
               <span className="text-earth-700/40">RISK_PROFILE</span>

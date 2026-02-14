@@ -43,7 +43,7 @@ export function ShareLayout({ children, title }: ShareLayoutProps) {
               INTEGRITY_VERIFIED
             </span>
           </div>
-          <div className="bg-sakura-500/15 border-2 border-sakura-500/30 text-sakura-700 px-4 py-1.5 rounded-[4px] text-[10px] font-semibold tracking-[0.2em] uppercase">
+          <div className="bg-sakura-500/15 border-2 border-sakura-500/30 text-sakura-700 px-4 py-1.5 text-[10px] font-semibold tracking-[0.2em] uppercase">
             Analytics Mode
           </div>
         </div>

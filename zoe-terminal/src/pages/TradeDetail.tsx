@@ -79,7 +79,7 @@ export default function TradeDetail() {
         <button onClick={() => navigate(-1)} className="flex items-center text-sm text-text-secondary hover:text-text-primary transition-colors">
           <ArrowLeft className="w-4 h-4 mr-1" /> Back to Trades
         </button>
-        <div className="bg-surface-base border-2 border-earth-700/20 rounded-[4px] shadow-soft p-12 text-center text-text-muted">Trade not found.</div>
+        <div className="bg-surface-base border-2 border-earth-700/20 p-12 text-center text-text-muted">Trade not found.</div>
       </div>
     );
   }
@@ -96,7 +96,7 @@ export default function TradeDetail() {
       </button>
 
       {/* Header */}
-      <div className="bg-surface border border-border rounded-[4px] p-6">
+      <div className="bg-surface border border-border p-6">
         <div className="flex justify-between items-start min-w-0">
             <div>
                 <div className="flex items-center gap-3 mb-2">
@@ -120,7 +120,7 @@ export default function TradeDetail() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-2 space-y-6">
               {trade.legs.length > 0 && (
-              <div className="bg-surface border border-border rounded-[4px] overflow-hidden">
+              <div className="bg-surface border border-border overflow-hidden">
                   <div className="px-4 py-3 border-b border-border bg-surface-highlight/50">
                       <h3 className="font-medium text-sm">Legs</h3>
                   </div>
@@ -150,7 +150,7 @@ export default function TradeDetail() {
               )}
 
               {trade.rationale && (
-              <div className="bg-surface border border-border rounded-[4px] p-6">
+              <div className="bg-surface border border-border p-6">
                   <h3 className="font-medium text-sm text-text-secondary mb-3 flex items-center gap-2">
                       <FileText className="w-4 h-4" /> Rationale
                   </h3>
@@ -159,7 +159,7 @@ export default function TradeDetail() {
               )}
 
                {trade.timeline.length > 0 && (
-               <div className="bg-surface border border-border rounded-[4px] p-6">
+               <div className="bg-surface border border-border p-6">
                   <h3 className="font-medium text-sm text-text-secondary mb-4 flex items-center gap-2">
                       <Clock className="w-4 h-4" /> Timeline
                   </h3>
@@ -183,7 +183,7 @@ export default function TradeDetail() {
 
           <div className="space-y-6">
               {Object.keys(snap).length > 0 && (
-              <div className="bg-surface border border-border rounded-[4px] p-4">
+              <div className="bg-surface border border-border p-4">
                   <h3 className="font-medium text-sm text-text-secondary mb-4 flex items-center gap-2">
                       <Target className="w-4 h-4" /> Entry Snapshot
                   </h3>
@@ -203,7 +203,7 @@ export default function TradeDetail() {
               )}
 
               {trade.artifacts.length > 0 && (
-              <div className="bg-surface border border-border rounded-[4px] p-4">
+              <div className="bg-surface border border-border p-4">
                   <h3 className="font-medium text-sm text-text-secondary mb-4">Evidence</h3>
                   <div className="space-y-2">
                       {trade.artifacts.map((art: any, i: number) => (

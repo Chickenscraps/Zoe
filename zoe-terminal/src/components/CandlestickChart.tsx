@@ -227,7 +227,7 @@ export default function CandlestickChart({
   return (
     <div
       ref={chartContainerRef}
-      className="w-full rounded-[4px] overflow-hidden"
+      className="w-full overflow-hidden"
       style={{ height }}
     />
   );
