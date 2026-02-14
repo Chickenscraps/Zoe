@@ -1,10 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { useModeContext } from '../lib/mode';
 import type { Database } from '../lib/types';
 
 type CandleRow = Database['public']['Tables']['crypto_candles']['Row'];
-type CandidateScan = Database['public']['Tables']['candidate_scans']['Row'];
 
 export interface CandleData {
   time: number; // Unix timestamp
@@ -99,7 +97,6 @@ export interface ChartAnalysis {
 }
 
 export function useCandleData(symbol: string, timeframe: string = '1h') {
-  const { mode } = useModeContext();
   const [candles, setCandles] = useState<CandleData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -127,7 +124,6 @@ export function useCandleData(symbol: string, timeframe: string = '1h') {
         .select('*')
         .eq('symbol', symbol)
         .eq('timeframe', timeframe)
-        .eq('mode', mode)
         .order('open_time', { ascending: true })
         .limit(100);
 
@@ -150,7 +146,6 @@ export function useCandleData(symbol: string, timeframe: string = '1h') {
         .from('candidate_scans')
         .select('info')
         .eq('symbol', symbol)
-        .eq('mode', mode)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -179,7 +174,7 @@ export function useCandleData(symbol: string, timeframe: string = '1h') {
     } finally {
       setLoading(false);
     }
-  }, [symbol, timeframe, mode]);
+  }, [symbol, timeframe]);
 
   useEffect(() => {
     setLoading(true);

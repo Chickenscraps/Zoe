@@ -80,14 +80,6 @@ export function EquityChart({ data, dailyPnl, allTimePnl, allTimePnlPct, height 
   const displayPnl = view === 'today' ? dailyPnl : allTimePnl;
   const displayPct = view === 'today' ? 0 : allTimePnlPct;
 
-  // Determine how many ticks to show based on data density
-  const tickCount = useMemo(() => {
-    const len = pnlData.length;
-    if (len < 10) return len;
-    if (len < 50) return 6;
-    return 8;
-  }, [pnlData.length]);
-
   return (
     <div className={cn("card-premium card-shimmer-sweep p-4 sm:p-6", className)}>
       {/* Header with toggle */}
@@ -198,13 +190,14 @@ export function EquityChart({ data, dailyPnl, allTimePnl, allTimePnlPct, height 
                   fontSize: '11px',
                 }}
                 itemStyle={{ color: '#f3f4f6' }}
-                formatter={(value: number, name: string) => {
+                formatter={((value: any, name: any) => {
+                  if (value == null) return ['—', name ?? ''];
                   if (name === 'pnl') {
                     const prefix = value >= 0 ? '+' : '';
                     return [`${prefix}${formatCurrency(value)}`, 'P&L'];
                   }
                   return [formatCurrency(value), 'Total Value'];
-                }}
+                }) as any}
                 labelFormatter={(label) => formatTooltipLabel(label as string)}
               />
               <Area

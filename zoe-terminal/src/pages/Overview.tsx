@@ -3,7 +3,7 @@ import { AlertBanner } from "../components/AlertBanner";
 import { EquityChart } from "../components/EquityChart";
 import FocusPanel from "../components/FocusPanel";
 import { KPICard } from "../components/KPICard";
-import { OpenOrdersTable } from "../components/OpenOrdersTable";
+
 import { PositionsTable } from "../components/PositionsTable";
 import { Skeleton } from "../components/Skeleton";
 import { useDashboardData } from "../hooks/useDashboardData";
@@ -108,7 +108,7 @@ export default function Overview() {
         <KPICard
           label="Cash"
           value={formatCurrency(cashValue)}
-          subValue="Available Buying Power"
+          subValue="Available Balance"
           trend={totalValue > 0 ? ((cashValue / totalValue) * 100).toFixed(1) + "% of total" : "—"}
           trendDir="neutral"
           icon={Wallet}
@@ -166,9 +166,6 @@ export default function Overview() {
       {/* Open Positions */}
       <PositionsTable />
 
-      {/* Open Orders */}
-      <OpenOrdersTable />
-
       {/* Equity Curve with Day + Overall P&L */}
       <EquityChart
         data={equityHistory}
@@ -183,10 +180,10 @@ export default function Overview() {
 
       {/* Legacy Live Crypto Prices (from candidate_scans polling) */}
       {livePrices.length > 0 && (
-        <div className="card-premium card-shimmer-sweep p-4 sm:p-6">
+        <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-text-muted flex items-center gap-2">
-              <TrendingUp className="w-3 h-3 text-profit" /> Live Prices
+            <h3 className="font-pixel text-[0.4rem] uppercase tracking-[0.08em] text-text-muted flex items-center gap-2">
+              <TrendingUp className="w-3 h-3 text-sakura-700" /> Live Prices
             </h3>
             <span className="text-[9px] font-bold text-text-dim uppercase tracking-widest">
               {livePrices[0]?.created_at ? new Date(livePrices[0].created_at).toLocaleTimeString([], { hour12: false }) : ''}
@@ -201,13 +198,13 @@ export default function Overview() {
               return (
                 <div
                   key={scan.symbol}
-                  className="flex flex-col items-center p-2.5 sm:p-3 bg-background/50 border border-border rounded-xl hover:border-white/10 transition-all duration-200 hover:-translate-y-0.5 card-stagger"
+                  className="flex flex-col items-center p-2.5 sm:p-3 bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] hover:border-sakura-500/30 transition-all duration-200 card-stagger"
                   style={{ '--stagger-delay': `${i * 50}ms` } as React.CSSProperties}
                 >
                   <span className="text-[9px] sm:text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">
                     {scan.symbol.replace('-USD', '')}
                   </span>
-                  <span className="text-xs sm:text-sm font-bold text-white tabular-nums">
+                  <span className="text-xs sm:text-sm font-bold text-earth-700 tabular-nums">
                     {mid >= 1 ? `$${mid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `$${mid.toFixed(6)}`}
                   </span>
                   {momShort != null && (

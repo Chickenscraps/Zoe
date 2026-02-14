@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { useModeContext } from '../lib/mode';
 import type { FeedItem, FeedFilter } from '../lib/copilotTypes';
 
 const PAGE_SIZE = 50;
@@ -11,7 +10,6 @@ const THOUGHT_THROTTLE_MS = 2000;
  * Supports filtering by source, symbol, and severity.
  */
 export function useCopilotFeed() {
-  const { mode } = useModeContext();
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const lastThoughtTs = useRef(0);
@@ -29,7 +27,6 @@ export function useCopilotFeed() {
       const { data, error } = await supabase
         .from('zoe_events')
         .select('*')
-        .eq('mode', mode)
         .order('created_at', { ascending: false })
         .limit(PAGE_SIZE);
 
@@ -40,7 +37,7 @@ export function useCopilotFeed() {
     } finally {
       setLoading(false);
     }
-  }, [mode]);
+  }, []);
 
   useEffect(() => {
     loadHistory();
@@ -56,7 +53,6 @@ export function useCopilotFeed() {
           event: 'INSERT',
           schema: 'public',
           table: 'zoe_events',
-          filter: `mode=eq.${mode}`,
         },
         (payload) => {
           const newItem = payload.new as FeedItem;
@@ -76,7 +72,7 @@ export function useCopilotFeed() {
     return () => {
       channel.unsubscribe();
     };
-  }, [mode]);
+  }, []);
 
   // Apply filters
   const filteredItems = items.filter(item => {

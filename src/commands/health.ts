@@ -76,7 +76,7 @@ export type HealthSummary = {
       age: number | null;
     }>;
   };
-  /** Optional third-party integration health probes (e.g. Robinhood Crypto). */
+  /** Optional third-party integration health probes. */
   integrations?: IntegrationHealthSummary[];
 };
 
@@ -392,7 +392,7 @@ export const formatHealthChannelLines = (
     lines.push(`${label}: unknown`);
   }
 
-  // Append integration status lines (e.g. Robinhood Crypto Connector)
+  // Append integration status lines
   if (summary.integrations) {
     for (const integration of summary.integrations) {
       if (!integration.configured) continue;
@@ -568,46 +568,6 @@ export async function getHealthSnapshot(params?: {
     }
   }
 
-  // --- Optional integrations (non-blocking, never fatal) ---
-  const integrations: IntegrationHealthSummary[] = [];
-  try {
-    const rhConfigured = Boolean(
-      process.env.RH_CRYPTO_API_KEY && process.env.RH_CRYPTO_PRIVATE_KEY_SEED,
-    );
-    if (rhConfigured && doProbe) {
-      // Dynamic import so this file doesn't hard-depend on the integration module
-      const rh = await import("../integrations/robinhood_crypto_client.js").catch(() => null);
-      if (rh?.probeHealth) {
-        const probe = await Promise.race([
-          rh.probeHealth(),
-          sleep(cappedTimeout).then(() => ({
-            ok: false as const,
-            status: 0,
-            latencyMs: cappedTimeout,
-            error: "probe timeout",
-          })),
-        ]);
-        integrations.push({
-          name: "Robinhood Crypto",
-          configured: true,
-          ok: probe.ok,
-          latencyMs: probe.latencyMs,
-          error: probe.error,
-        });
-      }
-    } else if (rhConfigured) {
-      integrations.push({ name: "Robinhood Crypto", configured: true });
-    }
-  } catch {
-    // Integration probe must never block the health snapshot
-    integrations.push({
-      name: "Robinhood Crypto",
-      configured: true,
-      ok: false,
-      error: "probe threw unexpectedly",
-    });
-  }
-
   const summary: HealthSummary = {
     ok: true,
     ts: Date.now(),
@@ -623,7 +583,6 @@ export async function getHealthSnapshot(params?: {
       count: sessions.count,
       recent: sessions.recent,
     },
-    ...(integrations.length > 0 ? { integrations } : {}),
   };
 
   return summary;

@@ -68,7 +68,7 @@ const PRESETS: Preset[] = [
   },
   {
     name: 'Paused',
-    description: 'Kill switch ON. All trading halted.',
+    description: 'Emergency pause ON. All automation halted.',
     icon: Pause,
     color: 'text-loss bg-loss/10 border-loss/20',
     values: {

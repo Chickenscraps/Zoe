@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
+import type { Json } from '../lib/types';
 import { supabase } from '../lib/supabaseClient';
-import { useModeContext } from '../lib/mode';
 import { useDashboardData } from './useDashboardData';
 
 const NUDGE_INTERVAL_MS = 3 * 60_000; // every 3 minutes
@@ -30,7 +30,6 @@ const IDLE_NUDGES = [
  * Items appear in the copilot feed via the existing realtime subscription.
  */
 export function useAutoNudge() {
-  const { mode } = useModeContext();
   const dashboard = useDashboardData();
   const nudgeIndex = useRef(Math.floor(Math.random() * IDLE_NUDGES.length));
   const lastNudgeType = useRef<string>('');
@@ -38,7 +37,7 @@ export function useAutoNudge() {
   useEffect(() => {
     async function emitNudge() {
       try {
-        const nudge = pickNudge(dashboard, mode, nudgeIndex, lastNudgeType);
+        const nudge = pickNudge(dashboard, nudgeIndex, lastNudgeType);
         if (!nudge) return;
 
         await supabase.from('zoe_events').insert({
@@ -50,8 +49,7 @@ export function useAutoNudge() {
           body: nudge.body,
           symbol: nudge.symbol ?? null,
           color_hint: null,
-          metadata: nudge.metadata ?? {},
-          mode,
+          metadata: (nudge.metadata ?? {}) as Record<string, Json | undefined>,
           created_at: new Date().toISOString(),
         });
       } catch (err) {
@@ -68,7 +66,7 @@ export function useAutoNudge() {
       clearTimeout(initialTimeout);
       clearInterval(interval);
     };
-  }, [mode, dashboard]);
+  }, [dashboard]);
 }
 
 interface NudgeResult {
@@ -82,7 +80,6 @@ interface NudgeResult {
 
 function pickNudge(
   dashboard: ReturnType<typeof useDashboardData>,
-  mode: string,
   nudgeIndex: React.RefObject<number>,
   lastNudgeType: React.RefObject<string>,
 ): NudgeResult | null {
@@ -111,7 +108,7 @@ function pickNudge(
       subtype: 'HEALTH_CHECK',
       severity: 'success',
       title: `${liveServices.length} service${liveServices.length > 1 ? 's' : ''} online and healthy.`,
-      body: liveServices.map(s => s.service_name).join(', '),
+      body: liveServices.map(s => s.component).join(', '),
       metadata: { count: liveServices.length },
     });
   } else {
@@ -123,32 +120,28 @@ function pickNudge(
     });
   }
 
-  // Open positions count
+  // Holdings value
   const holdings = dashboard.cryptoHoldings;
-  if (holdings) {
-    const qty = Number(holdings.quantity ?? 0);
-    if (qty > 0) {
-      nudges.push({
-        subtype: 'POSITION_UPDATE',
-        severity: 'info',
-        title: `Holding ${holdings.symbol}: ${qty} units`,
-        body: `Cost basis: $${Number(holdings.cost_basis ?? 0).toFixed(2)}`,
-        symbol: holdings.symbol ?? undefined,
-        metadata: { symbol: holdings.symbol, quantity: qty },
-      });
-    }
+  if (holdings && holdings.total_crypto_value > 0) {
+    nudges.push({
+      subtype: 'POSITION_UPDATE',
+      severity: 'info',
+      title: `Crypto holdings: $${holdings.total_crypto_value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      body: null,
+      metadata: { totalValue: holdings.total_crypto_value },
+    });
   }
 
   // Recent fills
   if (dashboard.cryptoFills && dashboard.cryptoFills.length > 0) {
     const recent = dashboard.cryptoFills[0];
-    const age = Date.now() - new Date(recent.created_at ?? '').getTime();
+    const age = Date.now() - new Date(recent.executed_at ?? '').getTime();
     if (age < 10 * 60_000) {
       nudges.push({
         subtype: 'TRADE_RECAP',
         severity: 'success',
         title: `Recent fill: ${recent.side} ${recent.symbol} @ $${Number(recent.price ?? 0).toFixed(4)}`,
-        body: `Qty: ${recent.quantity} — ${Math.round(age / 1000)}s ago`,
+        body: `Qty: ${recent.qty} — ${Math.round(age / 1000)}s ago`,
         symbol: recent.symbol ?? undefined,
         metadata: { fill: recent },
       });

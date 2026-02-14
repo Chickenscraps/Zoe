@@ -1,13 +1,10 @@
-import { useRef, useEffect } from 'react';
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { initAuditMode } from './utils/ui_audit';
-import { ModeProvider } from './lib/mode';
 import { CopilotProvider } from './lib/CopilotContext';
 import { AuthProvider } from './lib/AuthContext';
 import PasswordGate from './components/PasswordGate';
 import { AppShell } from './components/AppShell';
-import { TradeToastContainer, type ToastAPI } from './components/TradeToast';
-import { useTradeNotifications } from './hooks/useTradeNotifications';
 import { initAudio } from './lib/chime';
 import Overview from './pages/Overview';
 import Trades from './pages/Trades';
@@ -16,17 +13,13 @@ import Scanner from './pages/Scanner';
 import Charts from './pages/Charts';
 import Intelligence from './pages/Intelligence';
 import Settings from './pages/Settings';
-import Markets from './pages/Markets';
-import Ops from './pages/Ops';
 
 import ShareTrade from './pages/share/ShareTrade';
 import SharePnL from './pages/share/SharePnL';
 import SharePosition from './pages/share/SharePosition';
 import SharePlan from './pages/share/SharePlan';
 
-function AppWithNotifications() {
-  const toastRef = useRef<ToastAPI | null>(null);
-
+function AppContent() {
   // Initialize audio context on first user interaction
   useEffect(() => {
     const unlockAudio = () => {
@@ -42,26 +35,18 @@ function AppWithNotifications() {
     };
   }, []);
 
-  // Subscribe to realtime trade events
-  useTradeNotifications(toastRef);
-
   return (
-    <>
-      <AppShell>
-        <Routes>
-          <Route path="/" element={<Overview />} />
-          <Route path="/trades" element={<Trades />} />
-          <Route path="/trades/:id" element={<TradeDetail />} />
-          <Route path="/markets" element={<Markets />} />
-          <Route path="/scanner" element={<Scanner />} />
-          <Route path="/charts" element={<Charts />} />
-          <Route path="/intelligence" element={<Intelligence />} />
-          <Route path="/ops" element={<Ops />} />
-          <Route path="/settings" element={<Settings />} />
-        </Routes>
-      </AppShell>
-      <TradeToastContainer apiRef={toastRef} />
-    </>
+    <AppShell>
+      <Routes>
+        <Route path="/" element={<Overview />} />
+        <Route path="/activity" element={<Trades />} />
+        <Route path="/trades/:id" element={<TradeDetail />} />
+        <Route path="/scanner" element={<Scanner />} />
+        <Route path="/charts" element={<Charts />} />
+        <Route path="/intelligence" element={<Intelligence />} />
+        <Route path="/settings" element={<Settings />} />
+      </Routes>
+    </AppShell>
   );
 }
 
@@ -75,20 +60,18 @@ function App() {
     <AuthProvider>
     <PasswordGate>
       <Router>
-        <ModeProvider>
-          <CopilotProvider>
-            <Routes>
-              {/* Share Routes (No Shell, No Notifications) */}
-              <Route path="/share/trade/:id" element={<ShareTrade />} />
-              <Route path="/share/pnl" element={<SharePnL />} />
-              <Route path="/share/position/:id" element={<SharePosition />} />
-              <Route path="/share/plan" element={<SharePlan />} />
+        <CopilotProvider>
+          <Routes>
+            {/* Share Routes (No Shell) */}
+            <Route path="/share/trade/:id" element={<ShareTrade />} />
+            <Route path="/share/pnl" element={<SharePnL />} />
+            <Route path="/share/position/:id" element={<SharePosition />} />
+            <Route path="/share/plan" element={<SharePlan />} />
 
-              {/* Main App with Notifications */}
-              <Route path="*" element={<AppWithNotifications />} />
-            </Routes>
-          </CopilotProvider>
-        </ModeProvider>
+            {/* Main App */}
+            <Route path="*" element={<AppContent />} />
+          </Routes>
+        </CopilotProvider>
       </Router>
     </PasswordGate>
     </AuthProvider>

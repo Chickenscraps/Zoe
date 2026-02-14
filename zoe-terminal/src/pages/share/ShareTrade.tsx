@@ -67,8 +67,8 @@ export default function ShareTrade() {
     fetchTrade();
   }, [id]);
 
-  if (loading) return <div className="p-8 text-white">Loading trade...</div>;
-  if (!trade) return <div className="p-8 text-white">Trade not found</div>;
+  if (loading) return <div className="p-8 text-earth-700">Loading trade...</div>;
+  if (!trade) return <div className="p-8 text-earth-700">Trade not found</div>;
 
   const pnlPositive = trade.realized_pnl >= 0;
 
@@ -76,17 +76,17 @@ export default function ShareTrade() {
     <ShareLayout title="TRADE_EXECUTION_SETTLED">
       <div
         data-testid="trade-ticket"
-        className="card-premium p-12 w-[1000px] flex flex-col gap-10 relative overflow-hidden"
+        className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-12 w-[1000px] flex flex-col gap-10 relative overflow-hidden"
       >
         {/* Top Header */}
         <div className="flex justify-between items-start relative z-10">
           <div className="flex items-center gap-8">
-            <div className="w-20 h-20 bg-background border border-border rounded-2xl flex items-center justify-center shadow-crisp">
-              <TrendingUp className="w-10 h-10 text-profit" />
+            <div className="w-20 h-20 bg-cream-100 border-2 border-earth-700/10 rounded-[4px] flex items-center justify-center">
+              <TrendingUp className="w-10 h-10 text-sakura-700" />
             </div>
             <div>
               <div className="flex items-center gap-4">
-                <h2 className="text-6xl font-bold text-white tracking-tighter tabular-nums">{trade.symbol}</h2>
+                <h2 className="text-6xl font-bold text-earth-700 tracking-tighter tabular-nums">{trade.symbol}</h2>
                 <StatusChip status="ok" label="SETTLED" />
               </div>
               <p className="text-text-muted font-semibold tracking-[0.2em] uppercase text-xs mt-2">{trade.strategy}</p>
@@ -101,45 +101,45 @@ export default function ShareTrade() {
           </div>
         </div>
 
-        <div className="h-px bg-border/50 relative z-10" />
+        <div className="h-px bg-earth-700/10 relative z-10" />
 
         {/* Stats Grid */}
         <div className="grid grid-cols-4 gap-8 relative z-10">
-          <div className="bg-background/50 border border-border rounded-2xl p-6">
+          <div className="bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] p-6">
             <div className="flex items-center gap-2 text-text-muted text-[10px] uppercase font-semibold tracking-[0.2em] mb-3">
               <Zap className="w-3.5 h-3.5 text-profit" /> Vol / IVR
             </div>
-            <div className="text-2xl font-bold text-white tabular-nums">{trade.entry_snapshot.ivr ?? '--'}</div>
+            <div className="text-2xl font-bold text-earth-700 tabular-nums">{trade.entry_snapshot.ivr ?? '--'}</div>
           </div>
-          <div className="bg-background/50 border border-border rounded-2xl p-6">
+          <div className="bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] p-6">
             <div className="flex items-center gap-2 text-text-muted text-[10px] uppercase font-semibold tracking-[0.2em] mb-3">
               <Target className="w-3.5 h-3.5" /> Delta Exp
             </div>
-            <div className="text-2xl font-bold text-white tabular-nums">{trade.entry_snapshot.delta ?? '--'}</div>
+            <div className="text-2xl font-bold text-earth-700 tabular-nums">{trade.entry_snapshot.delta ?? '--'}</div>
           </div>
-          <div className="bg-background/50 border border-border rounded-2xl p-6">
+          <div className="bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] p-6">
             <div className="flex items-center gap-2 text-text-muted text-[10px] uppercase font-semibold tracking-[0.2em] mb-3">
               <Clock className="w-3.5 h-3.5" /> Duration
             </div>
-            <div className="text-2xl font-bold text-white tabular-nums">{trade.entry_snapshot.dte ?? '--'} DTE</div>
+            <div className="text-2xl font-bold text-earth-700 tabular-nums">{trade.entry_snapshot.dte ?? '--'} DTE</div>
           </div>
-          <div className="bg-background/50 border border-border rounded-2xl p-6">
+          <div className="bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] p-6">
             <div className="text-text-muted text-[10px] uppercase font-semibold tracking-[0.2em] mb-3 text-loss">Collateral</div>
-            <div className="text-2xl font-bold text-white tabular-nums">{formatCurrency(trade.entry_snapshot.max_risk ?? 0)}</div>
+            <div className="text-2xl font-bold text-earth-700 tabular-nums">{formatCurrency(trade.entry_snapshot.max_risk ?? 0)}</div>
           </div>
         </div>
 
         {/* Leg Summary */}
         {trade.legs.length > 0 && (
-        <div className="bg-background/30 rounded-2xl p-8 border border-border relative z-10">
+        <div className="bg-cream-100/40 rounded-[4px] p-8 border-2 border-earth-700/10 relative z-10">
           <div className="text-[10px] text-text-muted uppercase font-semibold tracking-[0.3em] mb-6">Component Breakdown</div>
           <div className="grid grid-cols-2 gap-x-16 gap-y-4">
             {trade.legs.map((leg, i) => (
               <div key={i} className="flex justify-between items-center text-xs">
-                <span className="text-white font-semibold tracking-tight flex items-center gap-3">
+                <span className="text-earth-700 font-semibold tracking-tight flex items-center gap-3">
                   <div className={cn(
                     "w-1.5 h-1.5 rounded-full",
-                    leg.type === 'call' ? 'bg-white opacity-40' : 'bg-profit'
+                    leg.type === 'call' ? 'bg-earth-700/40' : 'bg-profit'
                   )} />
                   {Math.abs(leg.qty)}x {leg.strike} {leg.type.toUpperCase()}
                 </span>
@@ -151,9 +151,9 @@ export default function ShareTrade() {
         )}
 
         {/* Timeline */}
-        <div className="flex justify-between items-center text-[10px] font-semibold text-text-dim uppercase tracking-[0.2em] bg-background/50 px-6 py-4 rounded-xl border border-border relative z-10">
+        <div className="flex justify-between items-center text-[10px] font-semibold text-text-dim uppercase tracking-[0.2em] bg-cream-100/60 px-6 py-4 rounded-[4px] border-2 border-earth-700/10 relative z-10">
           <span>Executed: {trade.opened_at ? formatDate(trade.opened_at) : '--'}</span>
-          <div className="w-1 h-1 rounded-full bg-border" />
+          <div className="w-1 h-1 rounded-full bg-sakura-500/40" />
           <span>Settled: {trade.closed_at ? formatDate(trade.closed_at) : formatDate(new Date().toISOString())}</span>
         </div>
       </div>

@@ -7,12 +7,7 @@
       "Bash(npx netlify-cli:*)",
       "WebFetch(domain:clawdbot-zoe-dash.netlify.app)",
       "Bash(find:*)",
-      "Bash(python -c \"\nimport os\npath = r''C:\\\\Users\\\\josha\\\\OneDrive\\\\Desktop\\\\kraken.txt''\nwith open\\(path, ''r''\\) as f:\n    lines = [l.strip\\(\\) for l in f.readlines\\(\\) if l.strip\\(\\)]\n# Parse key-value pairs or raw lines\napi_key = None\napi_secret = None\nfor line in lines:\n    if ''='' in line:\n        k, v = line.split\\(''='', 1\\)\n        k = k.strip\\(\\).lower\\(\\)\n        v = v.strip\\(\\)\n        if ''key'' in k and ''secret'' not in k and ''private'' not in k:\n            api_key = v\n        elif ''secret'' in k or ''private'' in k:\n            api_secret = v\n    elif not api_key and len\\(line\\) > 10 and ''/'' not in line and ''@'' not in line and '' '' not in line:\n        # Could be a raw key on its own line\n        if api_key is None:\n            api_key = line\n        elif api_secret is None:\n            api_secret = line\n\n# Show structure info without exposing secrets\nprint\\(f''Lines found: {len\\(lines\\)}''\\)\nprint\\(f''API Key found: {api_key is not None} \\(last 4: ****{api_key[-4:] if api_key else \"\"N/A\"\"}\\)''\\)\nprint\\(f''API Secret found: {api_secret is not None} \\(last 4: ****{api_secret[-4:] if api_secret else \"\"N/A\"\"}\\)''\\)\nprint\\(f''Key length: {len\\(api_key\\) if api_key else 0}''\\)\nprint\\(f''Secret length: {len\\(api_secret\\) if api_secret else 0}''\\)\n\")",
-      "Bash(python:*)",
-      "Bash(pip install:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git grep:*)"
+      "Bash(git checkout:*)"
     ]
   }
 }

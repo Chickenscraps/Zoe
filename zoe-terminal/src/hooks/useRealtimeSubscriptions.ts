@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import { supabase, supabaseMisconfigured } from "../lib/supabaseClient";
-import { useModeContext } from "../lib/mode";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 interface RealtimeCallbacks {
@@ -15,14 +14,13 @@ interface RealtimeCallbacks {
  * Falls back to polling if WebSocket disconnects.
  */
 export function useRealtimeSubscriptions(callbacks: RealtimeCallbacks) {
-  const { mode } = useModeContext();
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
     if (supabaseMisconfigured) return;
 
     const channel = supabase
-      .channel(`dashboard-${mode}`)
+      .channel("dashboard-live")
       // Order status changes (insert + update) → refresh orders immediately
       .on(
         "postgres_changes",
@@ -30,7 +28,6 @@ export function useRealtimeSubscriptions(callbacks: RealtimeCallbacks) {
           event: "INSERT",
           schema: "public",
           table: "crypto_orders",
-          filter: `mode=eq.${mode}`,
         },
         () => callbacks.onOrderChange()
       )
@@ -40,7 +37,6 @@ export function useRealtimeSubscriptions(callbacks: RealtimeCallbacks) {
           event: "UPDATE",
           schema: "public",
           table: "crypto_orders",
-          filter: `mode=eq.${mode}`,
         },
         () => callbacks.onOrderChange()
       )
@@ -51,7 +47,6 @@ export function useRealtimeSubscriptions(callbacks: RealtimeCallbacks) {
           event: "INSERT",
           schema: "public",
           table: "crypto_fills",
-          filter: `mode=eq.${mode}`,
         },
         () => callbacks.onFillChange()
       )
@@ -62,7 +57,6 @@ export function useRealtimeSubscriptions(callbacks: RealtimeCallbacks) {
           event: "INSERT",
           schema: "public",
           table: "candidate_scans",
-          filter: `mode=eq.${mode}`,
         },
         () => callbacks.onPriceChange()
       )
@@ -73,7 +67,6 @@ export function useRealtimeSubscriptions(callbacks: RealtimeCallbacks) {
           event: "INSERT",
           schema: "public",
           table: "crypto_cash_snapshots",
-          filter: `mode=eq.${mode}`,
         },
         () => callbacks.onCashChange()
       )
@@ -84,13 +77,12 @@ export function useRealtimeSubscriptions(callbacks: RealtimeCallbacks) {
           event: "INSERT",
           schema: "public",
           table: "order_events",
-          filter: `mode=eq.${mode}`,
         },
         () => callbacks.onOrderChange()
       )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
-          console.log("[ZOE] Realtime connected for mode:", mode);
+          console.log("[ZOE] Realtime connected");
         }
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
           console.warn("[ZOE] Realtime channel error, falling back to polling");
@@ -105,5 +97,5 @@ export function useRealtimeSubscriptions(callbacks: RealtimeCallbacks) {
         channelRef.current = null;
       }
     };
-  }, [mode]); // Only re-subscribe when mode changes
+  }, []);
 }

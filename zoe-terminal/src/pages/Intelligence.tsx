@@ -12,7 +12,7 @@ import {
   BrainCircuit, Filter, AlertTriangle, Map, Layers, SearchX, CheckCircle2 as CheckCircle,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { useModeContext } from '../lib/mode';
+
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useStructureData, type BounceIntent } from '../hooks/useStructureData';
 import { formatCurrency, formatDate, cn } from '../lib/utils';
@@ -70,7 +70,7 @@ const CONSENSUS_STYLES: Record<string, { bg: string; text: string; border: strin
 const TYPE_CONFIG: Record<string, { bg: string; text: string; label: string }> = {
   scan:        { bg: 'bg-yellow-500/20', text: 'text-yellow-400', label: 'Scan' },
   signal:      { bg: 'bg-profit/20',     text: 'text-profit',     label: 'Signal' },
-  paper_trade: { bg: 'bg-blue-500/20',   text: 'text-blue-400',   label: 'Paper' },
+  paper_trade: { bg: 'bg-blue-500/20',   text: 'text-blue-400',   label: 'Simulation' },
   order:       { bg: 'bg-profit/20',     text: 'text-profit',     label: 'Order' },
   order_error: { bg: 'bg-loss/20',       text: 'text-loss',       label: 'Error' },
   entry:       { bg: 'bg-blue-500/20',   text: 'text-blue-400',   label: 'Entry' },
@@ -89,7 +89,6 @@ const TIMEFRAMES = ['All', '15m', '1h', '4h', '1d'];
 // ═══════════════════════════════════════════════════════════════════════
 
 export default function Intelligence() {
-  const { mode } = useModeContext();
   const [activeSection, setActiveSection] = useState<Section>('plan');
 
   // ── Plan state ────────────────────────────────────────────────────
@@ -131,7 +130,6 @@ export default function Intelligence() {
         const { data: scans } = await supabase
           .from('candidate_scans')
           .select('*')
-          .eq('mode', mode)
           .order('created_at', { ascending: false })
           .limit(12);
         if (scans) setCandidates(scans);
@@ -144,7 +142,7 @@ export default function Intelligence() {
     fetchCandidates();
     const interval = setInterval(fetchCandidates, 30000);
     return () => clearInterval(interval);
-  }, [mode]);
+  }, []);
 
   // ── Fetch consensus data ──────────────────────────────────────────
   useEffect(() => {
@@ -154,7 +152,6 @@ export default function Intelligence() {
         const { data: latest } = await supabase
           .from('candidate_scans')
           .select('created_at')
-          .eq('mode', mode)
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -164,7 +161,6 @@ export default function Intelligence() {
         const { data } = await supabase
           .from('candidate_scans')
           .select('*')
-          .eq('mode', mode)
           .eq('created_at', latest.created_at)
           .order('score', { ascending: false });
         if (data) setConsensusCandidates(data);
@@ -177,7 +173,7 @@ export default function Intelligence() {
     fetchConsensus();
     const interval = setInterval(fetchConsensus, 30000);
     return () => clearInterval(interval);
-  }, [mode]);
+  }, []);
 
   // ── Fetch thoughts ────────────────────────────────────────────────
   useEffect(() => {
@@ -187,7 +183,6 @@ export default function Intelligence() {
         const { data } = await supabase
           .from('thoughts')
           .select('*')
-          .eq('mode', mode)
           .order('created_at', { ascending: false })
           .limit(50);
         if (data) setThoughts(data);
@@ -200,7 +195,7 @@ export default function Intelligence() {
     fetchThoughts();
     const interval = setInterval(fetchThoughts, 15000);
     return () => clearInterval(interval);
-  }, [mode]);
+  }, []);
 
   // ── Derived data ──────────────────────────────────────────────────
   const scannerRows = useMemo(() => {
@@ -238,9 +233,9 @@ export default function Intelligence() {
   return (
     <div className="space-y-6 sm:space-y-10">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-2 border-b border-border pb-4 sm:pb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-2 border-b border-earth-700/10 pb-4 sm:pb-8">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tighter">Intelligence Center</h2>
+          <h2 className="font-pixel text-[0.65rem] uppercase tracking-[0.08em] text-earth-700">Intelligence Center</h2>
           <p className="text-xs sm:text-sm text-text-muted mt-1 sm:mt-2 font-medium tracking-tight">
             Unified view — gameplan, consensus gates, market structure & system thoughts.
           </p>
@@ -259,7 +254,7 @@ export default function Intelligence() {
       </div>
 
       {/* Section Tabs */}
-      <div className="flex gap-3 sm:gap-6 border-b border-border/50 overflow-x-auto">
+      <div className="flex gap-3 sm:gap-6 border-b border-earth-700/10 overflow-x-auto">
         {SECTIONS.map((sec) => (
           <button
             key={sec.id}
@@ -267,11 +262,11 @@ export default function Intelligence() {
             className={cn(
               "pb-3 sm:pb-4 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all duration-300 whitespace-nowrap",
               activeSection === sec.id
-                ? "border-profit text-white"
+                ? "border-sakura-500 text-earth-700"
                 : "border-transparent text-text-muted hover:text-text-secondary"
             )}
           >
-            <sec.icon className={cn("w-3 sm:w-3.5 h-3 sm:h-3.5", activeSection === sec.id ? "text-profit" : "")} />
+            <sec.icon className={cn("w-3 sm:w-3.5 h-3 sm:h-3.5", activeSection === sec.id ? "text-sakura-700" : "")} />
             {sec.label}
           </button>
         ))}
@@ -291,51 +286,51 @@ export default function Intelligence() {
           {/* Scanner Candidates */}
           {planLoading || dashLoading ? (
             <div className="flex flex-col items-center justify-center h-48 text-text-muted animate-pulse gap-4">
-              <div className="w-10 h-10 border-2 border-border border-t-profit rounded-full animate-spin" />
+              <div className="w-10 h-10 border-2 border-earth-700/10 border-t-sakura-500 rounded-full animate-spin" />
               <span className="text-[10px] font-black uppercase tracking-widest italic">Interpreting market signals...</span>
             </div>
           ) : scannerRows.length > 0 ? (
             <>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 {scannerRows.map((row) => (
-                  <div key={row.symbol} className="card-premium p-4 sm:p-6 group overflow-hidden relative">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-white/[0.02] rounded-full -mr-12 -mt-12 transition-all group-hover:bg-white/[0.04]" />
+                  <div key={row.symbol} className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-6 group overflow-hidden relative">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-sakura-500/[0.03] rounded-full -mr-12 -mt-12 transition-all group-hover:bg-sakura-500/[0.06]" />
                     <div className="flex justify-between items-start mb-4 sm:mb-5 relative z-10">
                       <div>
-                        <h3 className="text-xl sm:text-2xl font-black text-white tracking-tighter">{row.symbol}</h3>
+                        <h3 className="text-xl sm:text-2xl font-black text-earth-700 tracking-tighter">{row.symbol}</h3>
                         <div className="flex gap-2 text-[9px] sm:text-[10px] text-text-muted mt-1 font-black uppercase tracking-widest">
-                          <span className="text-white/40">{row.regime}</span>
+                          <span className="text-earth-700/40">{row.regime}</span>
                           <span className="opacity-30">|</span>
-                          <span className="text-white/40">IVR {row.ivr}</span>
+                          <span className="text-earth-700/40">IVR {row.ivr}</span>
                         </div>
                       </div>
                       <div className="flex flex-col items-end">
-                        <div className="text-2xl sm:text-3xl font-black text-white tracking-tighter tabular-nums">{row.score}</div>
+                        <div className="text-2xl sm:text-3xl font-black text-earth-700 tracking-tighter tabular-nums">{row.score}</div>
                         <div className="text-[9px] text-text-muted font-black uppercase tracking-[0.15em]">/100</div>
                       </div>
                     </div>
                     <div className="space-y-2 mb-4 sm:mb-5 relative z-10">
                       {[
-                        { label: 'Trend', value: row.trend, max: 25, color: 'bg-white/70' },
+                        { label: 'Trend', value: row.trend, max: 25, color: 'bg-earth-700/50' },
                         { label: 'Momentum', value: row.momentum, max: 30, color: 'bg-profit' },
                         { label: 'Volatility', value: row.volatility, max: 25, color: 'bg-warning' },
                         { label: 'Liquidity', value: row.liquidity, max: 25, color: 'bg-blue-400' },
                       ].map((bar) => (
                         <div key={bar.label} className="flex items-center gap-2 sm:gap-3 text-[9px] sm:text-[10px] font-black uppercase tracking-widest">
                           <span className="w-16 sm:w-20 text-text-muted">{bar.label}</span>
-                          <div className="flex-1 h-1.5 bg-background rounded-full overflow-hidden">
+                          <div className="flex-1 h-1.5 bg-cream-100/80 rounded-full overflow-hidden">
                             <div className={cn("h-full rounded-full", bar.color)} style={{ width: `${(bar.value / bar.max) * 100}%` }} />
                           </div>
                           <span className="w-6 text-right text-text-muted tabular-nums">{bar.value}</span>
                         </div>
                       ))}
                     </div>
-                    <div className="pt-3 sm:pt-4 border-t border-border/50 space-y-2 sm:space-y-3 relative z-10">
+                    <div className="pt-3 sm:pt-4 border-t border-earth-700/10 space-y-2 sm:space-y-3 relative z-10">
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-text-muted font-black uppercase tracking-widest flex items-center gap-2">
                           <Target className="w-3 h-3 text-profit" /> Strategy
                         </span>
-                        <span className="text-white font-black uppercase tracking-tight">{row.strategy}</span>
+                        <span className="text-earth-700 font-black uppercase tracking-tight">{row.strategy}</span>
                       </div>
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-text-muted font-black uppercase tracking-widest flex items-center gap-2">
@@ -361,12 +356,12 @@ export default function Intelligence() {
 
               {/* Holdings + Notional */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                <div className="card-premium p-4 sm:p-6">
+                <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-6">
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-4 sm:mb-5">Current Holdings</h3>
                   <div className="space-y-2">
                     {holdingsRows.length > 0 ? holdingsRows.map((h) => (
-                      <div key={h.asset} className="flex justify-between items-center text-xs bg-background/50 border border-border rounded-lg px-3 sm:px-4 py-2.5">
-                        <span className="font-black text-white">{h.asset}</span>
+                      <div key={h.asset} className="flex justify-between items-center text-xs bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] px-3 sm:px-4 py-2.5">
+                        <span className="font-black text-earth-700">{h.asset}</span>
                         <div className="flex gap-3 sm:gap-6">
                           <span className="font-mono text-text-secondary tabular-nums">{h.qty.toFixed(8)}</span>
                           <span className="font-mono text-text-muted tabular-nums w-14 text-right">{h.allocation.toFixed(1)}%</span>
@@ -377,12 +372,12 @@ export default function Intelligence() {
                     )}
                   </div>
                 </div>
-                <div className="card-premium p-4 sm:p-5 flex justify-between items-center">
+                <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-5 flex justify-between items-center">
                   <div className="flex items-center gap-3">
                     <ShieldCheck className="w-4 h-4 text-text-muted" />
                     <span className="text-[9px] sm:text-[10px] font-black text-text-muted uppercase tracking-[0.15em] sm:tracking-[0.2em]">Daily Notional Used</span>
                   </div>
-                  <span className="text-sm font-black text-white tabular-nums">{formatCurrency(notionalUsed)}</span>
+                  <span className="text-sm font-black text-earth-700 tabular-nums">{formatCurrency(notionalUsed)}</span>
                 </div>
               </div>
             </>
@@ -422,9 +417,9 @@ export default function Intelligence() {
                   const regime = info.regime;
                   if (!consensus) {
                     return (
-                      <div key={candidate.id} className="card-premium p-4 sm:p-6 opacity-50">
+                      <div key={candidate.id} className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-6 opacity-50">
                         <div className="flex items-center gap-3">
-                          <h3 className="text-lg sm:text-xl font-black text-white tracking-tighter">{candidate.symbol}</h3>
+                          <h3 className="text-lg sm:text-xl font-black text-earth-700 tracking-tighter">{candidate.symbol}</h3>
                           <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">No consensus data</span>
                         </div>
                       </div>
@@ -433,10 +428,10 @@ export default function Intelligence() {
                   const style = CONSENSUS_STYLES[consensus.result] ?? CONSENSUS_STYLES.neutral;
                   const ResultIcon = style.icon;
                   return (
-                    <div key={candidate.id} className="card-premium p-4 sm:p-6 space-y-4">
+                    <div key={candidate.id} className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-6 space-y-4">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
-                          <h3 className="text-lg sm:text-xl font-black text-white tracking-tighter">{candidate.symbol}</h3>
+                          <h3 className="text-lg sm:text-xl font-black text-earth-700 tracking-tighter">{candidate.symbol}</h3>
                           {regime && (
                             <span className={cn(
                               'text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border',
@@ -459,9 +454,9 @@ export default function Intelligence() {
                       </div>
                       <div className="flex items-center justify-between text-[10px]">
                         <span className="text-text-muted font-bold">Gates Passed</span>
-                        <span className="font-black text-white tabular-nums">{consensus.gates_passed}/{consensus.gates_total}</span>
+                        <span className="font-black text-earth-700 tabular-nums">{consensus.gates_passed}/{consensus.gates_total}</span>
                       </div>
-                      <div className="h-2 bg-background rounded-full overflow-hidden">
+                      <div className="h-2 bg-cream-100/80 rounded-full overflow-hidden">
                         <div
                           className={cn(
                             'h-full rounded-full transition-all',
@@ -487,7 +482,7 @@ export default function Intelligence() {
                         })}
                       </div>
                       {(consensus.supporting_reasons?.length > 0 || consensus.blocking_reasons?.length > 0) && (
-                        <div className="pt-3 border-t border-border/30 space-y-2">
+                        <div className="pt-3 border-t border-earth-700/10 space-y-2">
                           {consensus.supporting_reasons?.slice(0, 3).map((r: string, i: number) => (
                             <div key={`s-${i}`} className="flex items-start gap-1.5">
                               <Zap className="w-3 h-3 text-profit/60 mt-0.5 flex-shrink-0" />
@@ -519,7 +514,7 @@ export default function Intelligence() {
           {/* Filters */}
           <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3">
             <FilterBar label="Symbol" items={SYMBOLS} active={structSymbol} onSelect={setStructSymbol} />
-            <div className="h-6 w-px bg-border hidden sm:block" />
+            <div className="h-6 w-px bg-earth-700/10 hidden sm:block" />
             <FilterBar label="TF" items={TIMEFRAMES} active={structTimeframe} onSelect={setStructTimeframe} />
           </div>
 
@@ -541,16 +536,16 @@ export default function Intelligence() {
             <>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
                 {/* Trendlines */}
-                <div className="card-premium p-4 sm:p-8">
+                <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-8">
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-6 flex items-center gap-2">
                     <TrendingUp className="w-3 h-3 text-profit" /> Active Trendlines
                   </h3>
                   <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
                     {trendlines.length > 0 ? trendlines.map((tl) => (
-                      <div key={tl.id} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 sm:gap-3 bg-background/50 border border-border rounded-lg px-3 sm:px-4 py-2.5 sm:py-3 text-xs">
+                      <div key={tl.id} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 sm:gap-3 bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] px-3 sm:px-4 py-2.5 sm:py-3 text-xs">
                         <div className="flex items-center gap-2">
                           {tl.side === 'support' ? <TrendingUp className="w-3 h-3 text-profit" /> : <TrendingDown className="w-3 h-3 text-loss" />}
-                          <span className="font-black text-white">{tl.symbol}</span>
+                          <span className="font-black text-earth-700">{tl.symbol}</span>
                           <span className="text-text-muted text-[10px] font-mono">{tl.timeframe}</span>
                         </div>
                         <span className={cn("text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full", tl.side === 'support' ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss")}>{tl.side}</span>
@@ -562,18 +557,18 @@ export default function Intelligence() {
                 </div>
 
                 {/* Key Levels */}
-                <div className="card-premium p-4 sm:p-8">
+                <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-8">
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-6 flex items-center gap-2">
                     <Minus className="w-3 h-3 text-warning" /> Key Levels
                   </h3>
                   <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
                     {levels.length > 0 ? levels.map((lv) => (
-                      <div key={lv.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 sm:gap-3 bg-background/50 border border-border rounded-lg px-3 sm:px-4 py-2.5 sm:py-3 text-xs">
+                      <div key={lv.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 sm:gap-3 bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] px-3 sm:px-4 py-2.5 sm:py-3 text-xs">
                         <div className="flex items-center gap-2">
-                          <span className="font-black text-white">{lv.symbol}</span>
+                          <span className="font-black text-earth-700">{lv.symbol}</span>
                           <span className="text-text-muted text-[10px] font-mono">{lv.timeframe}</span>
                         </div>
-                        <span className="font-mono text-white font-bold">{formatCurrency(lv.price_centroid)}</span>
+                        <span className="font-mono text-earth-700 font-bold">{formatCurrency(lv.price_centroid)}</span>
                         <span className={cn("text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full",
                           lv.role === 'support' ? "bg-profit/10 text-profit" : lv.role === 'resistance' ? "bg-loss/10 text-loss" : "bg-warning/10 text-warning"
                         )}>{lv.role ?? '—'}</span>
@@ -585,17 +580,17 @@ export default function Intelligence() {
                 </div>
 
                 {/* Structure Events */}
-                <div className="card-premium p-4 sm:p-8">
+                <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-8">
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-6 flex items-center gap-2">
                     <Zap className="w-3 h-3 text-warning" /> Structure Events
                   </h3>
                   <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
                     {structureEvents.length > 0 ? structureEvents.map((ev) => (
-                      <div key={ev.id} className="flex items-center gap-3 bg-background/50 border border-border rounded-lg px-3 sm:px-4 py-2.5 sm:py-3">
+                      <div key={ev.id} className="flex items-center gap-3 bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] px-3 sm:px-4 py-2.5 sm:py-3">
                         <EventIcon type={ev.event_type as 'breakout' | 'breakdown' | 'retest'} />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-black text-white">{ev.symbol}</span>
+                            <span className="text-xs font-black text-earth-700">{ev.symbol}</span>
                             <span className="text-[10px] font-mono text-text-muted">{ev.timeframe}</span>
                             <span className={cn("text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full",
                               ev.event_type === 'breakout' ? "bg-profit/10 text-profit" : ev.event_type === 'breakdown' ? "bg-loss/10 text-loss" : "bg-warning/10 text-warning"
@@ -612,17 +607,17 @@ export default function Intelligence() {
                 </div>
 
                 {/* Bounce State Machine */}
-                <div className="card-premium p-4 sm:p-8">
+                <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-8">
                   <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-6 flex items-center gap-2">
                     <RotateCcw className="w-3 h-3 text-profit" /> Bounce State Machine
                   </h3>
                   <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
                     {bounceEvents.length > 0 ? bounceEvents.map((be) => (
-                      <div key={be.id} className="flex items-center gap-3 bg-background/50 border border-border rounded-lg px-3 sm:px-4 py-2.5 sm:py-3">
+                      <div key={be.id} className="flex items-center gap-3 bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] px-3 sm:px-4 py-2.5 sm:py-3">
                         <BounceStateIcon state={be.state} />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-white">{be.symbol}</span>
+                            <span className="text-xs font-black text-earth-700">{be.symbol}</span>
                             <span className="text-[10px] font-mono text-text-muted">{be.prev_state ? `${be.prev_state} →` : '→'} {be.state}</span>
                             {be.score != null && <ScoreBadge score={be.score} />}
                           </div>
@@ -637,7 +632,7 @@ export default function Intelligence() {
               </div>
 
               {/* Trade Intents (full width) */}
-              <div className="card-premium p-4 sm:p-8">
+              <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 sm:p-8">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-6 flex items-center gap-2">
                   <Target className="w-3 h-3 text-profit" /> Trade Intents
                 </h3>
@@ -662,7 +657,7 @@ export default function Intelligence() {
               <select
                 value={filterType}
                 onChange={e => setFilterType(e.target.value)}
-                className="bg-surface border border-border rounded text-sm text-white px-2 py-1 outline-none focus:border-profit"
+                className="bg-cream-100 border-2 border-earth-700/10 rounded text-sm text-earth-700 px-2 py-1 outline-none focus:border-sakura-500"
                 title="Filter by type"
               >
                 <option value="all">All Types</option>
@@ -680,7 +675,7 @@ export default function Intelligence() {
               {filteredThoughts.length > 0 ? filteredThoughts.map(thought => {
                 const config = TYPE_CONFIG[thought.type] ?? TYPE_CONFIG.general;
                 return (
-                  <div key={thought.id} className="bg-surface border border-border rounded-lg p-4 flex gap-4">
+                  <div key={thought.id} className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 flex gap-4">
                     <div className="flex-shrink-0 pt-1">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold uppercase ${config.bg} ${config.text}`}>
                         {thought.type[0].toUpperCase()}
@@ -689,8 +684,8 @@ export default function Intelligence() {
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start mb-1 gap-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                          {thought.symbol && <span className="font-bold text-white text-sm">{thought.symbol}</span>}
-                          <span className={`text-xs uppercase px-1.5 py-0.5 rounded border border-border font-bold ${config.text} ${config.bg}`}>
+                          {thought.symbol && <span className="font-bold text-earth-700 text-sm">{thought.symbol}</span>}
+                          <span className={`text-xs uppercase px-1.5 py-0.5 rounded border border-earth-700/10 font-bold ${config.text} ${config.bg}`}>
                             {config.label}
                           </span>
                         </div>
@@ -716,16 +711,16 @@ export default function Intelligence() {
 // ═══════════════════════════════════════════════════════════════════════
 
 function KPIBlock({ icon: Icon, label, value, color }: { icon: typeof DollarSign; label: string; value: string; color: string }) {
-  const colorMap: Record<string, string> = { profit: 'text-profit', loss: 'text-loss', warning: 'text-warning', white: 'text-white' };
-  const bgMap: Record<string, string> = { profit: 'bg-profit/10', loss: 'bg-loss/10', warning: 'bg-warning/10', white: 'bg-white/5' };
+  const colorMap: Record<string, string> = { profit: 'text-profit', loss: 'text-loss', warning: 'text-warning', white: 'text-earth-700' };
+  const bgMap: Record<string, string> = { profit: 'bg-profit/10', loss: 'bg-loss/10', warning: 'bg-warning/10', white: 'bg-earth-700/5' };
   return (
-    <div className="card-premium p-3 sm:p-5 flex items-center gap-3 sm:gap-4">
-      <div className={cn("w-8 sm:w-10 h-8 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0", bgMap[color] ?? 'bg-white/5')}>
-        <Icon className={cn("w-4 sm:w-5 h-4 sm:h-5", colorMap[color] ?? 'text-white/60')} />
+    <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-3 sm:p-5 flex items-center gap-3 sm:gap-4">
+      <div className={cn("w-8 sm:w-10 h-8 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0", bgMap[color] ?? 'bg-earth-700/5')}>
+        <Icon className={cn("w-4 sm:w-5 h-4 sm:h-5", colorMap[color] ?? 'text-earth-700/40')} />
       </div>
       <div className="min-w-0">
         <div className="text-[9px] sm:text-[10px] font-black text-text-muted uppercase tracking-[0.15em]">{label}</div>
-        <div className={cn("text-sm sm:text-lg font-black tracking-tight tabular-nums truncate", colorMap[color] ?? 'text-white')}>{value}</div>
+        <div className={cn("text-sm sm:text-lg font-black tracking-tight tabular-nums truncate", colorMap[color] ?? 'text-earth-700')}>{value}</div>
       </div>
     </div>
   );
@@ -733,7 +728,7 @@ function KPIBlock({ icon: Icon, label, value, color }: { icon: typeof DollarSign
 
 function StatCard({ label, value, color, icon }: { label: string; value: number; color: string; icon: React.ReactNode }) {
   return (
-    <div className="card-premium p-4 flex items-center justify-between">
+    <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 flex items-center justify-between">
       <div>
         <div className="text-[10px] text-text-muted font-bold uppercase tracking-widest">{label}</div>
         <div className={cn('text-2xl font-black tabular-nums mt-1', color)}>{value}</div>
@@ -745,12 +740,12 @@ function StatCard({ label, value, color, icon }: { label: string; value: number;
 
 function SummaryStat({ label, value, icon: Icon }: { label: string; value: number; icon: React.ComponentType<{ className?: string; size?: number }> }) {
   return (
-    <div className="card-premium p-4 flex items-center gap-3">
-      <div className="w-8 h-8 rounded-full bg-surface-highlight flex items-center justify-center">
+    <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] p-4 flex items-center gap-3">
+      <div className="w-8 h-8 rounded-full bg-cream-100/60 flex items-center justify-center">
         <Icon size={14} className="text-text-secondary" />
       </div>
       <div>
-        <div className="text-lg font-black text-white font-mono">{value}</div>
+        <div className="text-lg font-black text-earth-700 font-mono">{value}</div>
         <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{label}</div>
       </div>
     </div>
@@ -767,10 +762,10 @@ function FilterBar({ label, items, active, onSelect }: { label: string; items: s
             key={s}
             onClick={() => onSelect(s)}
             className={cn(
-              "px-2 sm:px-3 py-1.5 rounded-btns text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all",
+              "px-2 sm:px-3 py-1.5 rounded-[4px] text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all",
               active === s
-                ? "bg-text-primary text-background"
-                : "bg-surface-base border border-border text-text-secondary hover:text-white hover:border-border-strong"
+                ? "bg-earth-700 text-cream-100"
+                : "bg-cream-100/60 border-2 border-earth-700/10 text-text-muted hover:text-earth-700 hover:border-earth-700/20"
             )}
           >
             {s.replace('-USD', '')}
@@ -807,7 +802,7 @@ function BounceStateIcon({ state }: { state: string }) {
 
 function IntentRow({ intent }: { intent: BounceIntent }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 sm:gap-4 bg-background/50 border border-border rounded-lg px-3 sm:px-5 py-3 sm:py-4 text-xs">
+    <div className="flex flex-wrap items-center gap-3 sm:gap-4 bg-cream-100/60 border-2 border-earth-700/10 rounded-[4px] px-3 sm:px-5 py-3 sm:py-4 text-xs">
       <div className="w-7 h-7 rounded-full flex items-center justify-center">
         {intent.blocked ? (
           <div className="w-7 h-7 rounded-full bg-loss/10 flex items-center justify-center"><ShieldX size={14} className="text-loss" /></div>
@@ -819,7 +814,7 @@ function IntentRow({ intent }: { intent: BounceIntent }) {
       </div>
       <div>
         <div className="flex items-center gap-2">
-          <span className="font-black text-white">{intent.symbol}</span>
+          <span className="font-black text-earth-700">{intent.symbol}</span>
           <span className="text-[10px] text-text-muted font-mono uppercase">{intent.entry_style}</span>
         </div>
         <div className="text-[10px] text-text-muted font-mono mt-0.5">
@@ -828,7 +823,7 @@ function IntentRow({ intent }: { intent: BounceIntent }) {
       </div>
       <div className="text-right">
         <div className="text-[10px] text-text-muted uppercase tracking-wider">Entry</div>
-        <div className="font-mono font-bold text-white">{intent.entry_price ? formatCurrency(intent.entry_price) : '—'}</div>
+        <div className="font-mono font-bold text-earth-700">{intent.entry_price ? formatCurrency(intent.entry_price) : '—'}</div>
       </div>
       <div className="text-right">
         <div className="text-[10px] text-text-muted uppercase tracking-wider">TP</div>
@@ -854,12 +849,12 @@ function EmptyRow({ text }: { text: string }) {
   return <div className="flex items-center justify-center py-8 text-text-muted/60 text-xs italic">{text}</div>;
 }
 
-function EmptyPanel({ icon: Icon, text, sub }: { icon: typeof Lock; text: string; sub: string }) {
+function EmptyPanel({ icon: Icon, text, sub }: { icon: React.ComponentType<{ className?: string }>; text: string; sub: string }) {
   return (
-    <div className="flex flex-col items-center justify-center h-64 text-text-muted card-premium space-y-4 bg-surface/30 col-span-full">
+    <div className="flex flex-col items-center justify-center h-64 text-text-muted bg-paper-100/60 border-2 border-earth-700/10 rounded-[4px] space-y-4 col-span-full">
       <Icon className="w-8 h-8 opacity-20" />
       <div className="text-center">
-        <p className="font-black text-white uppercase tracking-widest">{text}</p>
+        <p className="font-black text-earth-700 uppercase tracking-widest">{text}</p>
         <p className="text-[11px] font-medium text-text-muted mt-1 uppercase tracking-tighter italic">{sub}</p>
       </div>
     </div>

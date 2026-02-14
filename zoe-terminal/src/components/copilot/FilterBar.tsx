@@ -26,7 +26,7 @@ const SEVERITY_OPTIONS: { value: FeedFilter['severity']; label: string }[] = [
   { value: 'info', label: 'Info' },
 ];
 
-export default function FilterBar({ filter, toggleSource, updateFilter }: FilterBarProps) {
+export default function FilterBar({ filter, updateFilter }: FilterBarProps) {
   // Determine current source selection for the dropdown
   const allSourcesActive = filter.sources.size === 5; // all 5 source types enabled
   const activeSources = Array.from(filter.sources);

@@ -15,6 +15,29 @@ export interface Database {
           market_value: number;
           updated_at: string;
         };
+        Insert: {
+          id?: string;
+          account_id: string;
+          symbol: string;
+          underlying?: string | null;
+          quantity: number;
+          avg_price: number;
+          current_price: number;
+          market_value: number;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          account_id?: string;
+          symbol?: string;
+          underlying?: string | null;
+          quantity?: number;
+          avg_price?: number;
+          current_price?: number;
+          market_value?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       trades: {
         Row: {
@@ -29,6 +52,31 @@ export interface Database {
           outcome: "win" | "loss" | "scratch" | "open";
           rationale: string | null;
         };
+        Insert: {
+          trade_id?: string;
+          instance_id: string;
+          symbol: string;
+          strategy: string;
+          opened_at?: string;
+          closed_at?: string | null;
+          realized_pnl?: number;
+          r_multiple?: number | null;
+          outcome?: "win" | "loss" | "scratch" | "open";
+          rationale?: string | null;
+        };
+        Update: {
+          trade_id?: string;
+          instance_id?: string;
+          symbol?: string;
+          strategy?: string;
+          opened_at?: string;
+          closed_at?: string | null;
+          realized_pnl?: number;
+          r_multiple?: number | null;
+          outcome?: "win" | "loss" | "scratch" | "open";
+          rationale?: string | null;
+        };
+        Relationships: [];
       };
       pnl_daily: {
         Row: {
@@ -43,14 +91,34 @@ export interface Database {
           day_trades_used: number;
           realized_pnl: number;
           unrealized_pnl: number;
-          mode: string;
-          fees_paid: number;
-          gross_equity: number | null;
-          net_equity: number | null;
-          net_deposits: number;
-          crypto_value: number;
-          cash_usd: number;
         };
+        Insert: {
+          date: string;
+          instance_id: string;
+          daily_pnl?: number;
+          equity?: number;
+          drawdown?: number;
+          win_rate?: number | null;
+          expectancy?: number | null;
+          cash_buffer_pct?: number;
+          day_trades_used?: number;
+          realized_pnl?: number;
+          unrealized_pnl?: number;
+        };
+        Update: {
+          date?: string;
+          instance_id?: string;
+          daily_pnl?: number;
+          equity?: number;
+          drawdown?: number;
+          win_rate?: number | null;
+          expectancy?: number | null;
+          cash_buffer_pct?: number;
+          day_trades_used?: number;
+          realized_pnl?: number;
+          unrealized_pnl?: number;
+        };
+        Relationships: [];
       };
       candidate_scans: {
         Row: {
@@ -62,8 +130,28 @@ export interface Database {
           info: Json;
           recommended_strategy: string;
           created_at: string;
-          mode: string;
         };
+        Insert: {
+          id?: string;
+          instance_id: string;
+          symbol: string;
+          score: number;
+          score_breakdown?: Json;
+          info?: Json;
+          recommended_strategy: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          instance_id?: string;
+          symbol?: string;
+          score?: number;
+          score_breakdown?: Json;
+          info?: Json;
+          recommended_strategy?: string;
+          created_at?: string;
+        };
+        Relationships: [];
       };
       thoughts: {
         Row: {
@@ -74,8 +162,26 @@ export interface Database {
           symbol: string | null;
           created_at: string;
           metadata: Json;
-          mode: string;
         };
+        Insert: {
+          id?: string;
+          instance_id: string;
+          content: string;
+          type: "scan" | "entry" | "exit" | "health" | "general";
+          symbol?: string | null;
+          created_at?: string;
+          metadata?: Json;
+        };
+        Update: {
+          id?: string;
+          instance_id?: string;
+          content?: string;
+          type?: "scan" | "entry" | "exit" | "health" | "general";
+          symbol?: string | null;
+          created_at?: string;
+          metadata?: Json;
+        };
+        Relationships: [];
       };
       health_heartbeat: {
         Row: {
@@ -85,8 +191,24 @@ export interface Database {
           status: "ok" | "warning" | "error" | "down";
           last_heartbeat: string;
           details: Json;
-          mode: string;
         };
+        Insert: {
+          id?: string;
+          instance_id: string;
+          component: string;
+          status: "ok" | "warning" | "error" | "down";
+          last_heartbeat?: string;
+          details?: Json;
+        };
+        Update: {
+          id?: string;
+          instance_id?: string;
+          component?: string;
+          status?: "ok" | "warning" | "error" | "down";
+          last_heartbeat?: string;
+          details?: Json;
+        };
+        Relationships: [];
       };
       daily_gameplans: {
         Row: {
@@ -96,6 +218,21 @@ export interface Database {
           status: "draft" | "refined" | "locked";
           created_at: string;
         };
+        Insert: {
+          id?: string;
+          instance_id: string;
+          date: string;
+          status?: "draft" | "refined" | "locked";
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          instance_id?: string;
+          date?: string;
+          status?: "draft" | "refined" | "locked";
+          created_at?: string;
+        };
+        Relationships: [];
       };
       daily_gameplan_items: {
         Row: {
@@ -110,6 +247,31 @@ export interface Database {
           do_not_trade: boolean;
           visual_notes: string | null;
         };
+        Insert: {
+          id?: string;
+          plan_id: string;
+          symbol: string;
+          catalyst_summary?: string | null;
+          regime?: string | null;
+          ivr_tech_snapshot?: string | null;
+          preferred_strategy?: string | null;
+          risk_tier?: string | null;
+          do_not_trade?: boolean;
+          visual_notes?: string | null;
+        };
+        Update: {
+          id?: string;
+          plan_id?: string;
+          symbol?: string;
+          catalyst_summary?: string | null;
+          regime?: string | null;
+          ivr_tech_snapshot?: string | null;
+          preferred_strategy?: string | null;
+          risk_tier?: string | null;
+          do_not_trade?: boolean;
+          visual_notes?: string | null;
+        };
+        Relationships: [];
       };
       config: {
         Row: {
@@ -117,6 +279,17 @@ export interface Database {
           instance_id: string;
           value: Json;
         };
+        Insert: {
+          key: string;
+          instance_id?: string;
+          value: Json;
+        };
+        Update: {
+          key?: string;
+          instance_id?: string;
+          value?: Json;
+        };
+        Relationships: [];
       };
       audit_log: {
         Row: {
@@ -127,6 +300,23 @@ export interface Database {
           created_at: string;
           metadata: Json;
         };
+        Insert: {
+          id?: string;
+          instance_id?: string;
+          event_type: string;
+          message?: string;
+          created_at?: string;
+          metadata?: Json;
+        };
+        Update: {
+          id?: string;
+          instance_id?: string;
+          event_type?: string;
+          message?: string;
+          created_at?: string;
+          metadata?: Json;
+        };
+        Relationships: [];
       };
       risk_events: {
         Row: {
@@ -137,6 +327,23 @@ export interface Database {
           message: string;
           created_at: string;
         };
+        Insert: {
+          id?: string;
+          instance_id?: string;
+          event_type: string;
+          severity: "info" | "warning" | "critical";
+          message: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          instance_id?: string;
+          event_type?: string;
+          severity?: "info" | "warning" | "critical";
+          message?: string;
+          created_at?: string;
+        };
+        Relationships: [];
       };
       crypto_orders: {
         Row: {
@@ -153,15 +360,36 @@ export interface Database {
           submitted_at: string | null;
           updated_at: string;
           raw_response: Json;
-          mode: string;
-          intent_group_id: string | null;
-          replace_count: number;
-          cancel_reason_code: string | null;
-          remaining_qty: number | null;
-          ttl_seconds: number | null;
-          next_action_at: string | null;
-          parent_order_id: string | null;
         };
+        Insert: {
+          id?: string;
+          client_order_id: string;
+          symbol: string;
+          side: "buy" | "sell";
+          order_type: "market" | "limit";
+          qty?: number | null;
+          notional?: number | null;
+          status?: "new" | "submitted" | "partially_filled" | "filled" | "canceled" | "rejected";
+          requested_at?: string;
+          submitted_at?: string | null;
+          updated_at?: string;
+          raw_response?: Json;
+        };
+        Update: {
+          id?: string;
+          client_order_id?: string;
+          symbol?: string;
+          side?: "buy" | "sell";
+          order_type?: "market" | "limit";
+          qty?: number | null;
+          notional?: number | null;
+          status?: "new" | "submitted" | "partially_filled" | "filled" | "canceled" | "rejected";
+          requested_at?: string;
+          submitted_at?: string | null;
+          updated_at?: string;
+          raw_response?: Json;
+        };
+        Relationships: [];
       };
       crypto_tickers: {
         Row: {
@@ -170,6 +398,19 @@ export interface Database {
           change_24h: number | null;
           last_updated: string;
         };
+        Insert: {
+          symbol: string;
+          price: number;
+          change_24h?: number | null;
+          last_updated?: string;
+        };
+        Update: {
+          symbol?: string;
+          price?: number;
+          change_24h?: number | null;
+          last_updated?: string;
+        };
+        Relationships: [];
       };
       crypto_fills: {
         Row: {
@@ -183,12 +424,32 @@ export interface Database {
           fee: number;
           executed_at: string;
           raw_fill: Json;
-          mode: string;
-          broker_fee: number;
-          fee_currency: string;
-          broker_fill_id: string | null;
-          exchange: string;
         };
+        Insert: {
+          id?: string;
+          order_id: string;
+          fill_id: string;
+          symbol: string;
+          side: "buy" | "sell";
+          qty: number;
+          price: number;
+          fee?: number;
+          executed_at?: string;
+          raw_fill?: Json;
+        };
+        Update: {
+          id?: string;
+          order_id?: string;
+          fill_id?: string;
+          symbol?: string;
+          side?: "buy" | "sell";
+          qty?: number;
+          price?: number;
+          fee?: number;
+          executed_at?: string;
+          raw_fill?: Json;
+        };
+        Relationships: [];
       };
       crypto_holdings_snapshots: {
         Row: {
@@ -197,8 +458,22 @@ export interface Database {
           holdings: Json;
           total_crypto_value: number;
           source: string;
-          mode: string;
         };
+        Insert: {
+          id?: string;
+          taken_at?: string;
+          holdings: Json;
+          total_crypto_value: number;
+          source: string;
+        };
+        Update: {
+          id?: string;
+          taken_at?: string;
+          holdings?: Json;
+          total_crypto_value?: number;
+          source?: string;
+        };
+        Relationships: [];
       };
       crypto_cash_snapshots: {
         Row: {
@@ -207,23 +482,22 @@ export interface Database {
           cash_available: number;
           buying_power: number;
           source: string;
-          mode: string;
         };
-      };
-      crypto_reconciliation_events: {
-        Row: {
-          id: string;
-          taken_at: string;
-          local_cash: number;
-          rh_cash: number;
-          cash_diff: number;
-          local_holdings: Json;
-          rh_holdings: Json;
-          holdings_diff: Json;
-          status: "ok" | "degraded";
-          reason: string | null;
-          mode: string;
+        Insert: {
+          id?: string;
+          taken_at?: string;
+          cash_available: number;
+          buying_power: number;
+          source: string;
         };
+        Update: {
+          id?: string;
+          taken_at?: string;
+          cash_available?: number;
+          buying_power?: number;
+          source?: string;
+        };
+        Relationships: [];
       };
       daily_notional: {
         Row: {
@@ -231,17 +505,20 @@ export interface Database {
           amount: number;
           notional_used: number;
           notional_limit: number;
-          mode: string;
         };
-      };
-      agent_state: {
-        Row: {
-          id: string;
-          mode: string;
-          instance_id: string;
-          state: Json;
-          updated_at: string;
+        Insert: {
+          day: string;
+          amount?: number;
+          notional_used?: number;
+          notional_limit?: number;
         };
+        Update: {
+          day?: string;
+          amount?: number;
+          notional_used?: number;
+          notional_limit?: number;
+        };
+        Relationships: [];
       };
       crypto_candles: {
         Row: {
@@ -255,26 +532,35 @@ export interface Database {
           close: number;
           volume: number;
           patterns: Json;
-          mode: string;
           created_at: string;
         };
-      };
-      boot_audit: {
-        Row: {
-          id: string;
-          run_id: string;
-          mode: string;
-          instance_id: string;
-          started_at: string;
-          finished_at: string | null;
-          duration_ms: number | null;
-          status: "running" | "ok" | "safe_mode" | "halted" | "error";
-          diffs: Json;
-          integrity_checks: Json;
-          resume_policy: string | null;
-          error_message: string | null;
-          created_at: string;
+        Insert: {
+          id?: number;
+          symbol: string;
+          timeframe: string;
+          open_time: number;
+          open: number;
+          high: number;
+          low: number;
+          close: number;
+          volume: number;
+          patterns?: Json;
+          created_at?: string;
         };
+        Update: {
+          id?: number;
+          symbol?: string;
+          timeframe?: string;
+          open_time?: number;
+          open?: number;
+          high?: number;
+          low?: number;
+          close?: number;
+          volume?: number;
+          patterns?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
       };
       ef_features: {
         Row: {
@@ -286,6 +572,25 @@ export interface Database {
           source: string;
           metadata: Json;
         };
+        Insert: {
+          id?: string;
+          symbol: string;
+          feature_name: string;
+          value: number;
+          computed_at?: string;
+          source: string;
+          metadata?: Json;
+        };
+        Update: {
+          id?: string;
+          symbol?: string;
+          feature_name?: string;
+          value?: number;
+          computed_at?: string;
+          source?: string;
+          metadata?: Json;
+        };
+        Relationships: [];
       };
       ef_regimes: {
         Row: {
@@ -295,6 +600,21 @@ export interface Database {
           detected_at: string;
           features_used: Json;
         };
+        Insert: {
+          id?: string;
+          regime: string;
+          confidence: number;
+          detected_at?: string;
+          features_used?: Json;
+        };
+        Update: {
+          id?: string;
+          regime?: string;
+          confidence?: number;
+          detected_at?: string;
+          features_used?: Json;
+        };
+        Relationships: [];
       };
       ef_signals: {
         Row: {
@@ -308,6 +628,29 @@ export interface Database {
           strategy_name: string;
           acted_on: boolean;
         };
+        Insert: {
+          id?: string;
+          symbol: string;
+          direction: string;
+          strength: number;
+          regime_id?: string | null;
+          features?: Json;
+          generated_at?: string;
+          strategy_name: string;
+          acted_on?: boolean;
+        };
+        Update: {
+          id?: string;
+          symbol?: string;
+          direction?: string;
+          strength?: number;
+          regime_id?: string | null;
+          features?: Json;
+          generated_at?: string;
+          strategy_name?: string;
+          acted_on?: boolean;
+        };
+        Relationships: [];
       };
       ef_positions: {
         Row: {
@@ -327,6 +670,41 @@ export interface Database {
           order_id: string | null;
           created_at: string;
         };
+        Insert: {
+          id?: string;
+          symbol: string;
+          side: string;
+          entry_price?: number | null;
+          entry_time?: string | null;
+          size_usd?: number | null;
+          tp_price?: number | null;
+          sl_price?: number | null;
+          status: string;
+          exit_price?: number | null;
+          exit_time?: string | null;
+          pnl_usd?: number | null;
+          signal_id?: string | null;
+          order_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          symbol?: string;
+          side?: string;
+          entry_price?: number | null;
+          entry_time?: string | null;
+          size_usd?: number | null;
+          tp_price?: number | null;
+          sl_price?: number | null;
+          status?: string;
+          exit_price?: number | null;
+          exit_time?: string | null;
+          pnl_usd?: number | null;
+          signal_id?: string | null;
+          order_id?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
       };
       ef_state: {
         Row: {
@@ -334,6 +712,17 @@ export interface Database {
           value: Json;
           updated_at: string;
         };
+        Insert: {
+          key: string;
+          value: Json;
+          updated_at?: string;
+        };
+        Update: {
+          key?: string;
+          value?: Json;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       market_pivots: {
         Row: {
@@ -346,9 +735,33 @@ export interface Database {
           source: "wick" | "body";
           atr_snapshot: number | null;
           confirmed: boolean;
-          mode: string;
           created_at: string;
         };
+        Insert: {
+          id?: number;
+          symbol: string;
+          timeframe: string;
+          timestamp: string;
+          price: number;
+          type: "high" | "low";
+          source: "wick" | "body";
+          atr_snapshot?: number | null;
+          confirmed?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: number;
+          symbol?: string;
+          timeframe?: string;
+          timestamp?: string;
+          price?: number;
+          type?: "high" | "low";
+          source?: "wick" | "body";
+          atr_snapshot?: number | null;
+          confirmed?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
       };
       technical_trendlines: {
         Row: {
@@ -364,10 +777,42 @@ export interface Database {
           score: number;
           metadata: Json;
           is_active: boolean;
-          mode: string;
           created_at: string;
           updated_at: string;
         };
+        Insert: {
+          id?: number;
+          symbol: string;
+          timeframe: string;
+          side: "support" | "resistance";
+          slope: number;
+          intercept: number;
+          start_at: string;
+          end_at: string;
+          inlier_count?: number;
+          score?: number;
+          metadata?: Json;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          symbol?: string;
+          timeframe?: string;
+          side?: "support" | "resistance";
+          slope?: number;
+          intercept?: number;
+          start_at?: string;
+          end_at?: string;
+          inlier_count?: number;
+          score?: number;
+          metadata?: Json;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       technical_levels: {
         Row: {
@@ -384,10 +829,44 @@ export interface Database {
           last_tested: string | null;
           is_active: boolean;
           metadata: Json;
-          mode: string;
           created_at: string;
           updated_at: string;
         };
+        Insert: {
+          id?: number;
+          symbol: string;
+          timeframe: string;
+          price_centroid: number;
+          price_top: number;
+          price_bottom: number;
+          role?: "support" | "resistance" | "flip" | null;
+          touch_count?: number;
+          score?: number;
+          first_tested?: string | null;
+          last_tested?: string | null;
+          is_active?: boolean;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          symbol?: string;
+          timeframe?: string;
+          price_centroid?: number;
+          price_top?: number;
+          price_bottom?: number;
+          role?: "support" | "resistance" | "flip" | null;
+          touch_count?: number;
+          score?: number;
+          first_tested?: string | null;
+          last_tested?: string | null;
+          is_active?: boolean;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       structure_events: {
         Row: {
@@ -401,9 +880,35 @@ export interface Database {
           confirmed: boolean;
           confirm_count: number;
           reason_json: Json;
-          mode: string;
           ts: string;
         };
+        Insert: {
+          id?: number;
+          symbol: string;
+          timeframe: string;
+          event_type: "breakout" | "breakdown" | "retest";
+          reference_id?: number | null;
+          reference_kind?: "trendline" | "level" | null;
+          price_at: number;
+          confirmed?: boolean;
+          confirm_count?: number;
+          reason_json?: Json;
+          ts: string;
+        };
+        Update: {
+          id?: number;
+          symbol?: string;
+          timeframe?: string;
+          event_type?: "breakout" | "breakdown" | "retest";
+          reference_id?: number | null;
+          reference_kind?: "trendline" | "level" | null;
+          price_at?: number;
+          confirmed?: boolean;
+          confirm_count?: number;
+          reason_json?: Json;
+          ts?: string;
+        };
+        Relationships: [];
       };
       bounce_events: {
         Row: {
@@ -414,8 +919,26 @@ export interface Database {
           state: string;
           score: number | null;
           reason_json: Json;
-          mode: string;
         };
+        Insert: {
+          id?: string;
+          ts: string;
+          symbol: string;
+          prev_state?: string | null;
+          state: string;
+          score?: number | null;
+          reason_json?: Json;
+        };
+        Update: {
+          id?: string;
+          ts?: string;
+          symbol?: string;
+          prev_state?: string | null;
+          state?: string;
+          score?: number | null;
+          reason_json?: Json;
+        };
+        Relationships: [];
       };
       bounce_intents: {
         Row: {
@@ -433,8 +956,40 @@ export interface Database {
           blocked_reason: string | null;
           executed: boolean;
           reason_json: Json;
-          mode: string;
         };
+        Insert: {
+          id?: string;
+          ts: string;
+          symbol: string;
+          entry_style?: "retest" | "breakout" | null;
+          entry_price?: number | null;
+          expected_move_pct?: number | null;
+          tp_price?: number | null;
+          sl_price?: number | null;
+          score?: number | null;
+          components_json?: Json;
+          blocked?: boolean;
+          blocked_reason?: string | null;
+          executed?: boolean;
+          reason_json?: Json;
+        };
+        Update: {
+          id?: string;
+          ts?: string;
+          symbol?: string;
+          entry_style?: "retest" | "breakout" | null;
+          entry_price?: number | null;
+          expected_move_pct?: number | null;
+          tp_price?: number | null;
+          sl_price?: number | null;
+          score?: number | null;
+          components_json?: Json;
+          blocked?: boolean;
+          blocked_reason?: string | null;
+          executed?: boolean;
+          reason_json?: Json;
+        };
+        Relationships: [];
       };
       zoe_events: {
         Row: {
@@ -447,9 +1002,33 @@ export interface Database {
           symbol: string | null;
           color_hint: string | null;
           metadata: Json;
-          mode: string;
           created_at: string;
         };
+        Insert: {
+          id?: string;
+          source: "chat" | "thought" | "system" | "trade" | "config";
+          subtype: string;
+          severity: "info" | "success" | "warning" | "critical";
+          title: string;
+          body?: string | null;
+          symbol?: string | null;
+          color_hint?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          source?: "chat" | "thought" | "system" | "trade" | "config";
+          subtype?: string;
+          severity?: "info" | "success" | "warning" | "critical";
+          title?: string;
+          body?: string | null;
+          symbol?: string | null;
+          color_hint?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
       };
       copilot_messages: {
         Row: {
@@ -458,9 +1037,25 @@ export interface Database {
           role: "user" | "assistant";
           content: string;
           context_page: string | null;
-          mode: string;
           created_at: string;
         };
+        Insert: {
+          id?: string;
+          user_id: string;
+          role: "user" | "assistant";
+          content: string;
+          context_page?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          role?: "user" | "assistant";
+          content?: string;
+          context_page?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
       };
       market_catalog: {
         Row: {
@@ -544,7 +1139,6 @@ export interface Database {
           description: string;
           external_ref: string;
           created_at: string;
-          mode: string;
         };
       };
       fee_ledger: {
@@ -557,7 +1151,6 @@ export interface Database {
           fee_currency: string;
           fee_type: "trading" | "withdrawal" | "deposit" | "other";
           created_at: string;
-          mode: string;
         };
       };
       order_intents: {
@@ -570,8 +1163,6 @@ export interface Database {
           qty: number | null;
           notional: number | null;
           limit_price: number | null;
-          engine: string;
-          mode: string;
           status: "created" | "submitted" | "acked" | "partial_fill" | "cancel_requested" | "cancelled" | "replaced" | "filled" | "rejected" | "expired" | "error";
           broker_order_id: string | null;
           fill_price: number | null;
@@ -597,8 +1188,6 @@ export interface Database {
       trade_locks: {
         Row: {
           symbol: string;
-          engine: string;
-          mode: string;
           locked_at: string;
           lock_holder: string;
           ttl_seconds: number;

@@ -8,7 +8,7 @@
  *
  * References: [HL] §Monitoring, [AA] §8.1
  */
-import { AlertTriangle, Activity, Wifi, WifiOff } from 'lucide-react';
+import { AlertTriangle, Activity, Wifi } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { SystemHealth } from '../hooks/useSystemHealth';
 

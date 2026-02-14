@@ -33,16 +33,16 @@ export function DataTable<TData>({ columns, data, onRowClick, className, emptyMe
   });
 
   return (
-    <div className={cn("card-premium overflow-hidden", className)}>
+    <div className={cn("bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] overflow-hidden", className)}>
       <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-border-strong scrollbar-track-transparent">
         <table className="w-full text-sm text-left min-w-[480px] border-collapse">
-          <thead className="bg-surface-highlight/50 text-text-muted uppercase text-[10px] font-semibold tracking-[0.15em] border-b border-border sticky top-0 z-10">
+          <thead className="bg-cream-100/60 text-text-muted uppercase font-pixel text-[0.35rem] tracking-[0.08em] border-b border-earth-700/10 sticky top-0 z-10">
             {table.getHeaderGroups().map(headerGroup => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map(header => (
                   <th
                     key={header.id}
-                    className="px-3 sm:px-6 py-3 sm:py-4 cursor-pointer select-none hover:text-white transition-colors"
+                    className="px-3 sm:px-6 py-3 sm:py-4 cursor-pointer select-none hover:text-earth-700 transition-colors"
                     onClick={header.column.getToggleSortingHandler()}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
@@ -69,13 +69,13 @@ export function DataTable<TData>({ columns, data, onRowClick, className, emptyMe
               </tr>
             ))}
           </thead>
-          <tbody className="divide-y divide-border/50">
+          <tbody className="divide-y divide-earth-700/10">
             {table.getRowModel().rows.length > 0 ? (
               table.getRowModel().rows.map(row => (
                 <tr 
                   key={row.id} 
                   className={cn(
-                    "hover:bg-white/[0.02] transition-colors group",
+                    "hover:bg-sakura-500/5 transition-colors group",
                     onRowClick && "cursor-pointer"
                   )}
                   onClick={() => onRowClick?.(row.original)}

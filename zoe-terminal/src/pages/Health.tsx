@@ -3,7 +3,7 @@ import { Activity, Server, Database as DbIcon, Shield, Wifi } from 'lucide-react
 import { StatusChip } from '../components/StatusChip';
 import { formatDate } from '../lib/utils';
 import { supabase } from '../lib/supabaseClient';
-import { useModeContext } from '../lib/mode';
+
 import type { Database } from '../lib/types';
 
 type HealthHeartbeat = Database['public']['Tables']['health_heartbeat']['Row'];
@@ -22,7 +22,6 @@ function getIcon(component: string) {
 }
 
 export default function Health() {
-  const { mode } = useModeContext();
   const [heartbeats, setHeartbeats] = useState<HealthHeartbeat[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,7 +31,6 @@ export default function Health() {
         const { data, error } = await supabase
           .from('health_heartbeat')
           .select('*')
-          .eq('mode', mode)
           .order('last_heartbeat', { ascending: false });
 
         if (error) throw error;
@@ -46,17 +44,16 @@ export default function Health() {
     fetchHealth();
 
     const subscription = supabase
-      .channel(`health_updates_${mode}`)
+      .channel('health_updates')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'health_heartbeat',
-        filter: `mode=eq.${mode}`,
       }, () => { fetchHealth(); })
       .subscribe();
 
     return () => { supabase.removeChannel(subscription); };
-  }, [mode]);
+  }, []);
 
   const allOk = heartbeats.length > 0 && heartbeats.every(h => h.status === 'ok');
 

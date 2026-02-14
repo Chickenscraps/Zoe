@@ -1,12 +1,9 @@
 import { useDashboardData } from '../hooks/useDashboardData';
-import { useSystemHealth } from '../hooks/useSystemHealth';
 import { PositionsTable } from '../components/PositionsTable';
-import { FillQualityCard } from '../components/FillQualityCard';
 import { formatCurrency, formatDate } from '../lib/utils';
 
 export default function Trades() {
   const { cryptoOrders, cryptoFills, loading } = useDashboardData();
-  const { fillQuality } = useSystemHealth();
 
   if (loading) return <div className="text-text-secondary animate-pulse">Loading trades...</div>;
 
@@ -15,22 +12,19 @@ export default function Trades() {
       {/* Open Positions */}
       <PositionsTable />
 
-      {/* Fill Quality (IS Tracking) */}
-      <FillQualityCard fillQuality={fillQuality} />
-
       {/* Recent Orders */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-white">Recent Orders</h2>
+          <h2 className="font-pixel text-[0.55rem] uppercase tracking-[0.08em] text-earth-700">Recent Orders</h2>
           <div className="text-sm text-text-secondary">
             {cryptoOrders.length} orders
           </div>
         </div>
-        <div className="card-premium overflow-hidden">
+        <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] overflow-hidden">
           <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[520px]">
             <thead>
-              <tr className="border-b border-border text-[10px] font-black uppercase tracking-widest text-text-muted">
+              <tr className="border-b border-earth-700/10 font-pixel text-[0.35rem] font-black uppercase tracking-widest text-text-muted">
                 <th className="px-3 sm:px-4 py-3 text-left">Symbol</th>
                 <th className="px-3 sm:px-4 py-3 text-left">Side</th>
                 <th className="px-3 sm:px-4 py-3 text-left">Type</th>
@@ -45,8 +39,8 @@ export default function Trades() {
                 <tr><td colSpan={7} className="px-4 py-8 text-center text-text-muted italic">No orders yet</td></tr>
               ) : (
                 cryptoOrders.map((order) => (
-                  <tr key={order.id} className="border-b border-border/50 hover:bg-surface-highlight/30 transition-colors">
-                    <td className="px-4 py-3 font-semibold text-white">{order.symbol}</td>
+                  <tr key={order.id} className="border-b border-earth-700/8 hover:bg-sakura-500/5 transition-colors">
+                    <td className="px-4 py-3 font-semibold text-earth-700">{order.symbol}</td>
                     <td className="px-4 py-3">
                       <span className={`uppercase text-xs font-bold ${order.side === 'buy' ? 'text-profit' : 'text-loss'}`}>
                         {order.side}
@@ -60,11 +54,11 @@ export default function Trades() {
                       {order.notional ? formatCurrency(order.notional) : '-'}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`uppercase text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      <span className={`uppercase text-[10px] font-bold px-2 py-0.5 rounded-[4px] ${
                         order.status === 'filled' ? 'bg-profit/15 text-profit' :
-                        order.status === 'submitted' || order.status === 'open' ? 'bg-yellow-500/15 text-yellow-400' :
-                        order.status === 'canceled' || order.status === 'rejected' || order.status === 'failed' ? 'bg-loss/15 text-loss' :
-                        'bg-white/10 text-text-muted'
+                        order.status === 'submitted' || order.status === 'new' ? 'bg-yellow-500/15 text-yellow-400' :
+                        order.status === 'canceled' || order.status === 'rejected' ? 'bg-loss/15 text-loss' :
+                        'bg-earth-700/5 text-text-muted'
                       }`}>
                         {order.status}
                       </span>
@@ -84,16 +78,16 @@ export default function Trades() {
       {/* Fill History */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-white">Fill History</h2>
+          <h2 className="font-pixel text-[0.55rem] uppercase tracking-[0.08em] text-earth-700">Fill History</h2>
           <div className="text-sm text-text-secondary">
             {cryptoFills.length} fills
           </div>
         </div>
-        <div className="card-premium overflow-hidden">
+        <div className="bg-paper-100/80 border-2 border-earth-700/10 rounded-[4px] overflow-hidden">
           <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[520px]">
             <thead>
-              <tr className="border-b border-border text-[10px] font-black uppercase tracking-widest text-text-muted">
+              <tr className="border-b border-earth-700/10 font-pixel text-[0.35rem] font-black uppercase tracking-widest text-text-muted">
                 <th className="px-3 sm:px-4 py-3 text-left">Symbol</th>
                 <th className="px-3 sm:px-4 py-3 text-left">Side</th>
                 <th className="px-3 sm:px-4 py-3 text-right">Qty</th>
@@ -110,8 +104,8 @@ export default function Trades() {
                 cryptoFills.map((fill) => {
                   const notional = fill.qty * fill.price;
                   return (
-                    <tr key={fill.id} className="border-b border-border/50 hover:bg-surface-highlight/30 transition-colors">
-                      <td className="px-4 py-3 font-semibold text-white">{fill.symbol}</td>
+                    <tr key={fill.id} className="border-b border-earth-700/8 hover:bg-sakura-500/5 transition-colors">
+                      <td className="px-4 py-3 font-semibold text-earth-700">{fill.symbol}</td>
                       <td className="px-4 py-3">
                         <span className={`uppercase text-xs font-bold ${fill.side === 'buy' ? 'text-profit' : 'text-loss'}`}>
                           {fill.side}
