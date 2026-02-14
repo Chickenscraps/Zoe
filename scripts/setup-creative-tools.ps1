@@ -135,36 +135,7 @@ foreach ($plugin in $psPlugins) {
 }
 
 # ============================================================
-# 7. AI music/video/asset bookmarks (browser tabs)
-# ============================================================
-Write-Host "`n--- Opening AI creative services ---" -ForegroundColor Yellow
-Write-Host "  These are freemium web services — sign up for free tiers:`n"
-
-$aiServices = @(
-    @{ Name = 'Pika (AI video, 30 free credits/day)';  Url = 'https://pika.art' }
-    @{ Name = 'Runway (AI video, 125 free credits)';   Url = 'https://runwayml.com' }
-    @{ Name = 'Suno (AI music generation)';             Url = 'https://suno.com' }
-    @{ Name = 'Udio (AI music + stem isolation)';       Url = 'https://udio.com' }
-    @{ Name = 'AIVA (cinematic AI scoring)';            Url = 'https://aiva.ai' }
-    @{ Name = 'ElevenLabs (AI voice + music)';          Url = 'https://elevenlabs.io' }
-    @{ Name = 'Coolors (color palette generator)';      Url = 'https://coolors.co' }
-    @{ Name = 'Adobe Color (palette + CC Libraries)';   Url = 'https://color.adobe.com' }
-    @{ Name = 'Poly Haven (free HDRIs/textures/3D)';   Url = 'https://polyhaven.com' }
-    @{ Name = 'Pexels (free stock photos/video)';      Url = 'https://www.pexels.com' }
-    @{ Name = 'Pixabay (free stock assets)';            Url = 'https://pixabay.com' }
-    @{ Name = 'Freesound (free sound effects)';         Url = 'https://freesound.org' }
-    @{ Name = 'Mixkit (free video/music/SFX)';          Url = 'https://mixkit.co' }
-    @{ Name = 'Google Fonts';                            Url = 'https://fonts.google.com' }
-)
-
-foreach ($svc in $aiServices) {
-    Write-Host "    $($svc.Name)"
-    Start-Process $svc.Url
-    Start-Sleep -Milliseconds 400
-}
-
-# ============================================================
-# 8. ComfyUI essential custom nodes (instructions)
+# 7. ComfyUI essential custom nodes (instructions)
 # ============================================================
 Write-Host "`n--- ComfyUI recommended custom nodes ---" -ForegroundColor Yellow
 
@@ -203,10 +174,9 @@ Write-Host "  1. Install Adobe apps from Creative Cloud:" -ForegroundColor White
 Write-Host "       Photoshop, After Effects, Illustrator, Media Encoder" -ForegroundColor White
 Write-Host "  2. Download AE/PS plugins from the pages that opened" -ForegroundColor White
 Write-Host "  3. Install ZXP/UXP Installer first, then use it to install .zxp/.ccx plugins" -ForegroundColor White
-Write-Host "  4. Sign up for free tiers on AI services (Pika, Runway, Suno, etc.)" -ForegroundColor White
-Write-Host "  5. Launch ComfyUI and install recommended custom nodes via Manager" -ForegroundColor White
-Write-Host "  6. Download DaVinci Resolve from the page that opened" -ForegroundColor White
-Write-Host "  7. Set up adb-mcp for AI agent control of Photoshop/AE:" -ForegroundColor White
+Write-Host "  4. Launch ComfyUI and install recommended custom nodes via Manager" -ForegroundColor White
+Write-Host "  5. Download DaVinci Resolve from the page that opened" -ForegroundColor White
+Write-Host "  6. Set up adb-mcp for AI agent control of Photoshop/AE:" -ForegroundColor White
 Write-Host "       git clone https://github.com/mikechambers/adb-mcp" -ForegroundColor White
 Write-Host "       Follow README for Python + Node.js + UXP plugin setup" -ForegroundColor White
 Write-Host ""
