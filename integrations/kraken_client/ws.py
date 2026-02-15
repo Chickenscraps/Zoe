@@ -61,6 +61,7 @@ class KrakenWebSocket:
         self._private_connected_event = asyncio.Event()
 
         # Public subscriptions to restore on reconnect
+        self._public_first_connect = True  # Skip resubscribe on first connect
         self._ticker_pairs: list[str] = []
         self._book_pairs: list[str] = []
         self._book_depth: int = 10
@@ -116,8 +117,11 @@ class KrakenWebSocket:
                 logger.info("Public WS connected")
                 self._public_connected_event.set()
 
-                # Resubscribe to channels
-                await self._resubscribe_public()
+                # Resubscribe to channels (skip on first connect — caller will subscribe)
+                if self._public_first_connect:
+                    self._public_first_connect = False
+                else:
+                    await self._resubscribe_public()
 
                 # Message loop
                 async for msg in self._public_ws:

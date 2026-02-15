@@ -29,11 +29,76 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-# ── Cost Constants ───────────────────────────────────────────────
+# ── Cost Constants (defaults — overridden by config.yaml fees section) ──
 TAKER_FEE_RATE = 0.0040   # 0.40% per side (Kraken intermediate tier)
 MAKER_FEE_RATE = 0.0025   # 0.25% per side
 SLIPPAGE_ESTIMATE = 0.001  # 0.10% estimated slippage
 ROUND_TRIP_COST = (TAKER_FEE_RATE * 2) + SLIPPAGE_ESTIMATE  # ~0.90% total
+
+# Per-pair fee overrides loaded from config.yaml
+_FEE_OVERRIDES: dict[str, dict[str, float]] = {}
+_FEE_CONFIG_LOADED = False
+
+
+def load_fee_config() -> None:
+    """Load fee schedule from config.yaml (called once at startup)."""
+    global TAKER_FEE_RATE, MAKER_FEE_RATE, SLIPPAGE_ESTIMATE, ROUND_TRIP_COST
+    global _FEE_OVERRIDES, _FEE_CONFIG_LOADED
+
+    if _FEE_CONFIG_LOADED:
+        return
+
+    try:
+        import yaml
+        from pathlib import Path
+
+        config_path = Path(__file__).resolve().parents[2] / "config.yaml"
+        if config_path.exists():
+            with open(config_path) as f:
+                cfg = yaml.safe_load(f) or {}
+
+            fees = cfg.get("fees", {})
+            if fees:
+                default_taker = fees.get("default_taker_bps", 40)
+                default_maker = fees.get("default_maker_bps", 25)
+                slippage = fees.get("slippage_bps", 10)
+
+                TAKER_FEE_RATE = default_taker / 10_000
+                MAKER_FEE_RATE = default_maker / 10_000
+                SLIPPAGE_ESTIMATE = slippage / 10_000
+                ROUND_TRIP_COST = (TAKER_FEE_RATE * 2) + SLIPPAGE_ESTIMATE
+
+                # Load per-pair overrides
+                for symbol, override in fees.get("pair_overrides", {}).items():
+                    _FEE_OVERRIDES[symbol] = {
+                        "taker": override.get("taker_bps", default_taker) / 10_000,
+                        "maker": override.get("maker_bps", default_maker) / 10_000,
+                    }
+
+                logger.info(
+                    "Fee config loaded: taker=%.2f%% maker=%.2f%% slippage=%.2f%% overrides=%d pairs",
+                    TAKER_FEE_RATE * 100, MAKER_FEE_RATE * 100, SLIPPAGE_ESTIMATE * 100, len(_FEE_OVERRIDES),
+                )
+    except Exception as e:
+        logger.debug("Fee config load failed (using defaults): %s", e)
+    finally:
+        _FEE_CONFIG_LOADED = True
+
+
+def get_taker_fee(symbol: str = "") -> float:
+    """Get taker fee rate for a specific symbol (falls back to default)."""
+    load_fee_config()
+    if symbol and symbol in _FEE_OVERRIDES:
+        return _FEE_OVERRIDES[symbol]["taker"]
+    return TAKER_FEE_RATE
+
+
+def get_maker_fee(symbol: str = "") -> float:
+    """Get maker fee rate for a specific symbol (falls back to default)."""
+    load_fee_config()
+    if symbol and symbol in _FEE_OVERRIDES:
+        return _FEE_OVERRIDES[symbol]["maker"]
+    return MAKER_FEE_RATE
 
 # ── Indicator defaults ───────────────────────────────────────────
 EMA_FAST = 12
@@ -461,15 +526,32 @@ class IndicatorEngine:
         return len(self._states)
 
 
-def estimate_round_trip_cost(notional: float, spread_pct: float = 0.0) -> float:
+def estimate_round_trip_cost(
+    notional: float,
+    spread_pct: float = 0.0,
+    symbol: str = "",
+    order_type: str = "market",
+) -> float:
     """Estimate total round-trip cost for a trade.
 
     Returns dollar cost including:
-      - Taker fees (both entry and exit)
+      - Trading fees per side (taker or maker depending on order_type)
       - Half the current spread (entry cost)
       - Slippage estimate
+
+    Uses per-pair fee overrides from config.yaml if available.
     """
-    fee_cost = notional * TAKER_FEE_RATE * 2  # entry + exit
+    load_fee_config()
+
+    # Use maker fee for limit orders, taker for market
+    if order_type == "limit":
+        entry_fee_rate = get_maker_fee(symbol)
+        exit_fee_rate = get_taker_fee(symbol)  # exit is often taker (TP may be maker)
+    else:
+        entry_fee_rate = get_taker_fee(symbol)
+        exit_fee_rate = get_taker_fee(symbol)
+
+    fee_cost = notional * (entry_fee_rate + exit_fee_rate)
     spread_cost = notional * (spread_pct / 100) * 0.5  # half-spread on entry
     slippage_cost = notional * SLIPPAGE_ESTIMATE
     return fee_cost + spread_cost + slippage_cost
@@ -480,12 +562,15 @@ def expected_profit_exceeds_cost(
     expected_move_pct: float,
     spread_pct: float = 0.0,
     safety_multiplier: float = 2.0,
+    symbol: str = "",
+    order_type: str = "market",
 ) -> tuple[bool, float, float]:
     """Check if expected profit exceeds cost with safety margin.
 
+    Uses per-pair fee rates when symbol is provided.
     Returns (passes, expected_profit, total_cost).
     """
     expected_profit = notional * (expected_move_pct / 100)
-    total_cost = estimate_round_trip_cost(notional, spread_pct)
+    total_cost = estimate_round_trip_cost(notional, spread_pct, symbol=symbol, order_type=order_type)
     passes = expected_profit > total_cost * safety_multiplier
     return (passes, expected_profit, total_cost)

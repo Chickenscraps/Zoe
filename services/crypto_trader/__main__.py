@@ -335,6 +335,8 @@ async def main() -> None:
         """Attempt WS reconnection."""
         logger.info("Heartbeat reconnecting: %s", connection_name)
 
+    # Public WS sends tickers every ~1s, so 10s timeout is fine.
+    # Private WS only sends on execution events (sparse), so use 120s timeout.
     heartbeat_monitor = HeartbeatMonitor(
         timeout_seconds=10.0,
         max_missed_before_action=3,
@@ -342,9 +344,11 @@ async def main() -> None:
         on_reconnect=_on_heartbeat_reconnect,
     )
     heartbeat_monitor.register("public_ws")
-    heartbeat_monitor.register("private_ws")
+    # Don't monitor private_ws with the same aggressive timeout —
+    # it only fires on executions, which may be minutes apart.
+    # Instead, we rely on public_ws health + periodic private WS ping.
     await heartbeat_monitor.start()
-    logger.info("Heartbeat monitor started")
+    logger.info("Heartbeat monitor started (public_ws only, 10s timeout)")
 
     # Augment ticker callback to feed heartbeat
     _original_ticker_cb = _on_ticker_msg
@@ -400,9 +404,27 @@ async def main() -> None:
     # ── 10b. Initialize CircuitBreaker ──
     from services.risk.circuit_breaker import CircuitBreaker
 
-    starting_equity = hydration.cash_balance + sum(
-        float(v) for v in hydration.holdings.values()
-    )
+    # Compute starting equity = cash + notional value of all holdings
+    # hydration.holdings is {symbol: qty}, so we need live prices
+    holdings_notional = 0.0
+    for sym, qty in hydration.holdings.items():
+        snap = price_cache.snapshot(sym) if hasattr(price_cache, 'snapshot') else None
+        if snap and snap.get("mid", 0) > 0:
+            holdings_notional += float(qty) * snap["mid"]
+        else:
+            # Fallback: fetch BBO from exchange
+            try:
+                import asyncio as _aio
+                bbo = await exchange.get_best_bid_ask(sym)
+                mid = (float(bbo.get("bid", 0)) + float(bbo.get("ask", 0))) / 2
+                if mid > 0:
+                    holdings_notional += float(qty) * mid
+                    logger.info("CB init: %s qty=%.8f × mid=$%.2f = $%.2f", sym, qty, mid, qty * mid)
+            except Exception as e:
+                logger.warning("CB init: could not price %s: %s (using qty as-is)", sym, e)
+                holdings_notional += float(qty)  # worst case fallback
+
+    starting_equity = hydration.cash_balance + holdings_notional
     circuit_breaker = CircuitBreaker(
         starting_equity=starting_equity,
         on_trip=lambda evt: store.insert_event(
@@ -415,7 +437,7 @@ async def main() -> None:
             meta=evt.details,
         ),
     )
-    logger.info("Circuit breaker initialized (equity=$%.2f)", starting_equity)
+    logger.info("Circuit breaker initialized (equity=$%.2f, cash=$%.2f, holdings=$%.2f)", starting_equity, hydration.cash_balance, holdings_notional)
 
     # ── 10b-ii. Initialize PositionTracker ──
     from services.crypto_trader.position_tracker import PositionTracker

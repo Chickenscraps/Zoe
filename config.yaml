@@ -144,6 +144,24 @@ consensus:
     normal: 1.05                       # BUY/SELL multiplier
     weak: 0.85                         # NEUTRAL multiplier
 
+# ─── Trading Fees (Kraken) ───
+# Per-pair fee override: some pairs have different fee tiers.
+# Default assumes Kraken "Intermediate" tier (30-day volume $50K-$100K).
+# Check your actual tier at https://www.kraken.com/features/fee-schedule
+fees:
+  default_taker_bps: 40            # 0.40% = 40 bps per side (Kraken intermediate)
+  default_maker_bps: 25            # 0.25% = 25 bps per side
+  slippage_bps: 10                 # 0.10% estimated slippage per trade
+  # Stablecoin pairs have lower fees on Kraken (typically 0.20% taker)
+  pair_overrides:
+    USDT-USD: { taker_bps: 20, maker_bps: 20 }
+    USDC-USD: { taker_bps: 20, maker_bps: 20 }
+    DAI-USD:  { taker_bps: 20, maker_bps: 20 }
+    # FX pairs (lower fees on Kraken)
+    EUR-USD:  { taker_bps: 20, maker_bps: 20 }
+  # Auto-detect: if true, query Kraken TradeVolume API on startup for actual tier
+  auto_detect_tier: false
+
 # ─── Position Sizing ───
 position_sizing:
   risk_fraction: 0.02             # risk 2% of equity per trade

@@ -30,6 +30,8 @@ from .indicators import (
     TAKER_FEE_RATE,
     estimate_round_trip_cost,
     expected_profit_exceeds_cost,
+    get_taker_fee,
+    load_fee_config,
 )
 from services.position_sizer import PositionSizer
 
@@ -210,6 +212,9 @@ class TradeScanner:
         self._breaker = circuit_breaker
         self._sizer = position_sizer or PositionSizer.from_config()
         self._mode = mode
+
+        # Load per-pair fee config on init
+        load_fee_config()
 
         self.min_score = min_score
         self.max_spread_pct = max_spread_pct
@@ -455,12 +460,18 @@ class TradeScanner:
         rows = []
 
         for c in top:
+            # Merge score_breakdown + info_dict into score_breakdown (jsonb)
+            # (candidate_scans table doesn't have a separate 'info' column)
+            breakdown = c.score_breakdown()
+            try:
+                breakdown.update(c.info_dict())
+            except Exception:
+                pass
+
             rows.append({
                 "symbol": c.symbol,
                 "score": round(c.total_score, 1),
-                "score_breakdown": c.score_breakdown(),
-                "info": c.info_dict(),
-                "recommended_strategy": "scanner",
+                "score_breakdown": breakdown,
                 "mode": self._mode,
                 "created_at": now,
             })
@@ -659,9 +670,15 @@ class TradeScanner:
         if mover_mag > 0:
             candidate.mover_score = min(10.0, mover_mag * 2)
 
-        # ── Cost model ──
+        # ── Cost model (per-pair fee-aware) ──
+        # Determine likely order type for fee estimation
+        likely_order_type = "market"
+        if spread_pct > SPREAD_MARKET_THRESHOLD:
+            likely_order_type = "limit"  # Will use maker fee for entry
+
         candidate.estimated_cost = estimate_round_trip_cost(
-            self.max_notional, spread_pct
+            self.max_notional, spread_pct,
+            symbol=symbol, order_type=likely_order_type,
         )
         # Expected move: use ATR if available, else use fraction of 24h change
         if ind and ind.atr_pct > 0:
