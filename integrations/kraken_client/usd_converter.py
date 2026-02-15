@@ -73,6 +73,21 @@ class USDConverter:
         self._cache: dict[str, float] = {}
         self._cache_ts: float = 0
 
+    @staticmethod
+    def _extract_mid(data: dict) -> float:
+        """Extract mid price from get_best_bid_ask response.
+
+        The client returns {"results": [{"bid_price": "X", "ask_price": "Y", ...}]}
+        """
+        results = data.get("results", [])
+        if results:
+            r = results[0]
+            bid = float(r.get("bid_price", 0))
+            ask = float(r.get("ask_price", 0))
+            if bid > 0 and ask > 0:
+                return (bid + ask) / 2
+        return 0.0
+
     async def _refresh_cache(self) -> None:
         """Refresh the ticker price cache if stale."""
         if time.monotonic() - self._cache_ts < CACHE_TTL and self._cache:
@@ -82,7 +97,7 @@ class USDConverter:
             # Fetch BTC-USD price first (needed for bridge conversions)
             btc_data = await self.client.get_best_bid_ask("BTC-USD")
             if btc_data:
-                mid = (btc_data.get("bid", 0) + btc_data.get("ask", 0)) / 2
+                mid = self._extract_mid(btc_data)
                 if mid > 0:
                     self._cache["BTC-USD"] = mid
 
@@ -108,7 +123,7 @@ class USDConverter:
         try:
             data = await self.client.get_best_bid_ask(pair)
             if data:
-                mid = (data.get("bid", 0) + data.get("ask", 0)) / 2
+                mid = self._extract_mid(data)
                 if mid > 0:
                     self._cache[pair] = mid
                     return mid
@@ -120,7 +135,7 @@ class USDConverter:
             usdt_pair = f"{asset}-USDT"
             data = await self.client.get_best_bid_ask(usdt_pair)
             if data:
-                mid = (data.get("bid", 0) + data.get("ask", 0)) / 2
+                mid = self._extract_mid(data)
                 if mid > 0:
                     self._cache[usdt_pair] = mid
                     return mid  # USDT ≈ USD
@@ -132,7 +147,7 @@ class USDConverter:
             btc_pair = f"{asset}-BTC"
             data = await self.client.get_best_bid_ask(btc_pair)
             if data:
-                mid = (data.get("bid", 0) + data.get("ask", 0)) / 2
+                mid = self._extract_mid(data)
                 btc_usd = self._cache.get("BTC-USD", 0)
                 if mid > 0 and btc_usd > 0:
                     price = mid * btc_usd
