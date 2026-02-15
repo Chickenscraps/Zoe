@@ -795,6 +795,7 @@ CREATE TABLE IF NOT EXISTS public.market_snapshot_scout (
     bid NUMERIC(20,8) NOT NULL DEFAULT 0,
     ask NUMERIC(20,8) NOT NULL DEFAULT 0,
     mid NUMERIC(20,8) NOT NULL DEFAULT 0,
+    spread_pct NUMERIC(10,6) DEFAULT 0,
     volume_24h NUMERIC(20,4) DEFAULT 0,
     change_24h_pct NUMERIC(10,4) DEFAULT 0,
     updated_at TIMESTAMPTZ DEFAULT now()

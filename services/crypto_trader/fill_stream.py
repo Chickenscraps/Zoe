@@ -202,6 +202,14 @@ class FillStreamService:
         fee_currency = exec_data.get("fee_currency", "USD")
         order_id = exec_data.get("order_id", "")
 
+        # Validate fill data
+        if qty <= 0 or price <= 0:
+            logger.warning(
+                "Fill stream: invalid fill data (qty=%.8f, price=%.2f) for %s",
+                qty, price, fill_id,
+            )
+            return
+
         # Parse timestamp
         ts_raw = exec_data.get("timestamp", "")
         if ts_raw:

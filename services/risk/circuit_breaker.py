@@ -198,7 +198,10 @@ class CircuitBreaker:
             )
 
         # Check daily loss limit
-        daily_loss_pct = abs(self._daily_realized_pnl) / self.starting_equity * 100
+        if self.starting_equity > 0 and self._daily_realized_pnl < 0:
+            daily_loss_pct = abs(self._daily_realized_pnl) / self.starting_equity * 100
+        else:
+            daily_loss_pct = 0.0
         if self._daily_realized_pnl < 0 and daily_loss_pct >= self.config.daily_loss_limit_pct:
             self._trip(
                 f"Daily loss limit: {daily_loss_pct:.1f}% "

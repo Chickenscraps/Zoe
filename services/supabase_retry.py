@@ -127,15 +127,19 @@ def supabase_retry_sync(
     operation: Callable[[], Any],
     *,
     max_attempts: int = DEFAULT_MAX_ATTEMPTS,
+    initial_delay: float = DEFAULT_INITIAL_DELAY,
+    max_delay: float = DEFAULT_MAX_DELAY,
+    backoff_factor: float = DEFAULT_BACKOFF_FACTOR,
     operation_name: str = "supabase_write",
 ) -> Any:
     """Synchronous version for non-async contexts.
 
-    Simpler: no backoff, just retry with small sleep.
+    Uses exponential backoff matching the async version.
     Use sparingly — prefer the async version.
     """
     import time
 
+    delay = initial_delay
     last_error: Exception | None = None
     for attempt in range(1, max_attempts + 1):
         try:
@@ -143,15 +147,19 @@ def supabase_retry_sync(
         except Exception as e:
             last_error = e
             error_str = str(e).lower()
-            if "409" in str(e) or "conflict" in error_str:
+            if "409" in str(e) or "conflict" in error_str or "duplicate" in error_str:
                 return None
+            if "400" in str(e) and "bad request" in error_str:
+                raise
             if attempt < max_attempts:
                 logger.warning(
-                    "%s: sync attempt %d/%d failed: %s",
+                    "%s: sync attempt %d/%d failed, retrying in %.1fs: %s",
                     operation_name,
                     attempt,
                     max_attempts,
+                    delay,
                     e,
                 )
-                time.sleep(1.0 * attempt)
+                time.sleep(delay)
+                delay = min(delay * backoff_factor, max_delay)
     raise SupabaseRetryExhausted(max_attempts, last_error)  # type: ignore[arg-type]

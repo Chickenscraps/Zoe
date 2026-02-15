@@ -124,6 +124,20 @@ class HeartbeatMonitor:
             except Exception as e:
                 logger.error("Heartbeat monitor error: %s", e)
 
+    async def _safe_callback(
+        self,
+        callback: Callable[..., Coroutine],
+        name: str,
+        label: str,
+    ) -> None:
+        """Run a callback safely, catching and logging exceptions."""
+        try:
+            await callback(name)
+        except Exception as e:
+            logger.error(
+                "Heartbeat %s handler failed for '%s': %s", label, name, e,
+            )
+
     async def _check_all(self) -> None:
         """Check all registered connections."""
         now = time.time()
@@ -144,27 +158,23 @@ class HeartbeatMonitor:
                             name, status.missed_count, elapsed,
                         )
 
-                        # Trigger dead-man's switch
+                        # Trigger dead-man's switch (fire-and-forget to avoid blocking)
                         if self.on_timeout:
-                            try:
-                                await self.on_timeout(name)
-                            except Exception as e:
-                                logger.error(
-                                    "Heartbeat timeout handler failed for '%s': %s",
-                                    name, e,
-                                )
+                            asyncio.create_task(
+                                self._safe_callback(self.on_timeout, name, "timeout")
+                            )
 
-                        # Attempt reconnect
+                        # Attempt reconnect (fire-and-forget)
                         if self.on_reconnect:
-                            try:
-                                logger.info("Attempting reconnect for '%s'...", name)
-                                await self.on_reconnect(name)
-                                status.reconnect_count += 1
-                                status.last_reconnect = now
-                            except Exception as e:
-                                logger.error(
-                                    "Reconnect failed for '%s': %s", name, e,
-                                )
+                            async def _do_reconnect(n: str = name, s: HeartbeatStatus = status, t: float = now) -> None:
+                                try:
+                                    logger.info("Attempting reconnect for '%s'...", n)
+                                    await self.on_reconnect(n)
+                                    s.reconnect_count += 1
+                                    s.last_reconnect = t
+                                except Exception as e:
+                                    logger.error("Reconnect failed for '%s': %s", n, e)
+                            asyncio.create_task(_do_reconnect())
                 else:
                     logger.debug(
                         "Heartbeat delayed: '%s' (missed %d/%d)",

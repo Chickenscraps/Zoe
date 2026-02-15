@@ -143,12 +143,16 @@ class MoverDetector:
             self._volume_baselines[symbol] = baseline[-max_baseline:]
             baseline = self._volume_baselines[symbol]
 
-        # Need at least 5 data points for a meaningful baseline
-        if len(baseline) < 5:
+        # Need at least 6 data points for a meaningful baseline
+        # (5 historical + 1 current, since we exclude the current observation)
+        if len(baseline) < 6:
             return None
 
         # Compute rolling average (exclude the current observation)
-        avg_volume = sum(baseline[:-1]) / len(baseline[:-1])
+        historical = baseline[:-1]
+        if not historical:
+            return None
+        avg_volume = sum(historical) / len(historical)
         if avg_volume <= 0:
             return None
 

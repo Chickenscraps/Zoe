@@ -32,6 +32,9 @@ class PriceCache:
 
     def update(self, symbol: str, bid: float, ask: float) -> None:
         """Update cached BBO for a symbol. Called by WS ticker callback."""
+        # Auto-correct crossed quotes (bid > ask)
+        if bid > 0 and ask > 0 and bid > ask:
+            bid, ask = ask, bid
         mid = (bid + ask) / 2 if bid > 0 and ask > 0 else 0.0
         spread_pct = ((ask - bid) / mid * 100) if mid > 0 else 0.0
 

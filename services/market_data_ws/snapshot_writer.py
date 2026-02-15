@@ -66,6 +66,7 @@ class SnapshotWriter:
                 "bid": float(s.bid),
                 "ask": float(s.ask),
                 "mid": float(s.mid),
+                "spread_pct": float(s.spread_pct),
                 "volume_24h": float(s.volume_24h),
                 "change_24h_pct": float(s.change_24h_pct),
                 "updated_at": s.updated_at.isoformat(),
