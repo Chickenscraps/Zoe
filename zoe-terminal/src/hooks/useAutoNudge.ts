@@ -5,21 +5,21 @@ import { useDashboardData } from './useDashboardData';
 
 const NUDGE_INTERVAL_MS = 3 * 60_000; // every 3 minutes
 
-/** Rotating pool of idle nudges — fun, sassy, motivational. */
+/** Rotating pool of idle nudges — trade-waiting status + a few fun ones. */
 const IDLE_NUDGES = [
-  { title: 'Markets never sleep, and neither do I.', body: 'Watching the charts so you don\'t have to.' },
-  { title: 'All systems nominal.', body: 'Scanners humming, signals flowing, vibes immaculate.' },
-  { title: 'Just vibing in the order book.', body: 'No drama, no FOMO — just data.' },
-  { title: 'Your portfolio called. It says hi.', body: null },
+  // Trade-waiting status messages
+  { title: 'Scanning for opportunities...', body: 'Nothing meets the criteria yet.' },
+  { title: 'Waiting for a trade signal.', body: 'All pairs below score threshold.' },
+  { title: 'No trades triggered.', body: 'Patience pays — literally.' },
+  { title: 'Watching 15 pairs. No edge detected this cycle.', body: 'Next scan runs in ~2 minutes.' },
+  { title: 'Standing by.', body: 'The next scan cycle is coming up shortly.' },
+  { title: 'All systems nominal.', body: 'Scanners humming, signals flowing.' },
+  { title: 'Another cycle, another scan.', body: 'No setups passed the filter yet.' },
+  { title: 'No action needed right now.', body: 'Waiting for the right entry.' },
+  // Fun / personality
   { title: 'Still here. Still scanning. Still caffeinated.', body: '(Do bots drink coffee? Asking for a friend.)' },
-  { title: 'Running a quick vibe check on the market...', body: 'Results: cautiously optimistic.' },
-  { title: 'Tick tock, another block.', body: 'Blockchain waits for no one.' },
   { title: 'Patience is a virtue. Also, a trading strategy.', body: null },
-  { title: 'The stars are aligning... or maybe that\'s the starfield.', body: 'Either way, looks cool.' },
-  { title: 'Fun fact: I\'ve scanned more charts today than you\'ve had hot meals.', body: null },
-  { title: 'Market\'s looking spicy.', body: 'Not financial advice, just bot intuition.' },
-  { title: 'Another cycle, another scan.', body: 'The grind never stops.' },
-  { title: 'If I had a dollar for every candle I\'ve analyzed...', body: 'I\'d have enough to open a position.' },
+  { title: 'Markets never sleep, and neither do I.', body: 'Watching the charts so you don\'t have to.' },
   { title: 'Doing my thing in the background.', body: 'You focus on the big picture, I\'ll watch the ticks.' },
   { title: 'Zero anomalies detected.', body: 'Either the market is chill or I need new glasses.' },
 ];

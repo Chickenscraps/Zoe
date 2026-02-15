@@ -199,9 +199,9 @@ export function OpenOrdersTable({ hideHeader, className }: OpenOrdersTableProps)
           emptyMessage="No orders"
         />
       ) : (
-        <div className="bg-paper-100/80 border-2 border-earth-700/10 p-8 text-center">
-          <p className="text-text-dim text-xs">No orders yet</p>
-          <p className="text-text-dim/60 text-[9px] mt-1">Orders will appear when the bot submits trades</p>
+        <div className="bg-paper-100/80 border-2 border-earth-700/10 p-6 text-center">
+          <p className="font-pixel text-[0.4rem] text-text-muted uppercase tracking-[0.15em]">None</p>
+          <p className="text-text-dim/50 text-[9px] mt-1.5">No orders &mdash; Zoe will list open &amp; recent orders here</p>
         </div>
       )}
     </div>

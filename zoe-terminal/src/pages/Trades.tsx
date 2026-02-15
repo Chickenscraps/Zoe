@@ -36,7 +36,7 @@ export default function Trades() {
             </thead>
             <tbody>
               {cryptoOrders.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-text-muted italic">No orders yet</td></tr>
+                <tr><td colSpan={7} className="px-4 py-6 text-center"><span className="font-pixel text-[0.4rem] text-text-muted uppercase tracking-[0.15em]">None</span></td></tr>
               ) : (
                 cryptoOrders.map((order) => (
                   <tr key={order.id} className="border-b border-earth-700/8 hover:bg-sakura-500/5 transition-colors">
@@ -99,7 +99,7 @@ export default function Trades() {
             </thead>
             <tbody>
               {cryptoFills.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-text-muted italic">No fills yet</td></tr>
+                <tr><td colSpan={7} className="px-4 py-6 text-center"><span className="font-pixel text-[0.4rem] text-text-muted uppercase tracking-[0.15em]">None</span></td></tr>
               ) : (
                 cryptoFills.map((fill) => {
                   const notional = fill.qty * fill.price;

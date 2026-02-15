@@ -1,24 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import type { FeedItem, FeedFilter } from '../lib/copilotTypes';
+import type { FeedItem } from '../lib/copilotTypes';
 
 const PAGE_SIZE = 50;
-const THOUGHT_THROTTLE_MS = 2000;
 
 /**
  * Unified feed hook — streams FeedItems from Supabase `zoe_events` via realtime.
- * Supports filtering by source, symbol, and severity.
+ * Hardcoded filter: only trades, warnings/critical alerts, and system nudges.
  */
 export function useCopilotFeed() {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const lastThoughtTs = useRef(0);
-
-  const [filter, setFilter] = useState<FeedFilter>({
-    sources: new Set(['chat', 'thought', 'system', 'trade', 'config']),
-    symbol: '',
-    severity: 'all',
-  });
 
   // Load initial batch
   const loadHistory = useCallback(async () => {
@@ -56,14 +48,6 @@ export function useCopilotFeed() {
         },
         (payload) => {
           const newItem = payload.new as FeedItem;
-
-          // Thought throttle — skip thoughts arriving < 2s apart
-          if (newItem.source === 'thought') {
-            const now = Date.now();
-            if (now - lastThoughtTs.current < THOUGHT_THROTTLE_MS) return;
-            lastThoughtTs.current = now;
-          }
-
           setItems(prev => [newItem, ...prev].slice(0, 200));
         },
       )
@@ -74,37 +58,17 @@ export function useCopilotFeed() {
     };
   }, []);
 
-  // Apply filters
+  // Hardcoded filter: trades, critical/warning alerts, system nudges
   const filteredItems = items.filter(item => {
-    if (!filter.sources.has(item.source)) return false;
-    if (filter.symbol && item.symbol !== filter.symbol) return false;
-    if (filter.severity !== 'all' && item.severity !== filter.severity) return false;
-    return true;
+    if (item.source === 'trade') return true;
+    if (item.severity === 'critical' || item.severity === 'warning') return true;
+    if (item.source === 'system') return true;
+    return false;
   });
-
-  const updateFilter = useCallback((patch: Partial<FeedFilter>) => {
-    setFilter(prev => ({ ...prev, ...patch }));
-  }, []);
-
-  const toggleSource = useCallback((source: FeedItem['source']) => {
-    setFilter(prev => {
-      const next = new Set(prev.sources);
-      if (next.has(source)) {
-        next.delete(source);
-      } else {
-        next.add(source);
-      }
-      return { ...prev, sources: next };
-    });
-  }, []);
 
   return {
     items: filteredItems,
-    allItems: items,
     loading,
-    filter,
-    updateFilter,
-    toggleSource,
     reload: loadHistory,
   };
 }

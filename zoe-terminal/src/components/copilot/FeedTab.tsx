@@ -5,8 +5,6 @@ import { useCopilotChat } from '../../hooks/useCopilotChat';
 import { useCopilotFeed } from '../../hooks/useCopilotFeed';
 import { SOURCE_CONFIG, getTradeChipColor } from '../../lib/copilotTypes';
 import type { FeedItem, CopilotMessage } from '../../lib/copilotTypes';
-import FilterBar from './FilterBar';
-
 export default function FeedTab() {
   const chat = useCopilotChat();
   const feed = useCopilotFeed();
@@ -26,12 +24,6 @@ export default function FeedTab() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Filter bar */}
-      <FilterBar
-        filter={feed.filter}
-        toggleSource={feed.toggleSource}
-        updateFilter={feed.updateFilter}
-      />
 
       {/* Feed + Chat messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
