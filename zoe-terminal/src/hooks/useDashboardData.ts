@@ -65,6 +65,7 @@ export function useDashboardData(discordId: string = "292890243852664855") {
         supabase
           .from("crypto_cash_snapshots")
           .select("*")
+          .eq("mode", "live")
           .order("taken_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
@@ -72,6 +73,7 @@ export function useDashboardData(discordId: string = "292890243852664855") {
         supabase
           .from("crypto_cash_snapshots")
           .select("*")
+          .eq("mode", "live")
           .order("taken_at", { ascending: true })
           .gte("taken_at", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
           .limit(2000),
@@ -79,17 +81,20 @@ export function useDashboardData(discordId: string = "292890243852664855") {
           .from("crypto_holdings_snapshots")
           .select("*")
           .neq("holdings", "{}")
+          .eq("mode", "live")
           .order("taken_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
         supabase
           .from("crypto_orders")
           .select("*")
+          .eq("mode", "live")
           .order("requested_at", { ascending: false })
           .limit(20),
         supabase
           .from("crypto_fills")
           .select("*")
+          .eq("mode", "live")
           .order("executed_at", { ascending: false })
           .limit(50),
         supabase
@@ -100,6 +105,7 @@ export function useDashboardData(discordId: string = "292890243852664855") {
         supabase
           .from("pnl_daily")
           .select("date, equity, daily_pnl")
+          .eq("mode", "live")
           .order("date", { ascending: true })
           .limit(90),
       ]);
@@ -109,6 +115,7 @@ export function useDashboardData(discordId: string = "292890243852664855") {
         const { data: latest } = await supabase
           .from("candidate_scans")
           .select("created_at")
+          .eq("mode", "live")
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -117,6 +124,7 @@ export function useDashboardData(discordId: string = "292890243852664855") {
           .from("candidate_scans")
           .select("*")
           .eq("created_at", latest.created_at)
+          .eq("mode", "live")
           .order("score", { ascending: false });
       })();
 
@@ -149,6 +157,7 @@ export function useDashboardData(discordId: string = "292890243852664855") {
       const { data: latest } = await supabase
         .from("candidate_scans")
         .select("created_at")
+        .eq("mode", "live")
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -157,6 +166,7 @@ export function useDashboardData(discordId: string = "292890243852664855") {
         .from("candidate_scans")
         .select("*")
         .eq("created_at", latest.created_at)
+        .eq("mode", "live")
         .order("score", { ascending: false });
       if (data) setLivePrices(data as CandidateScan[]);
     } catch {
@@ -170,6 +180,7 @@ export function useDashboardData(discordId: string = "292890243852664855") {
       const { data } = await supabase
         .from("crypto_orders")
         .select("*")
+        .eq("mode", "live")
         .order("requested_at", { ascending: false })
         .limit(20);
       if (data) setCryptoOrders(data as CryptoOrder[]);
@@ -184,6 +195,7 @@ export function useDashboardData(discordId: string = "292890243852664855") {
       const { data } = await supabase
         .from("crypto_fills")
         .select("*")
+        .eq("mode", "live")
         .order("executed_at", { ascending: false })
         .limit(50);
       if (data) setCryptoFills(data as CryptoFill[]);
@@ -200,6 +212,7 @@ export function useDashboardData(discordId: string = "292890243852664855") {
       const { data } = await supabase
         .from("crypto_cash_snapshots")
         .select("*")
+        .eq("mode", "live")
         .order("taken_at", { ascending: false })
         .limit(1)
         .maybeSingle();

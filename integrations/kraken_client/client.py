@@ -471,8 +471,9 @@ class KrakenClient:
             data["price"] = f"{limit_price:.10f}".rstrip("0").rstrip(".")
 
         if client_order_id:
+            # Kraken cl_ord_id: alphanumeric, max 50 chars, no special characters
+            # Use userref (int32) as stable reference instead
             data["userref"] = abs(hash(client_order_id)) % (2**31)
-            data["cl_ord_id"] = client_order_id[:50]  # Kraken max 50 chars
 
         # Validate mode
         data["validate"] = False  # Set to True for dry-run/paper mode

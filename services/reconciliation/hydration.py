@@ -126,7 +126,25 @@ class StartupHydrator:
         except Exception as e:
             logger.warning("Heartbeat write failed: %s", e)
 
-        result.ready = not result.has_errors or result.reconciliation_status != "error"
+        # Strict readiness gates — fail fast on critical preconditions
+        if result.catalog_pairs == 0:
+            result.errors.append("GATE: Market catalog empty (0 pairs)")
+            result.ready = False
+        elif result.cash_balance == 0.0 and not result.holdings:
+            result.errors.append("GATE: Both cash and holdings are zero — balance fetch likely failed")
+            result.ready = False
+        elif result.reconciliation_status == "mismatch":
+            result.errors.append("GATE: Reconciliation found orphaned positions")
+            result.ready = False
+        elif result.reconciliation_status == "error":
+            result.errors.append("GATE: Reconciliation failed")
+            result.ready = False
+        elif result.has_errors:
+            # Degraded but not fatal — allow with warning
+            logger.warning("Hydration has non-fatal errors, proceeding in degraded mode")
+            result.ready = True
+        else:
+            result.ready = True
         logger.info(
             "Hydration complete: ready=%s, cash=$%.2f, %d positions, recon=%s",
             result.ready, result.cash_balance, len(result.holdings), result.reconciliation_status,

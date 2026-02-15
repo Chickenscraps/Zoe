@@ -29,6 +29,9 @@ class MoverDetector:
         self._price_history: dict[str, list[tuple[datetime, float]]] = {}
         self._max_history = 120  # Keep ~2h of data points
 
+        # Volume baselines for acceleration detection: symbol -> [volume_24h...]
+        self._volume_baselines: dict[str, list[float]] = {}
+
     def record_price(self, symbol: str, mid: float) -> None:
         """Record a price point for momentum calculation."""
         if mid <= 0:
@@ -115,10 +118,38 @@ class MoverDetector:
     def _compute_volume_accel(self, symbol: str, current_volume: float) -> float | None:
         """Compute volume acceleration ratio.
 
-        This is a simplified version — in production, we'd use a rolling
-        average from historical data. For now, we just track whether
-        volume is abnormally high relative to a baseline.
+        Tracks a rolling baseline of volume_24h snapshots per symbol.
+        When the current volume_24h is significantly higher than the
+        rolling average, it signals unusual trading activity.
+
+        Returns the acceleration ratio (current / baseline), or None
+        if insufficient baseline data exists.
         """
-        # TODO: implement proper volume baseline from historical data
-        # For now, return None (disabled) since we don't have a baseline
-        return None
+        if current_volume <= 0:
+            return None
+
+        baseline = self._volume_baselines.get(symbol)
+        if baseline is None:
+            # First observation — start tracking
+            self._volume_baselines[symbol] = [current_volume]
+            return None
+
+        # Add to baseline
+        baseline.append(current_volume)
+
+        # Keep only last N observations (trim to max)
+        max_baseline = 60  # ~30 min at 30s scout interval
+        if len(baseline) > max_baseline:
+            self._volume_baselines[symbol] = baseline[-max_baseline:]
+            baseline = self._volume_baselines[symbol]
+
+        # Need at least 5 data points for a meaningful baseline
+        if len(baseline) < 5:
+            return None
+
+        # Compute rolling average (exclude the current observation)
+        avg_volume = sum(baseline[:-1]) / len(baseline[:-1])
+        if avg_volume <= 0:
+            return None
+
+        return current_volume / avg_volume

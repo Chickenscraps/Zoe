@@ -160,6 +160,38 @@ class LocalEventStore:
                 ts TEXT NOT NULL,
                 PRIMARY KEY (symbol)
             );
+
+            -- ═══════════════════════════════════════════════
+            -- LOCAL-FIRST FILL TRACKING
+            -- Write-through: local first, async flush to Supabase
+            -- ═══════════════════════════════════════════════
+
+            CREATE TABLE IF NOT EXISTS local_fills (
+                fill_id TEXT PRIMARY KEY,
+                order_id TEXT NOT NULL,
+                symbol TEXT NOT NULL,
+                side TEXT NOT NULL,
+                qty REAL NOT NULL,
+                price REAL NOT NULL,
+                fee REAL NOT NULL DEFAULT 0,
+                fee_currency TEXT DEFAULT 'USD',
+                cost REAL NOT NULL DEFAULT 0,
+                executed_at TEXT NOT NULL,
+                mode TEXT NOT NULL,
+                raw_json TEXT DEFAULT '{}',
+                flushed INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_local_fills_order
+                ON local_fills (order_id);
+
+            CREATE INDEX IF NOT EXISTS idx_local_fills_unflushed
+                ON local_fills (flushed)
+                WHERE flushed = 0;
+
+            CREATE INDEX IF NOT EXISTS idx_local_fills_mode_executed
+                ON local_fills (mode, executed_at ASC);
         """)
         self.conn.commit()
 
@@ -337,8 +369,23 @@ class LocalEventStore:
     # ═══════════════════════════════════════════════════════
 
     def insert_order(self, order: dict[str, Any]) -> None:
-        """Insert an order into local store (write-through first step)."""
+        """Insert an order into local store (write-through first step).
+
+        Accepts both "id" and "order_id" keys for compatibility with
+        OrderManager (uses "id") and other callers.
+        """
+        import json as _json
+
         now = datetime.now(timezone.utc).isoformat()
+
+        # Accept both "id" and "order_id"
+        order_id = order.get("order_id") or order.get("id") or str(uuid.uuid4())
+
+        # JSON-serialize raw_response if it's a dict/list
+        raw_resp = order.get("raw_response")
+        if isinstance(raw_resp, (dict, list)):
+            raw_resp = _json.dumps(raw_resp)
+
         self.conn.execute(
             """INSERT OR REPLACE INTO local_orders
                (order_id, client_order_id, symbol, side, order_type,
@@ -347,7 +394,7 @@ class LocalEventStore:
                 trace_id, mode, raw_response, created_at, updated_at, flushed)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)""",
             (
-                order.get("order_id", str(uuid.uuid4())),
+                order_id,
                 order.get("client_order_id"),
                 order["symbol"],
                 order["side"],
@@ -362,8 +409,8 @@ class LocalEventStore:
                 order.get("broker_order_id"),
                 order.get("idempotency_key"),
                 order.get("trace_id"),
-                order["mode"],
-                order.get("raw_response"),
+                order.get("mode", "live"),
+                raw_resp,
                 order.get("created_at", now),
                 now,
             ),
@@ -371,17 +418,31 @@ class LocalEventStore:
         self.conn.commit()
 
     def update_order_status(
-        self, order_id: str, status: str, **kwargs: Any
+        self, order_id: str, status: str, raw: dict[str, Any] | None = None, **kwargs: Any
     ) -> None:
-        """Update an order's status and optional fields."""
+        """Update an order's status and optional fields.
+
+        Accepts an optional `raw` dict (3rd positional arg) for OrderManager
+        compatibility. Fields from `raw` are merged into kwargs.
+        """
+        import json as _json
+
         now = datetime.now(timezone.utc).isoformat()
         sets = ["status = ?", "updated_at = ?", "flushed = 0"]
         vals: list[Any] = [status, now]
 
+        # Merge raw dict into kwargs for field extraction
+        merged = {**kwargs}
+        if raw:
+            merged.setdefault("raw_response", _json.dumps(raw))
+            for key in ("filled_qty", "filled_avg_price", "fees", "broker_order_id"):
+                if key in raw and key not in merged:
+                    merged[key] = raw[key]
+
         for key in ("filled_qty", "filled_avg_price", "fees", "broker_order_id", "raw_response"):
-            if key in kwargs:
+            if key in merged:
                 sets.append(f"{key} = ?")
-                vals.append(kwargs[key])
+                vals.append(merged[key])
 
         vals.append(order_id)
         self.conn.execute(
@@ -391,10 +452,15 @@ class LocalEventStore:
         self.conn.commit()
 
     def get_open_orders(self, mode: str) -> list[dict[str, Any]]:
-        """Get all open/pending orders for a mode."""
+        """Get all open/pending orders for a mode.
+
+        Includes all non-terminal statuses used by both the local store
+        and the OrderManager (new, submitted, working, partially_filled, etc).
+        """
         rows = self.conn.execute(
             """SELECT * FROM local_orders
-               WHERE mode = ? AND status IN ('pending', 'open', 'queued')
+               WHERE mode = ? AND status NOT IN
+                     ('filled', 'canceled', 'cancelled', 'rejected', 'failed', 'expired', 'replaced')
                ORDER BY created_at DESC""",
             (mode,),
         ).fetchall()
@@ -593,6 +659,99 @@ class LocalEventStore:
         """Get all cached tickers."""
         rows = self.conn.execute("SELECT * FROM local_ticker_cache").fetchall()
         return {r["symbol"]: dict(r) for r in rows}
+
+    # ═══════════════════════════════════════════════════════
+    # LOCAL-FIRST FILL METHODS
+    # ═══════════════════════════════════════════════════════
+
+    def upsert_fill(self, fill: dict[str, Any]) -> None:
+        """Insert a fill into local store (idempotent on fill_id).
+
+        Satisfies OrderRepository.upsert_fill() protocol.
+        """
+        import json
+
+        self.conn.execute(
+            """INSERT OR IGNORE INTO local_fills
+               (fill_id, order_id, symbol, side, qty, price, fee,
+                fee_currency, cost, executed_at, mode, raw_json)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                fill["fill_id"],
+                fill.get("order_id", ""),
+                fill["symbol"],
+                fill["side"],
+                float(fill["qty"]),
+                float(fill["price"]),
+                float(fill.get("fee", 0)),
+                fill.get("fee_currency", "USD"),
+                float(fill.get("cost", 0)),
+                fill.get("executed_at", datetime.now(timezone.utc).isoformat()),
+                fill.get("mode", "live"),
+                json.dumps(fill.get("raw", {})),
+            ),
+        )
+        self.conn.commit()
+
+    def get_all_fills(self, mode: str) -> list[dict[str, Any]]:
+        """Get all fills for a mode, sorted by executed_at ascending.
+
+        Used for FIFO matcher hydration on boot.
+        """
+        rows = self.conn.execute(
+            """SELECT * FROM local_fills
+               WHERE mode = ?
+               ORDER BY executed_at ASC""",
+            (mode,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_fills_for_order(self, order_id: str) -> list[dict[str, Any]]:
+        """Get all fills for a specific order."""
+        rows = self.conn.execute(
+            """SELECT * FROM local_fills
+               WHERE order_id = ?
+               ORDER BY executed_at ASC""",
+            (order_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_unflushed_fills(self, limit: int = 500) -> list[dict[str, Any]]:
+        """Get fills that haven't been flushed to Supabase."""
+        rows = self.conn.execute(
+            """SELECT * FROM local_fills
+               WHERE flushed = 0
+               ORDER BY executed_at ASC
+               LIMIT ?""",
+            (limit,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def mark_fills_flushed(self, fill_ids: list[str]) -> None:
+        """Mark fills as flushed after successful Supabase write."""
+        if not fill_ids:
+            return
+        placeholders = ",".join(["?"] * len(fill_ids))
+        self.conn.execute(
+            f"UPDATE local_fills SET flushed = 1 WHERE fill_id IN ({placeholders})",
+            fill_ids,
+        )
+        self.conn.commit()
+
+    def fill_exists(self, fill_id: str) -> bool:
+        """Check if a fill already exists (for deduplication)."""
+        row = self.conn.execute(
+            "SELECT 1 FROM local_fills WHERE fill_id = ?", (fill_id,)
+        ).fetchone()
+        return row is not None
+
+    # ═══════════════════════════════════════════════════════
+    # PROTOCOL ALIGNMENT (OrderRepository compatibility)
+    # ═══════════════════════════════════════════════════════
+
+    def list_open_orders(self, mode: str) -> list[dict[str, Any]]:
+        """Alias for get_open_orders — matches OrderRepository protocol."""
+        return self.get_open_orders(mode)
 
     def close(self) -> None:
         self.conn.close()
