@@ -13,10 +13,12 @@ type CryptoFill = Database["public"]["Tables"]["crypto_fills"]["Row"];
 type DailyNotional = Database["public"]["Tables"]["daily_notional"]["Row"];
 type PnlDaily = Database["public"]["Tables"]["pnl_daily"]["Row"];
 type CandidateScan = Database["public"]["Tables"]["candidate_scans"]["Row"];
+type FocusRow = Database["public"]["Tables"]["market_snapshot_focus"]["Row"];
 
-const LIVE_WINDOW_MS = 60_000;
+const LIVE_WINDOW_MS = 360_000; // 6 minutes — heartbeats are written every ~5 min
 const POLL_INTERVAL_MS = 60_000; // fallback full refresh (realtime handles primary)
 const PRICE_POLL_MS = 2_000; // aggressive fallback for prices if realtime disconnects
+const FOCUS_POLL_MS = 5_000; // focus price fallback (live WS-fed table)
 
 export interface EquityPoint {
   date: string;
@@ -35,6 +37,7 @@ export function useDashboardData(discordId: string = "292890243852664855") {
   const [cashHistory, setCashHistory] = useState<CryptoCashSnapshot[]>([]);
   const [pnlDaily, setPnlDaily] = useState<PnlDaily[]>([]);
   const [livePrices, setLivePrices] = useState<CandidateScan[]>([]);
+  const [focusPrices, setFocusPrices] = useState<FocusRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -128,6 +131,14 @@ export function useDashboardData(discordId: string = "292890243852664855") {
           .order("score", { ascending: false });
       })();
 
+      // Fallback: fetch live prices from market_snapshot_focus (always populated by WS scanner)
+      const focusPricesRes = await supabase
+        .from("market_snapshot_focus")
+        .select("*")
+        .gt("mid", 0)
+        .order("updated_at", { ascending: false })
+        .limit(200);
+
       const overviewData = (overviewRes as any).data;
       const feedData = (feedRes as any).data;
       if (overviewData && overviewData.length > 0)
@@ -142,6 +153,7 @@ export function useDashboardData(discordId: string = "292890243852664855") {
       setDailyNotional((dailyNotionalRes.data ?? null) as DailyNotional | null);
       setPnlDaily((pnlDailyRes.data ?? []) as PnlDaily[]);
       setLivePrices((livePricesRes.data ?? []) as CandidateScan[]);
+      setFocusPrices((focusPricesRes.data ?? []) as FocusRow[]);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("Error fetching dashboard data:", msg);
@@ -151,7 +163,7 @@ export function useDashboardData(discordId: string = "292890243852664855") {
     }
   }, [discordId]);
 
-  // Fast price-only fetch
+  // Fast price-only fetch (candidate_scans)
   const fetchPrices = useCallback(async () => {
     try {
       const { data: latest } = await supabase
@@ -169,6 +181,21 @@ export function useDashboardData(discordId: string = "292890243852664855") {
         .eq("mode", "live")
         .order("score", { ascending: false });
       if (data) setLivePrices(data as CandidateScan[]);
+    } catch {
+      // non-fatal
+    }
+  }, []);
+
+  // Fallback price fetch from market_snapshot_focus (WS-fed, always live)
+  const fetchFocusPrices = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from("market_snapshot_focus")
+        .select("*")
+        .gt("mid", 0)
+        .order("updated_at", { ascending: false })
+        .limit(200);
+      if (data) setFocusPrices(data as FocusRow[]);
     } catch {
       // non-fatal
     }
@@ -228,6 +255,7 @@ export function useDashboardData(discordId: string = "292890243852664855") {
     onPriceChange: fetchPrices,
     onCashChange: fetchCash,
     onFillChange: fetchFills,
+    onFocusPriceChange: fetchFocusPrices,
   });
 
   // Initial fetch + fallback polling (realtime handles primary updates)
@@ -236,11 +264,13 @@ export function useDashboardData(discordId: string = "292890243852664855") {
 
     pollRef.current = setInterval(() => fetchData(false), POLL_INTERVAL_MS);
     const priceInterval = setInterval(fetchPrices, PRICE_POLL_MS);
+    const focusInterval = setInterval(fetchFocusPrices, FOCUS_POLL_MS);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
       clearInterval(priceInterval);
+      clearInterval(focusInterval);
     };
-  }, [fetchData, fetchPrices]);
+  }, [fetchData, fetchPrices, fetchFocusPrices]);
 
   // Health summary derived from heartbeat data
   const healthSummary = useMemo(() => {
@@ -257,6 +287,21 @@ export function useDashboardData(discordId: string = "292890243852664855") {
       reason: hasError ? "Service degraded" : stale ? "No recent heartbeats" : "Healthy",
     };
   }, [healthStatus]);
+
+  // Unified price map: candidate_scans (priority) → market_snapshot_focus (fallback)
+  const priceMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    // Layer 1: focus prices (WS-fed, always available)
+    for (const row of focusPrices) {
+      if (row.mid > 0) map[row.symbol] = row.mid;
+    }
+    // Layer 2: candidate_scans override (scanner-scored, higher priority)
+    for (const scan of livePrices) {
+      const info = scan.info as any ?? {};
+      if (info.mid && info.mid > 0) map[scan.symbol] = info.mid;
+    }
+    return map;
+  }, [livePrices, focusPrices]);
 
   const holdingsRows = useMemo(() => {
     const rows = (cryptoHoldings?.holdings as Record<string, number>) || {};
@@ -341,8 +386,7 @@ export function useDashboardData(discordId: string = "292890243852664855") {
       }
 
       const currentCryptoVal = holdingsRows.reduce((sum, row) => {
-        const scan = livePrices.find(s => s.symbol === row.asset);
-        const mid = scan ? ((scan.info as any)?.mid ?? 0) : 0;
+        const mid = priceMap[row.asset] ?? 0;
         return sum + row.qty * mid;
       }, 0);
 
@@ -376,7 +420,7 @@ export function useDashboardData(discordId: string = "292890243852664855") {
     }
 
     return [];
-  }, [cashHistory, pnlDaily, holdingsRows, livePrices, pendingBuyNotional, cryptoOrders]);
+  }, [cashHistory, pnlDaily, holdingsRows, priceMap, pendingBuyNotional, cryptoOrders]);
 
   // Initial deposit = first cash snapshot buying_power (before any trades)
   const initialDeposit = useMemo(() => {
@@ -385,15 +429,12 @@ export function useDashboardData(discordId: string = "292890243852664855") {
     return 0;
   }, [cashHistory, pnlDaily]);
 
-  // BTC price from live scans (for BTC sublabel on Total card)
+  // BTC price from unified price map (for BTC sublabel on Total card)
   const btcPrice = useMemo(() => {
-    const btcScan = livePrices.find(s => s.symbol === 'BTC-USD');
-    if (btcScan) {
-      const mid = (btcScan.info as any)?.mid;
-      if (mid && isFinite(mid) && mid > 0) return mid;
-    }
+    const mid = priceMap['BTC-USD'];
+    if (mid && isFinite(mid) && mid > 0) return mid;
     return 0;
-  }, [livePrices]);
+  }, [priceMap]);
 
   // Flag: not enough equity history to draw a meaningful chart
   const noHistoryYet = equityHistory.length < 2;
@@ -417,6 +458,8 @@ export function useDashboardData(discordId: string = "292890243852664855") {
     equityHistory,
     initialDeposit,
     livePrices,
+    focusPrices,
+    priceMap,
     btcPrice,
     noHistoryYet,
     loading,

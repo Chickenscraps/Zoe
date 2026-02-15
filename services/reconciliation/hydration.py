@@ -85,7 +85,17 @@ class StartupHydrator:
         try:
             holdings = await self._exchange.get_holdings()
             if isinstance(holdings, dict):
-                result.holdings = {k: float(v) for k, v in holdings.items() if float(v) > 1e-8}
+                # get_holdings() returns {"results": [{"symbol": "BTC-USD", "quantity_float": 0.5, ...}]}
+                results = holdings.get("results", [])
+                if isinstance(results, list):
+                    result.holdings = {
+                        item["symbol"]: float(item.get("quantity_float", item.get("quantity", 0)))
+                        for item in results
+                        if float(item.get("quantity_float", item.get("quantity", 0))) > 1e-8
+                    }
+                else:
+                    # Fallback: flat dict
+                    result.holdings = {k: float(v) for k, v in holdings.items() if float(v) > 1e-8}
             logger.info("Holdings: %d positions", len(result.holdings))
         except Exception as e:
             result.errors.append(f"Holdings fetch failed: {e}")
@@ -118,11 +128,13 @@ class StartupHydrator:
         # 5. Write heartbeat
         try:
             self._sb.table("health_heartbeat").upsert({
+                "instance_id": "default",
                 "component": "hydration",
                 "status": "ok" if not result.has_errors else "degraded",
                 "message": f"Hydrated: cash=${result.cash_balance:.2f}, {len(result.holdings)} positions, recon={result.reconciliation_status}",
                 "mode": self._mode,
-            }, on_conflict="component,mode").execute()
+                "last_heartbeat": datetime.now(timezone.utc).isoformat(),
+            }, on_conflict="instance_id,component,mode").execute()
         except Exception as e:
             logger.warning("Heartbeat write failed: %s", e)
 

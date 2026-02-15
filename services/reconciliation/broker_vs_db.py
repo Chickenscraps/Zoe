@@ -147,6 +147,15 @@ class BrokerReconciler:
         try:
             data = await self._exchange.get_holdings()
             if isinstance(data, dict):
+                # get_holdings() returns {"results": [{"symbol": "BTC-USD", "quantity_float": 0.5, ...}]}
+                results = data.get("results", [])
+                if isinstance(results, list):
+                    return {
+                        item["symbol"]: float(item.get("quantity_float", item.get("quantity", 0)))
+                        for item in results
+                        if float(item.get("quantity_float", item.get("quantity", 0))) > QTY_TOLERANCE
+                    }
+                # Fallback: flat dict
                 return {k: float(v) for k, v in data.items() if float(v) > QTY_TOLERANCE}
         except Exception as e:
             logger.warning("Exchange holdings fetch failed: %s", e)
@@ -157,9 +166,10 @@ class BrokerReconciler:
         try:
             resp = self._sb.table("crypto_cash_snapshots").select(
                 "buying_power"
-            ).eq("mode", mode).order("taken_at", desc=True).limit(1).maybeSingle().execute()
-            if resp.data:
-                return float(resp.data.get("buying_power", 0))
+            ).eq("mode", mode).order("taken_at", desc=True).limit(1).execute()
+            rows = resp.data or []
+            if rows:
+                return float(rows[0].get("buying_power", 0))
         except Exception as e:
             logger.warning("DB cash fetch failed: %s", e)
         return 0.0
@@ -169,9 +179,10 @@ class BrokerReconciler:
         try:
             resp = self._sb.table("crypto_holdings_snapshots").select(
                 "holdings"
-            ).eq("mode", mode).order("taken_at", desc=True).limit(1).maybeSingle().execute()
-            if resp.data and resp.data.get("holdings"):
-                holdings = resp.data["holdings"]
+            ).eq("mode", mode).order("taken_at", desc=True).limit(1).execute()
+            rows = resp.data or []
+            if rows and rows[0].get("holdings"):
+                holdings = rows[0]["holdings"]
                 if isinstance(holdings, dict):
                     return {k: float(v) for k, v in holdings.items() if float(v) > QTY_TOLERANCE}
         except Exception as e:

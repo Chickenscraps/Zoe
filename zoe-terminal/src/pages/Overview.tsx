@@ -15,7 +15,7 @@ export default function Overview() {
     cryptoCash,
     cryptoOrders,
     holdingsRows,
-    livePrices,
+    priceMap,
     equityHistory,
     initialDeposit,
     loading,
@@ -24,17 +24,16 @@ export default function Overview() {
   // Cash from latest snapshot
   const cashValue = cryptoCash?.cash_available ?? cryptoCash?.buying_power ?? 0;
 
-  // Compute crypto value: sum holdings * live prices
+  // Compute crypto value: sum holdings * live prices (priceMap merges candidate_scans + focus)
   const cryptoValue = useMemo(() => {
-    if (!holdingsRows.length || !livePrices.length) return 0;
+    if (!holdingsRows.length || !Object.keys(priceMap).length) return 0;
     let total = 0;
     for (const row of holdingsRows) {
-      const scan = livePrices.find(s => s.symbol === row.asset);
-      const mid = scan ? ((scan.info as any)?.mid ?? 0) : 0;
+      const mid = priceMap[row.asset] ?? 0;
       total += row.qty * mid;
     }
     return total;
-  }, [holdingsRows, livePrices]);
+  }, [holdingsRows, priceMap]);
 
   // Money allocated to pending buy orders (reserved by broker, not in cash balance)
   const pendingBuyNotional = useMemo(() => {

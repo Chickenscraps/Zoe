@@ -133,11 +133,14 @@ class SafeMode:
     def _write_heartbeat(self) -> None:
         """Update health_heartbeat with safe mode status."""
         try:
+            from datetime import datetime, timezone
             self._sb.table("health_heartbeat").upsert({
+                "instance_id": "default",
                 "component": "safe_mode",
                 "status": "degraded" if self._active else "ok",
                 "message": self._reason or "System healthy",
                 "mode": "live",
-            }, on_conflict="component,mode").execute()
+                "last_heartbeat": datetime.now(timezone.utc).isoformat(),
+            }, on_conflict="instance_id,component,mode").execute()
         except Exception as e:
             logger.warning("Safe mode heartbeat write failed: %s", e)

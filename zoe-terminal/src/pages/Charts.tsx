@@ -47,26 +47,40 @@ export default function Charts() {
     return { upper, middle, lower };
   }, [candles]);
 
-  // Fetch latest prices for symbol selector
+  // Fetch latest prices for symbol selector (candidate_scans → market_snapshot_focus fallback)
   useEffect(() => {
     async function fetchPrices() {
       try {
+        const prices: Record<string, number> = {};
+
+        // Layer 1: market_snapshot_focus (WS-fed, always live)
+        const { data: focusData } = await supabase
+          .from('market_snapshot_focus')
+          .select('symbol, mid')
+          .gt('mid', 0)
+          .limit(200);
+        if (focusData) {
+          for (const row of focusData) {
+            if (row.mid > 0) prices[row.symbol] = row.mid;
+          }
+        }
+
+        // Layer 2: candidate_scans override (higher priority)
         const { data } = await supabase
           .from('candidate_scans')
           .select('symbol, info')
           .order('created_at', { ascending: false })
           .limit(10);
-
         if (data) {
-          const prices: Record<string, number> = {};
           for (const row of data) {
             const info = row.info as any;
-            if (info?.mid && !prices[row.symbol]) {
+            if (info?.mid && info.mid > 0) {
               prices[row.symbol] = info.mid;
             }
           }
-          setSymbolPrices(prices);
         }
+
+        setSymbolPrices(prices);
       } catch { /* non-critical */ }
     }
     fetchPrices();

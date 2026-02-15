@@ -24,7 +24,7 @@ interface PositionsTableProps {
 }
 
 export function PositionsTable({ hideHeader, className }: PositionsTableProps) {
-  const { holdingsRows, livePrices, cryptoFills } = useDashboardData();
+  const { holdingsRows, priceMap, cryptoFills } = useDashboardData();
 
   // Build position rows from holdings + live prices
   const positions = useMemo<PositionRow[]>(() => {
@@ -39,13 +39,6 @@ export function PositionsTable({ hideHeader, className }: PositionsTableProps) {
         avgPrices[sym].totalCost += fill.qty * fill.price + (fill.fee || 0);
         avgPrices[sym].totalQty += fill.qty;
       }
-    }
-
-    // Map live prices by symbol
-    const priceMap: Record<string, number> = {};
-    for (const scan of (livePrices || [])) {
-      const info = scan.info as any ?? {};
-      if (info.mid) priceMap[scan.symbol] = info.mid;
     }
 
     // First pass: compute market values for portfolio % calculation
@@ -75,7 +68,7 @@ export function PositionsTable({ hideHeader, className }: PositionsTableProps) {
       r.portfolio_pct = totalMktVal > 0 ? (r.market_value / totalMktVal) * 100 : 0;
     }
     return rows;
-  }, [holdingsRows, livePrices, cryptoFills]);
+  }, [holdingsRows, priceMap, cryptoFills]);
 
   const columns = useMemo<ColumnDef<PositionRow>[]>(() => [
     {

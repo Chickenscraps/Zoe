@@ -7,6 +7,7 @@ interface RealtimeCallbacks {
   onPriceChange: () => void;
   onCashChange: () => void;
   onFillChange: () => void;
+  onFocusPriceChange: () => void;
 }
 
 /**
@@ -69,6 +70,16 @@ export function useRealtimeSubscriptions(callbacks: RealtimeCallbacks) {
           table: "crypto_cash_snapshots",
         },
         () => callbacks.onCashChange()
+      )
+      // Focus prices (WS-fed live prices) → refresh focus prices
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "market_snapshot_focus",
+        },
+        () => callbacks.onFocusPriceChange()
       )
       // Order events → refresh orders (lifecycle transitions)
       .on(
