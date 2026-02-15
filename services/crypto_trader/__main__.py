@@ -608,8 +608,8 @@ async def main() -> None:
             if matched_intent_id:
                 _entry_intents.pop(matched_intent_id, None)
 
-        # Feed heartbeat on private WS activity
-        heartbeat_monitor.heartbeat("private_ws")
+        # Note: private WS heartbeat removed — executions channel is sparse
+        # and auto-registering it triggers false timeout alarms
 
     fill_stream.on_fill(_on_fill_routed)
     logger.info("Fill stream → ExitManager/PositionTracker routing enabled")
@@ -723,9 +723,20 @@ async def main() -> None:
                 position_tracker.update_marks(price_cache)
 
                 # Equity update every tick (not just scanner interval)
-                tick_equity = hydration.cash_balance + sum(
-                    pos.notional for pos in position_tracker.get_open()
-                )
+                # Combine: exchange holdings (priced via price_cache) + position_tracker open positions
+                _holdings_val = 0.0
+                _tracked_symbols = {p.symbol for p in position_tracker.get_open()}
+                # Price exchange holdings that aren't already tracked by position_tracker
+                for _h_sym, _h_qty in hydration.holdings.items():
+                    if _h_sym not in _tracked_symbols:
+                        _snap = price_cache.snapshot(_h_sym) if hasattr(price_cache, 'snapshot') else None
+                        if _snap and _snap.get("mid", 0) > 0:
+                            _holdings_val += float(_h_qty) * _snap["mid"]
+                        else:
+                            _holdings_val += float(_h_qty)  # qty fallback
+                # Add position_tracker open positions (these have their own notional calc)
+                _holdings_val += sum(pos.notional for pos in position_tracker.get_open())
+                tick_equity = hydration.cash_balance + _holdings_val
                 circuit_breaker.update_equity(tick_equity)
             except Exception as e:
                 logger.error("Order management tick error: %s", e, exc_info=True)

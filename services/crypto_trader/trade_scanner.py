@@ -460,18 +460,11 @@ class TradeScanner:
         rows = []
 
         for c in top:
-            # Merge score_breakdown + info_dict into score_breakdown (jsonb)
-            # (candidate_scans table doesn't have a separate 'info' column)
-            breakdown = c.score_breakdown()
-            try:
-                breakdown.update(c.info_dict())
-            except Exception:
-                pass
-
+            # candidate_scans table only has: symbol, score, mode, created_at
+            # (score_breakdown, info, recommended_strategy columns don't exist)
             rows.append({
                 "symbol": c.symbol,
                 "score": round(c.total_score, 1),
-                "score_breakdown": breakdown,
                 "mode": self._mode,
                 "created_at": now,
             })
