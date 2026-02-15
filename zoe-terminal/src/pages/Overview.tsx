@@ -8,7 +8,7 @@ import { OpenOrdersTable } from "../components/OpenOrdersTable";
 import { PositionsTable } from "../components/PositionsTable";
 import { Skeleton } from "../components/Skeleton";
 import { useDashboardData } from "../hooks/useDashboardData";
-import { formatCurrency, formatBTC, cn } from "../lib/utils";
+import { formatCurrency, cn } from "../lib/utils";
 import { useMemo } from "react";
 
 export default function Overview() {
@@ -22,7 +22,6 @@ export default function Overview() {
     realizedPnl,
     unrealizedPnl,
     totalFees,
-    btcPrice,
     loading,
   } = useDashboardData();
 
@@ -56,9 +55,6 @@ export default function Overview() {
   const allTimePnl = initialDeposit > 0 ? totalValue - initialDeposit : 0;
   const rawPct = initialDeposit > 0 ? ((totalValue - initialDeposit) / initialDeposit) * 100 : 0;
   const allTimePnlPct = isFinite(rawPct) ? rawPct : 0;
-
-  // BTC equivalent of total portfolio value (for sublabel)
-  const totalValueBtc = btcPrice > 0 ? totalValue / btcPrice : 0;
 
   // Daily P&L: today's total portfolio value vs start-of-day equity
   const dailyPnl = useMemo(() => {
@@ -125,7 +121,7 @@ export default function Overview() {
         <KPICard
           label="Total"
           value={formatCurrency(totalValue)}
-          subValue={totalValueBtc > 0 ? `≈ ${formatBTC(totalValueBtc)}` : "Portfolio Value"}
+          subValue={cryptoValue > 0 ? `${formatCurrency(cryptoValue)} crypto + ${formatCurrency(cashValue)} cash` : "Portfolio Value"}
           trend={allTimePnl !== 0 ? `${allTimePnl >= 0 ? '+' : ''}${formatCurrency(allTimePnl)} P&L` : "—"}
           trendDir={allTimePnl >= 0 ? 'up' : 'down'}
           icon={DollarSign}
