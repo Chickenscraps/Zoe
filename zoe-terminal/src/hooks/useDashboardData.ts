@@ -83,7 +83,6 @@ export function useDashboardData(discordId: string = "292890243852664855") {
         supabase
           .from("crypto_holdings_snapshots")
           .select("*")
-          .neq("holdings", "{}")
           .eq("mode", "live")
           .order("taken_at", { ascending: false })
           .limit(1)
