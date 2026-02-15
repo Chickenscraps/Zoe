@@ -19,6 +19,7 @@ export default function Overview() {
     equityHistory,
     initialDeposit,
     loading,
+    error,
   } = useDashboardData();
 
   // Cash from latest snapshot
@@ -71,10 +72,29 @@ export default function Overview() {
     );
   }
 
+  const hasNoData = !cryptoCash && !holdingsRows.length && !cryptoOrders?.length && !equityHistory.length;
+
   return (
     <div className="space-y-8">
       {/* Alert Banners */}
       <AlertBanner />
+
+      {/* Error banner */}
+      {error && (
+        <div className="rounded-lg border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          <span className="font-bold">Connection Error:</span> {error}
+        </div>
+      )}
+
+      {/* Empty state when no trading data exists yet */}
+      {hasNoData && !error && (
+        <div className="rounded-lg border border-amber-400/20 bg-amber-500/5 px-6 py-8 text-center">
+          <p className="text-lg font-semibold text-amber-200 mb-2">Zoe is warming up...</p>
+          <p className="text-sm text-amber-200/60">
+            No trading data yet. Once the trading engine starts scanning and placing trades, your portfolio stats will appear here.
+          </p>
+        </div>
+      )}
 
       {/* Total Value */}
       <KPICard

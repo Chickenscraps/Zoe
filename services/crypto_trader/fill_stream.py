@@ -64,6 +64,17 @@ class FillStreamService:
         self._fallback_task: asyncio.Task | None = None
         self._fill_count = 0
 
+        # External fill callbacks — called after every fill with (fill_dict)
+        self._on_fill_callbacks: list[Any] = []
+
+    def on_fill(self, callback: Any) -> None:
+        """Register a callback to be invoked on each processed fill.
+
+        Callback signature: async def callback(fill: dict) -> None
+        Fill dict keys: fill_id, order_id, symbol, side, qty, price, fee, cost, executed_at
+        """
+        self._on_fill_callbacks.append(callback)
+
     async def start(self) -> None:
         """Register WS callback and start background tasks."""
         self._running = True
@@ -290,6 +301,16 @@ class FillStreamService:
             fee,
             fill_id,
         )
+
+        # Invoke external fill callbacks
+        for cb in self._on_fill_callbacks:
+            try:
+                result = cb(fill)
+                # Support both sync and async callbacks
+                if asyncio.iscoroutine(result):
+                    await result
+            except Exception as e:
+                logger.error("Fill callback error: %s", e, exc_info=True)
 
     # ── REST Fallback Loop ─────────────────────────────────────
 

@@ -93,16 +93,16 @@ class RepositionPolicy:
         max_cross = mid * (self.max_cross_spread_bps / 10_000)
 
         if side == "buy":
-            # Start from current limit or bid, step up toward ask
+            # Start from current limit or bid, step up by one fixed step
             base = current_limit if current_limit else bid
-            new_price = base + step * (replace_count + 1)
+            new_price = base + step  # Fixed step, not cumulative
             # Cap: don't cross spread more than max_cross from bid
             cap = bid + max_cross
             return round(min(new_price, cap), 8)
         else:
-            # Start from current limit or ask, step down toward bid
+            # Start from current limit or ask, step down by one fixed step
             base = current_limit if current_limit else ask
-            new_price = base - step * (replace_count + 1)
+            new_price = base - step  # Fixed step, not cumulative
             # Floor: don't cross more than max_cross from ask
             floor = ask - max_cross
             return round(max(new_price, floor), 8)

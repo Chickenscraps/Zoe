@@ -29,6 +29,9 @@ const STRATEGY_COLORS: Record<string, string> = {
   bb_breakout_long: 'text-cyan-400',
   take_profit: 'text-orange-400',
   hold: 'text-text-muted',
+  scanner: 'text-cyan-400',
+  buy: 'text-profit',
+  sell: 'text-loss',
 };
 
 const STRATEGY_LABELS: Record<string, string> = {
@@ -40,6 +43,17 @@ const STRATEGY_LABELS: Record<string, string> = {
   bb_breakout_long: 'BB Breakout',
   take_profit: 'Take Profit',
   hold: 'Hold',
+  scanner: 'Scanner',
+  buy: 'Buy Signal',
+  sell: 'Sell Signal',
+};
+
+const REGIME_BADGE: Record<string, { label: string; color: string }> = {
+  trending_up: { label: 'Trending Up', color: 'text-profit bg-profit/10 border-profit/20' },
+  trending_down: { label: 'Trending Down', color: 'text-loss bg-loss/10 border-loss/20' },
+  mean_reverting: { label: 'Mean Revert', color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20' },
+  choppy: { label: 'Choppy', color: 'text-orange-400 bg-orange-400/10 border-orange-400/20' },
+  unknown: { label: 'Unknown', color: 'text-text-muted bg-text-muted/5 border-text-muted/10' },
 };
 
 type SortMode = 'consensus' | 'bounce' | 'trend' | 'liquidity' | 'spread';
@@ -337,8 +351,10 @@ interface ScannerCardProps {
 function ScannerCard({ candidate, heat, expanded, onToggleExpand }: ScannerCardProps) {
   const breakdown = (candidate.score_breakdown as any) ?? {};
   const info = (candidate.info as any) ?? {};
-  const strategy = candidate.recommended_strategy ?? 'hold';
-  const hasTechnicals = info.has_technicals ?? false;
+  const isNew = breakdown.edge_ratio !== undefined || breakdown.mean_revert !== undefined;
+  const strategy = isNew ? (info.side ?? 'scanner') : (candidate.recommended_strategy ?? 'hold');
+  const hasTechnicals = isNew ? (info.indicators_valid ?? false) : (info.has_technicals ?? false);
+  const regime = isNew ? (info.regime ?? breakdown.regime ?? 'unknown') : null;
   const style = getTierStyle(heat.score, heat.tier);
 
   return (
@@ -381,14 +397,29 @@ function ScannerCard({ candidate, heat, expanded, onToggleExpand }: ScannerCardP
               {style.badgeLabel}
             </span>
           </div>
-          <div className="flex gap-2 items-center mt-2">
+          <div className="flex gap-2 items-center mt-2 flex-wrap">
             <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border border-current/20 ${STRATEGY_COLORS[strategy] ?? 'text-text-muted'}`}>
               {STRATEGY_LABELS[strategy] ?? strategy}
             </span>
+            {regime && REGIME_BADGE[regime] && (
+              <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full border ${REGIME_BADGE[regime].color}`}>
+                {REGIME_BADGE[regime].label}
+              </span>
+            )}
             {hasTechnicals ? (
               <span className="text-[9px] text-profit/60 font-bold uppercase tracking-widest">Live</span>
             ) : (
               <span className="text-[9px] text-text-muted/40 font-bold uppercase tracking-widest">Warming</span>
+            )}
+            {isNew && breakdown.edge_ratio != null && (
+              <span className={cn(
+                'text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full border',
+                breakdown.edge_ratio >= 2.0 ? 'text-profit bg-profit/10 border-profit/20' :
+                breakdown.edge_ratio >= 1.0 ? 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20' :
+                'text-red-400 bg-red-400/10 border-red-400/20'
+              )}>
+                Edge {breakdown.edge_ratio.toFixed(1)}x
+              </span>
             )}
           </div>
         </div>
@@ -419,13 +450,26 @@ function ScannerCard({ candidate, heat, expanded, onToggleExpand }: ScannerCardP
         ))}
       </div>
 
-      {/* Original 4-Component Score Bars */}
+      {/* Score Breakdown Bars — supports both old and new scanner formats */}
       <div className="space-y-2 mb-5 relative z-10">
         <div className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted mb-1">Raw Score Breakdown</div>
-        <ScoreBar label="Liquidity" value={breakdown.liquidity ?? 0} max={25} icon={<Droplets className="w-3 h-3" />} color="bg-blue-400" />
-        <ScoreBar label="Momentum" value={breakdown.momentum ?? 0} max={30} icon={<TrendingUp className="w-3 h-3" />} color="bg-profit" />
-        <ScoreBar label="Volatility" value={breakdown.volatility ?? 0} max={20} icon={<Gauge className="w-3 h-3" />} color="bg-yellow-400" />
-        <ScoreBar label="Trend" value={breakdown.trend ?? 0} max={25} icon={<BarChart3 className="w-3 h-3" />} color="bg-earth-700/60" />
+        {isNew ? (
+          <>
+            <ScoreBar label="Momentum" value={breakdown.momentum ?? 0} max={25} icon={<TrendingUp className="w-3 h-3" />} color="bg-profit" />
+            <ScoreBar label="Volume" value={breakdown.volume ?? 0} max={15} icon={<Droplets className="w-3 h-3" />} color="bg-blue-400" />
+            <ScoreBar label="Spread" value={breakdown.spread ?? 0} max={15} icon={<Gauge className="w-3 h-3" />} color="bg-cyan-400" />
+            <ScoreBar label="Trend" value={breakdown.trend ?? 0} max={20} icon={<BarChart3 className="w-3 h-3" />} color="bg-earth-700/60" />
+            <ScoreBar label="Mean Rev" value={breakdown.mean_revert ?? 0} max={15} icon={<Activity className="w-3 h-3" />} color="bg-yellow-400" />
+            <ScoreBar label="Mover" value={breakdown.mover ?? 0} max={10} icon={<Zap className="w-3 h-3" />} color="bg-orange-400" />
+          </>
+        ) : (
+          <>
+            <ScoreBar label="Liquidity" value={breakdown.liquidity ?? 0} max={25} icon={<Droplets className="w-3 h-3" />} color="bg-blue-400" />
+            <ScoreBar label="Momentum" value={breakdown.momentum ?? 0} max={30} icon={<TrendingUp className="w-3 h-3" />} color="bg-profit" />
+            <ScoreBar label="Volatility" value={breakdown.volatility ?? 0} max={20} icon={<Gauge className="w-3 h-3" />} color="bg-yellow-400" />
+            <ScoreBar label="Trend" value={breakdown.trend ?? 0} max={25} icon={<BarChart3 className="w-3 h-3" />} color="bg-earth-700/60" />
+          </>
+        )}
       </div>
 
       {/* Blocked reasons inline */}
@@ -443,50 +487,100 @@ function ScannerCard({ candidate, heat, expanded, onToggleExpand }: ScannerCardP
         </div>
       )}
 
-      {/* Chart Analysis: Patterns + MTF */}
-      {(info.patterns?.length > 0 || info.mtf_alignment != null) && (
-        <div className="mb-4 relative z-10">
-          {info.mtf_alignment != null && (
-            <div className="flex items-center gap-2 mb-2">
-              {info.mtf_dominant_trend === 'bullish' ? (
+      {/* Chart Analysis: Patterns + MTF (old format) OR new edge/cost summary */}
+      {isNew ? (
+        (breakdown.edge_ratio != null || info.atr_pct != null) && (
+          <div className="mb-4 relative z-10 space-y-1.5">
+            <div className="flex items-center gap-2">
+              {info.side === 'buy' ? (
                 <TrendingUp className="w-3.5 h-3.5 text-profit" />
-              ) : info.mtf_dominant_trend === 'bearish' ? (
+              ) : info.side === 'sell' ? (
                 <TrendingDown className="w-3.5 h-3.5 text-loss" />
               ) : (
                 <Minus className="w-3.5 h-3.5 text-text-muted" />
               )}
               <span className={cn(
                 'text-[10px] font-black uppercase tracking-widest',
-                info.mtf_alignment > 0.3 ? 'text-profit' : info.mtf_alignment < -0.3 ? 'text-loss' : 'text-yellow-400'
+                info.side === 'buy' ? 'text-profit' : info.side === 'sell' ? 'text-loss' : 'text-yellow-400'
               )}>
-                MTF {info.mtf_alignment > 0 ? '+' : ''}{info.mtf_alignment.toFixed(2)}
+                {info.side === 'buy' ? 'Buy Signal' : info.side === 'sell' ? 'Sell Signal' : 'Neutral'}
               </span>
-            </div>
-          )}
-          {info.patterns?.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {(info.patterns as any[]).slice(0, 3).map((p: any, i: number) => (
-                <span
-                  key={`${p.name}-${i}`}
-                  className={cn(
-                    'text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border',
-                    p.direction === 'bullish'
-                      ? 'bg-profit/10 text-profit border-profit/20'
-                      : p.direction === 'bearish'
-                        ? 'bg-loss/10 text-loss border-loss/20'
-                        : 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20'
-                  )}
-                >
-                  {p.name.replace(/_/g, ' ')}
+              {breakdown.cost_usd != null && (
+                <span className="text-[9px] text-text-muted font-bold">
+                  (cost ${breakdown.cost_usd.toFixed(2)})
                 </span>
-              ))}
+              )}
             </div>
-          )}
-        </div>
+            <div className="flex flex-wrap gap-1">
+              {info.macd_hist != null && (
+                <span className={cn(
+                  'text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border',
+                  info.macd_hist > 0 ? 'bg-profit/10 text-profit border-profit/20' : 'bg-loss/10 text-loss border-loss/20'
+                )}>
+                  MACD {info.macd_hist > 0 ? '+' : ''}{info.macd_hist.toFixed(4)}
+                </span>
+              )}
+              {info.zscore != null && Math.abs(info.zscore) > 1.5 && (
+                <span className={cn(
+                  'text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border',
+                  info.zscore < -1.5 ? 'bg-profit/10 text-profit border-profit/20' : 'bg-loss/10 text-loss border-loss/20'
+                )}>
+                  Z {info.zscore > 0 ? '+' : ''}{info.zscore.toFixed(1)}
+                </span>
+              )}
+              {info.bb_squeeze && (
+                <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border bg-orange-400/10 text-orange-400 border-orange-400/20">
+                  BB Squeeze
+                </span>
+              )}
+            </div>
+          </div>
+        )
+      ) : (
+        (info.patterns?.length > 0 || info.mtf_alignment != null) && (
+          <div className="mb-4 relative z-10">
+            {info.mtf_alignment != null && (
+              <div className="flex items-center gap-2 mb-2">
+                {info.mtf_dominant_trend === 'bullish' ? (
+                  <TrendingUp className="w-3.5 h-3.5 text-profit" />
+                ) : info.mtf_dominant_trend === 'bearish' ? (
+                  <TrendingDown className="w-3.5 h-3.5 text-loss" />
+                ) : (
+                  <Minus className="w-3.5 h-3.5 text-text-muted" />
+                )}
+                <span className={cn(
+                  'text-[10px] font-black uppercase tracking-widest',
+                  info.mtf_alignment > 0.3 ? 'text-profit' : info.mtf_alignment < -0.3 ? 'text-loss' : 'text-yellow-400'
+                )}>
+                  MTF {info.mtf_alignment > 0 ? '+' : ''}{info.mtf_alignment.toFixed(2)}
+                </span>
+              </div>
+            )}
+            {info.patterns?.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {(info.patterns as any[]).slice(0, 3).map((p: any, i: number) => (
+                  <span
+                    key={`${p.name}-${i}`}
+                    className={cn(
+                      'text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border',
+                      p.direction === 'bullish'
+                        ? 'bg-profit/10 text-profit border-profit/20'
+                        : p.direction === 'bearish'
+                          ? 'bg-loss/10 text-loss border-loss/20'
+                          : 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20'
+                    )}
+                  >
+                    {p.name.replace(/_/g, ' ')}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )
       )}
 
-      {/* Advanced Indicators (MACD, BB, Consensus) */}
-      {(info.macd || info.bollinger || info.consensus) && (
+      {/* Advanced Indicators (MACD, BB, Consensus — old format only) */}
+      {!isNew && (info.macd || info.bollinger || info.consensus) && (
         <IndicatorPanel
           macd={info.macd}
           bollinger={info.bollinger}
@@ -502,12 +596,25 @@ function ScannerCard({ candidate, heat, expanded, onToggleExpand }: ScannerCardP
         <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-[11px]">
           <Indicator label="Spread" value={info.spread_pct != null ? `${info.spread_pct.toFixed(3)}%` : '--'} />
           <Indicator label="RSI" value={info.rsi != null ? info.rsi.toFixed(0) : '--'} warn={info.rsi != null && (info.rsi > 70 || info.rsi < 30)} />
-          <Indicator label="Mom (15m)" value={info.momentum_short != null ? `${info.momentum_short > 0 ? '+' : ''}${info.momentum_short.toFixed(3)}%` : '--'} positive={info.momentum_short != null ? info.momentum_short > 0 : undefined} />
-          <Indicator label="Mom (1h)" value={info.momentum_medium != null ? `${info.momentum_medium > 0 ? '+' : ''}${info.momentum_medium.toFixed(3)}%` : '--'} positive={info.momentum_medium != null ? info.momentum_medium > 0 : undefined} />
-          <Indicator label="EMA Cross" value={info.ema_crossover != null ? `${info.ema_crossover > 0 ? '+' : ''}${info.ema_crossover.toFixed(3)}%` : '--'} positive={info.ema_crossover != null ? info.ema_crossover > 0 : undefined} />
-          <Indicator label="Trend R&sup2;" value={info.trend_strength != null ? info.trend_strength.toFixed(3) : '--'} />
-          <Indicator label="Vol (ann)" value={info.volatility_ann != null ? `${info.volatility_ann.toFixed(1)}%` : '--'} />
-          <Indicator label="Ticks" value={`${info.tick_count ?? 0}`} />
+          {isNew ? (
+            <>
+              <Indicator label="ATR %" value={info.atr_pct != null ? `${info.atr_pct.toFixed(2)}%` : '--'} />
+              <Indicator label="Z-Score" value={info.zscore != null ? `${info.zscore > 0 ? '+' : ''}${info.zscore.toFixed(2)}` : '--'} warn={info.zscore != null && Math.abs(info.zscore) > 2} />
+              <Indicator label="24h Chg" value={info.change_24h_pct != null ? `${info.change_24h_pct > 0 ? '+' : ''}${info.change_24h_pct.toFixed(2)}%` : '--'} positive={info.change_24h_pct != null ? info.change_24h_pct > 0 : undefined} />
+              <Indicator label="Volume" value={info.volume_24h != null ? `$${(info.volume_24h / 1000).toFixed(0)}K` : '--'} />
+              <Indicator label="MACD Hist" value={info.macd_hist != null ? `${info.macd_hist > 0 ? '+' : ''}${info.macd_hist.toFixed(4)}` : '--'} positive={info.macd_hist != null ? info.macd_hist > 0 : undefined} />
+              <Indicator label="Edge" value={breakdown.edge_ratio != null ? `${breakdown.edge_ratio.toFixed(1)}x` : '--'} positive={breakdown.edge_ratio != null ? breakdown.edge_ratio >= 2.0 : undefined} />
+            </>
+          ) : (
+            <>
+              <Indicator label="Mom (15m)" value={info.momentum_short != null ? `${info.momentum_short > 0 ? '+' : ''}${info.momentum_short.toFixed(3)}%` : '--'} positive={info.momentum_short != null ? info.momentum_short > 0 : undefined} />
+              <Indicator label="Mom (1h)" value={info.momentum_medium != null ? `${info.momentum_medium > 0 ? '+' : ''}${info.momentum_medium.toFixed(3)}%` : '--'} positive={info.momentum_medium != null ? info.momentum_medium > 0 : undefined} />
+              <Indicator label="EMA Cross" value={info.ema_crossover != null ? `${info.ema_crossover > 0 ? '+' : ''}${info.ema_crossover.toFixed(3)}%` : '--'} positive={info.ema_crossover != null ? info.ema_crossover > 0 : undefined} />
+              <Indicator label="Trend R&sup2;" value={info.trend_strength != null ? info.trend_strength.toFixed(3) : '--'} />
+              <Indicator label="Vol (ann)" value={info.volatility_ann != null ? `${info.volatility_ann.toFixed(1)}%` : '--'} />
+              <Indicator label="Ticks" value={`${info.tick_count ?? 0}`} />
+            </>
+          )}
         </div>
       </div>
 

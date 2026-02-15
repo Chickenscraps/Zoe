@@ -3,6 +3,11 @@
  *
  * Produces a 0-100 score + tier (GOLD / WARM / COOL / COLD / BLOCKED)
  * from the existing candidate_scans data (score_breakdown + info).
+ *
+ * Supports BOTH old and new scanner data formats:
+ *   Old breakdown: { liquidity, momentum, volatility, trend }
+ *   New breakdown: { momentum, volume, spread, trend, mean_revert, mover, total, regime, edge_ratio, cost_usd }
+ *   New info:      { mid, bid, ask, spread_pct, volume_24h, change_24h_pct, vwap, side, rsi, atr_pct, macd_hist, zscore, regime, indicators_valid }
  */
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -64,10 +69,29 @@ function norm(v: number, lo: number, hi: number): number {
   return clamp((v - lo) / (hi - lo), 0, 1);
 }
 
+/** Detect if this is the new profit-maximizing scanner format */
+function isNewFormat(breakdown: any): boolean {
+  return breakdown.edge_ratio !== undefined || breakdown.mean_revert !== undefined || breakdown.volume !== undefined;
+}
+
 // ── Sub-score extractors (normalise raw info → 0..1) ───────────────────────
 
 function extractBounceProb(info: any, breakdown: any): { value: number; reason: string } {
-  // Use consensus confidence if available, otherwise derive from score components
+  // New format: use total score + edge ratio as primary signal
+  if (isNewFormat(breakdown)) {
+    const total = breakdown.total ?? 0;
+    const edgeRatio = breakdown.edge_ratio ?? 0;
+    const costPositive = edgeRatio >= 2.0;
+    const scoreNorm = norm(total, 0, 100);
+    const edgeNorm = clamp(edgeRatio / 5.0, 0, 1); // 5x edge = max
+    const v = costPositive ? 0.5 * scoreNorm + 0.5 * edgeNorm : scoreNorm * 0.4;
+    return {
+      value: clamp(v, 0, 1),
+      reason: `Score ${total.toFixed(0)}/100, edge ${edgeRatio.toFixed(1)}x${costPositive ? ' (cost-positive)' : ' (below threshold)'}`,
+    };
+  }
+
+  // Old format: use consensus confidence if available
   const consensus = info.consensus;
   if (consensus) {
     const conf = clamp(consensus.confidence ?? 0, 0, 1);
@@ -88,7 +112,25 @@ function extractBounceProb(info: any, breakdown: any): { value: number; reason: 
 }
 
 function extractTrendSupport(info: any, breakdown: any): { value: number; reason: string } {
-  // Combine trend score + MTF alignment + EMA crossover
+  if (isNewFormat(breakdown)) {
+    // New format: use trend score (0-20) + regime from breakdown
+    const trendScore = norm(breakdown.trend ?? 0, 0, 20);
+    const regime = info.regime ?? breakdown.regime ?? 'unknown';
+    const regimeBoost = (regime === 'trending_up' || regime === 'trending_down') ? 0.3 : 0;
+    const momentumNorm = norm(breakdown.momentum ?? 0, 0, 25);
+    const v = 0.45 * trendScore + 0.30 * momentumNorm + 0.25 * regimeBoost;
+    const reasons: string[] = [];
+    if (trendScore > 0.5) reasons.push('strong trend');
+    if (regime === 'trending_up') reasons.push('trending up');
+    if (regime === 'trending_down') reasons.push('trending down');
+    if (regime === 'mean_reverting') reasons.push('mean reverting');
+    return {
+      value: clamp(v + regimeBoost, 0, 1),
+      reason: reasons.length > 0 ? reasons.join(', ') : 'trend unclear',
+    };
+  }
+
+  // Old format
   const trendScore = norm(breakdown.trend ?? 0, 0, 25);
   const mtf = info.mtf_alignment != null ? clamp((info.mtf_alignment + 1) / 2, 0, 1) : 0.5;
   const ema = info.ema_crossover != null ? (info.ema_crossover > 0 ? 0.7 + norm(info.ema_crossover, 0, 0.5) * 0.3 : norm(info.ema_crossover, -0.5, 0) * 0.5) : 0.5;
@@ -103,20 +145,50 @@ function extractTrendSupport(info: any, breakdown: any): { value: number; reason
   };
 }
 
-function extractRegime(info: any): { value: number; reason: string } {
+function extractRegime(info: any, breakdown?: any): { value: number; reason: string } {
+  // New format: regime comes as a string directly in info or breakdown
+  const regimeStr = info.regime ?? breakdown?.regime;
+  if (typeof regimeStr === 'string') {
+    if (regimeStr === 'trending_up') return { value: 0.9, reason: 'trending up regime' };
+    if (regimeStr === 'trending_down') return { value: 0.6, reason: 'trending down regime' };
+    if (regimeStr === 'mean_reverting') return { value: 0.5, reason: 'mean reverting regime' };
+    if (regimeStr === 'choppy') return { value: 0.15, reason: 'choppy regime (avoid)' };
+    if (regimeStr === 'unknown') return { value: 0.3, reason: 'regime unknown (warming)' };
+  }
+
+  // Old format: regime is an object { regime, confidence }
   const regime = info.regime;
-  if (!regime) return { value: 0.5, reason: 'no regime data' };
-  const r = regime.regime;
-  const conf = clamp(regime.confidence ?? 0.5, 0, 1);
-  if (r === 'bull') return { value: 0.7 + 0.3 * conf, reason: `bull regime (${(conf * 100).toFixed(0)}%)` };
-  if (r === 'sideways') return { value: 0.4 + 0.2 * conf, reason: `sideways regime` };
-  if (r === 'bear') return { value: 0.15 + 0.15 * conf, reason: `bear regime` };
-  if (r === 'high_vol') return { value: 0.2, reason: 'high volatility regime' };
-  return { value: 0.5, reason: `${r} regime` };
+  if (regime && typeof regime === 'object') {
+    const r = regime.regime;
+    const conf = clamp(regime.confidence ?? 0.5, 0, 1);
+    if (r === 'bull') return { value: 0.7 + 0.3 * conf, reason: `bull regime (${(conf * 100).toFixed(0)}%)` };
+    if (r === 'sideways') return { value: 0.4 + 0.2 * conf, reason: `sideways regime` };
+    if (r === 'bear') return { value: 0.15 + 0.15 * conf, reason: `bear regime` };
+    if (r === 'high_vol') return { value: 0.2, reason: 'high volatility regime' };
+    return { value: 0.5, reason: `${r} regime` };
+  }
+
+  return { value: 0.5, reason: 'no regime data' };
 }
 
-function extractFunding(info: any): { value: number; reason: string } {
-  // No direct funding data in current schema — use momentum as proxy
+function extractFunding(info: any, breakdown?: any): { value: number; reason: string } {
+  // New format: use MACD histogram and RSI as funding proxy
+  if (isNewFormat(breakdown ?? {})) {
+    const macdHist = info.macd_hist ?? 0;
+    const rsi = info.rsi ?? 50;
+    const side = info.side;
+    if (side === 'buy' && macdHist > 0) {
+      return { value: 0.75 + norm(rsi, 30, 50) * 0.25, reason: `buy signal, MACD+ RSI=${rsi.toFixed(0)}` };
+    }
+    if (side === 'sell' && macdHist < 0) {
+      return { value: 0.65, reason: `sell signal, MACD- RSI=${rsi.toFixed(0)}` };
+    }
+    if (macdHist > 0) return { value: 0.6, reason: 'MACD positive' };
+    if (macdHist < 0) return { value: 0.35, reason: 'MACD negative' };
+    return { value: 0.5, reason: 'momentum mixed' };
+  }
+
+  // Old format
   const momShort = info.momentum_short ?? 0;
   const momMed = info.momentum_medium ?? 0;
   const bullish = momShort > 0 && momMed > 0;
@@ -130,12 +202,36 @@ function extractFunding(info: any): { value: number; reason: string } {
 }
 
 function extractVolatility(info: any, breakdown: any): { value: number; reason: string } {
+  if (isNewFormat(breakdown)) {
+    // New format: use ATR% as volatility measure, BB squeeze from info
+    const atrPct = info.atr_pct ?? 0;
+    const bbSqueeze = info.bb_squeeze ?? false;
+    let volEnv = 0.5;
+    if (atrPct > 0) {
+      if (atrPct < 0.1) volEnv = 0.95;       // Very low vol
+      else if (atrPct < 0.3) volEnv = 0.8;    // Low vol
+      else if (atrPct < 0.8) volEnv = 0.65;   // Moderate
+      else if (atrPct < 1.5) volEnv = 0.45;   // Elevated
+      else volEnv = 0.2;                        // High vol
+    }
+    const squeezeBonus = bbSqueeze ? 0.15 : 0;
+    const v = volEnv + squeezeBonus;
+    const reasons: string[] = [];
+    if (atrPct > 0) reasons.push(`ATR ${atrPct.toFixed(2)}%`);
+    if (bbSqueeze) reasons.push('BB squeeze (breakout pending)');
+    if (atrPct > 1.0) reasons.push('elevated volatility');
+    return {
+      value: clamp(v, 0, 1),
+      reason: reasons.length > 0 ? reasons.join(', ') : 'vol normal',
+    };
+  }
+
+  // Old format
   const volScore = norm(breakdown.volatility ?? 0, 0, 20);
   const volAnn = info.volatility_ann;
   const boll = info.bollinger;
   let squeeze = false;
   if (boll?.squeeze) squeeze = true;
-  // Moderate vol is good, extreme is bad
   let volEnv = 0.5;
   if (volAnn != null) {
     if (volAnn < 50) volEnv = 0.9;
@@ -156,6 +252,23 @@ function extractVolatility(info: any, breakdown: any): { value: number; reason: 
 }
 
 function extractLiquidity(info: any, breakdown: any): { value: number; reason: string } {
+  if (isNewFormat(breakdown)) {
+    // New format: use spread score (0-15) + volume score (0-15)
+    const spreadScore = norm(breakdown.spread ?? 0, 0, 15);
+    const volumeScore = norm(breakdown.volume ?? 0, 0, 15);
+    const spread = info.spread_pct;
+    const volume = info.volume_24h;
+    const v = 0.50 * spreadScore + 0.50 * volumeScore;
+    const parts: string[] = [];
+    if (spread != null) parts.push(`spread ${spread.toFixed(3)}%`);
+    if (volume != null) parts.push(`vol $${(volume / 1000).toFixed(0)}K`);
+    return {
+      value: clamp(v, 0, 1),
+      reason: parts.length > 0 ? parts.join(', ') : 'liquidity unknown',
+    };
+  }
+
+  // Old format
   const liqScore = norm(breakdown.liquidity ?? 0, 0, 25);
   const spread = info.spread_pct;
   let spreadScore = 0.5;
@@ -174,7 +287,21 @@ function extractLiquidity(info: any, breakdown: any): { value: number; reason: s
 }
 
 function extractHype(info: any, breakdown: any): { value: number; reason: string } {
-  // No Google trends data in current schema — use momentum + pattern presence as proxy
+  if (isNewFormat(breakdown)) {
+    // New format: use mover bonus + mean revert score as "interest" proxy
+    const moverScore = norm(breakdown.mover ?? 0, 0, 10);
+    const meanRevert = norm(breakdown.mean_revert ?? 0, 0, 15);
+    const v = 0.6 * moverScore + 0.4 * meanRevert;
+    const parts: string[] = [];
+    if ((breakdown.mover ?? 0) > 0) parts.push(`mover bonus ${(breakdown.mover ?? 0).toFixed(0)}/10`);
+    if ((breakdown.mean_revert ?? 0) > 0) parts.push(`mean revert ${(breakdown.mean_revert ?? 0).toFixed(0)}/15`);
+    return {
+      value: clamp(v, 0, 1),
+      reason: parts.length > 0 ? parts.join(', ') : 'no special signals',
+    };
+  }
+
+  // Old format
   const patterns = info.patterns ?? [];
   const bullishPatterns = patterns.filter((p: any) => p.direction === 'bullish').length;
   const momScore = norm(breakdown.momentum ?? 0, 0, 30);
@@ -196,29 +323,45 @@ function applyGates(info: any, breakdown: any): string[] {
     failed.push(`spread too wide (${spread.toFixed(3)}% > ${GATE_LIMITS.max_spread_pct}%)`);
   }
 
-  const volAnn = info.volatility_ann;
-  if (volAnn != null && volAnn > GATE_LIMITS.max_vol_ann) {
-    failed.push(`vol too high (${volAnn.toFixed(0)}% ann > ${GATE_LIMITS.max_vol_ann}%)`);
-  }
+  if (isNewFormat(breakdown)) {
+    // New format gates: regime check, cost check, indicator validity
+    const regime = info.regime ?? breakdown.regime;
+    if (regime === 'choppy') {
+      failed.push('choppy regime (unreliable signals)');
+    }
+    if (!info.indicators_valid && info.indicators_valid !== undefined) {
+      failed.push('indicators still warming up');
+    }
+    const edgeRatio = breakdown.edge_ratio ?? 0;
+    if (edgeRatio > 0 && edgeRatio < 1.0) {
+      failed.push(`edge too low (${edgeRatio.toFixed(1)}x < 1.0x cost)`);
+    }
+  } else {
+    // Old format gates
+    const volAnn = info.volatility_ann;
+    if (volAnn != null && volAnn > GATE_LIMITS.max_vol_ann) {
+      failed.push(`vol too high (${volAnn.toFixed(0)}% ann > ${GATE_LIMITS.max_vol_ann}%)`);
+    }
 
-  const liqScore = breakdown.liquidity ?? 0;
-  if (liqScore < GATE_LIMITS.min_liquidity_score) {
-    failed.push(`liquidity below threshold (${liqScore.toFixed(0)} < ${GATE_LIMITS.min_liquidity_score})`);
-  }
+    const liqScore = breakdown.liquidity ?? 0;
+    if (liqScore < GATE_LIMITS.min_liquidity_score) {
+      failed.push(`liquidity below threshold (${liqScore.toFixed(0)} < ${GATE_LIMITS.min_liquidity_score})`);
+    }
 
-  const ticks = info.tick_count ?? 0;
-  if (ticks < GATE_LIMITS.min_ticks) {
-    failed.push(`data stale (${ticks} ticks < ${GATE_LIMITS.min_ticks} required)`);
-  }
+    const ticks = info.tick_count ?? 0;
+    if (ticks < GATE_LIMITS.min_ticks) {
+      failed.push(`data stale (${ticks} ticks < ${GATE_LIMITS.min_ticks} required)`);
+    }
 
-  // Consensus engine blocking
-  const consensus = info.consensus;
-  if (consensus?.result === 'blocked') {
-    const blockReasons = consensus.blocking_reasons ?? [];
-    if (blockReasons.length > 0) {
-      failed.push(...blockReasons.map((r: string) => `consensus: ${r}`));
-    } else {
-      failed.push('consensus engine blocked');
+    // Consensus engine blocking
+    const consensus = info.consensus;
+    if (consensus?.result === 'blocked') {
+      const blockReasons = consensus.blocking_reasons ?? [];
+      if (blockReasons.length > 0) {
+        failed.push(...blockReasons.map((r: string) => `consensus: ${r}`));
+      } else {
+        failed.push('consensus engine blocked');
+      }
     }
   }
 
@@ -237,8 +380,8 @@ export function computeHeatScore(
   // Extract each component
   const bounce = extractBounceProb(info, breakdown);
   const trend = extractTrendSupport(info, breakdown);
-  const regime = extractRegime(info);
-  const funding = extractFunding(info);
+  const regime = extractRegime(info, breakdown);
+  const funding = extractFunding(info, breakdown);
   const volatility = extractVolatility(info, breakdown);
   const liquidity = extractLiquidity(info, breakdown);
   const hype = extractHype(info, breakdown);
@@ -385,11 +528,11 @@ export function heatSort(a: HeatResult, b: HeatResult): number {
 // ── Component label formatting ─────────────────────────────────────────────
 
 export const COMPONENT_LABELS: Record<keyof ScoreComponents, { label: string; weight: number }> = {
-  bounce_prob: { label: 'Consensus', weight: 30 },
+  bounce_prob: { label: 'Edge / Score', weight: 30 },
   trend_support_proximity: { label: 'Trend/Support', weight: 20 },
   regime_ok: { label: 'Regime', weight: 10 },
   funding_ok: { label: 'Momentum', weight: 10 },
   volatility_ok: { label: 'Volatility', weight: 10 },
   liquidity_ok: { label: 'Liquidity', weight: 15 },
-  hype_ok: { label: 'Patterns', weight: 5 },
+  hype_ok: { label: 'Signals', weight: 5 },
 };

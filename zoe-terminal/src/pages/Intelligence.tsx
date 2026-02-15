@@ -204,17 +204,19 @@ export default function Intelligence() {
       .map((c) => {
         const info = c.info as any;
         const breakdown = c.score_breakdown as any;
+        const isNew = breakdown?.edge_ratio !== undefined || breakdown?.mean_revert !== undefined;
         return {
           symbol: c.symbol, score: c.score,
-          strategy: c.recommended_strategy,
-          catalyst: info?.catalyst && info.catalyst !== 'none' ? info.catalyst : null,
-          regime: info?.sector ?? 'Crypto',
-          ivr: info?.ivr ?? '—',
+          strategy: isNew ? (info?.side ?? 'scanner') : c.recommended_strategy,
+          catalyst: isNew ? (info?.regime ?? null) : (info?.catalyst && info.catalyst !== 'none' ? info.catalyst : null),
+          regime: isNew ? (info?.regime ?? breakdown?.regime ?? 'unknown') : (info?.sector ?? 'Crypto'),
+          ivr: isNew ? (breakdown?.edge_ratio != null ? `${breakdown.edge_ratio.toFixed(1)}x` : '—') : (info?.ivr ?? '—'),
           trend: breakdown?.trend ?? 0,
           momentum: breakdown?.momentum ?? 0,
-          volatility: breakdown?.volatility ?? 0,
-          liquidity: breakdown?.liquidity ?? 0,
+          volatility: isNew ? (breakdown?.spread ?? 0) : (breakdown?.volatility ?? 0),
+          liquidity: isNew ? (breakdown?.volume ?? 0) : (breakdown?.liquidity ?? 0),
           tier: c.score >= 40 ? 'Tier 1' : 'Tier 2',
+          isNew,
         };
       });
   }, [candidates]);
@@ -393,9 +395,33 @@ export default function Intelligence() {
             <div className="animate-pulse py-12 text-center text-text-muted text-xs">Loading consensus engine...</div>
           ) : (
             <>
-              {/* Summary stats */}
+              {/* Summary stats — supports both old (consensus-based) and new (regime/edge-based) formats */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                 {(() => {
+                  // New format: count by side/regime
+                  const firstBD = consensusCandidates[0]?.score_breakdown as any;
+                  const isNewFmt = firstBD?.edge_ratio !== undefined || firstBD?.mean_revert !== undefined;
+                  if (isNewFmt) {
+                    const buys = consensusCandidates.filter(c => (c.info as any)?.side === 'buy').length;
+                    const sells = consensusCandidates.filter(c => (c.info as any)?.side === 'sell').length;
+                    const trending = consensusCandidates.filter(c => {
+                      const r = (c.info as any)?.regime ?? (c.score_breakdown as any)?.regime;
+                      return r === 'trending_up' || r === 'trending_down';
+                    }).length;
+                    const blocked = consensusCandidates.filter(c => {
+                      const r = (c.info as any)?.regime ?? (c.score_breakdown as any)?.regime;
+                      return r === 'choppy' || r === 'unknown';
+                    }).length;
+                    return (
+                      <>
+                        <StatCard label="Buy Signals" value={buys} color="text-profit" icon={<TrendingUp className="w-4 h-4" />} />
+                        <StatCard label="Sell Signals" value={sells} color="text-loss" icon={<TrendingDown className="w-4 h-4" />} />
+                        <StatCard label="Trending" value={trending} color="text-blue-400" icon={<Target className="w-4 h-4" />} />
+                        <StatCard label="Blocked" value={blocked} color="text-red-400" icon={<ShieldOff className="w-4 h-4" />} />
+                      </>
+                    );
+                  }
+                  // Old format
                   const results = consensusCandidates.map(c => (c.info as any)?.consensus?.result).filter(Boolean);
                   return (
                     <>
@@ -408,12 +434,78 @@ export default function Intelligence() {
                 })()}
               </div>
 
-              {/* Per-symbol cards */}
+              {/* Per-symbol cards — supports old consensus and new edge/regime formats */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 {consensusCandidates.length > 0 ? consensusCandidates.map(candidate => {
                   const info = candidate.info as any ?? {};
+                  const bd = candidate.score_breakdown as any ?? {};
+                  const isNewFmt = bd.edge_ratio !== undefined || bd.mean_revert !== undefined;
                   const consensus = info.consensus;
-                  const regime = info.regime;
+
+                  // New format: show edge-based card
+                  if (isNewFmt) {
+                    const regimeStr = info.regime ?? bd.regime ?? 'unknown';
+                    const side = info.side ?? 'neutral';
+                    const edgeRatio = bd.edge_ratio ?? 0;
+                    const score = candidate.score;
+                    const sideStyle = side === 'buy'
+                      ? { bg: 'bg-profit/10', text: 'text-profit', border: 'border-profit/20', Icon: TrendingUp }
+                      : side === 'sell'
+                        ? { bg: 'bg-loss/10', text: 'text-loss', border: 'border-loss/20', Icon: TrendingDown }
+                        : { bg: 'bg-yellow-400/10', text: 'text-yellow-400', border: 'border-yellow-400/20', Icon: Minus };
+                    const regimeStyle = regimeStr === 'trending_up' ? 'bg-profit/10 text-profit border-profit/20'
+                      : regimeStr === 'trending_down' ? 'bg-loss/10 text-loss border-loss/20'
+                      : regimeStr === 'mean_reverting' ? 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20'
+                      : regimeStr === 'choppy' ? 'bg-orange-400/10 text-orange-400 border-orange-400/20'
+                      : 'bg-text-muted/5 text-text-muted border-text-muted/10';
+                    return (
+                      <div key={candidate.id} className="bg-paper-100/80 border-2 border-earth-700/10 p-4 sm:p-6 space-y-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
+                            <h3 className="text-lg sm:text-xl font-black text-earth-700 tracking-tighter">{candidate.symbol}</h3>
+                            <span className={cn('text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border', regimeStyle)}>
+                              {regimeStr.replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                          <div className={cn('flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-black uppercase tracking-wider', sideStyle.bg, sideStyle.text, sideStyle.border)}>
+                            <sideStyle.Icon className="w-4 h-4" />
+                            {side}
+                          </div>
+                        </div>
+                        {/* Edge score bar */}
+                        <div className="flex items-center justify-between text-[10px]">
+                          <span className="text-text-muted font-bold">Score</span>
+                          <span className="font-black text-earth-700 tabular-nums">{score}/100</span>
+                        </div>
+                        <div className="h-2 bg-cream-100/80 rounded-full overflow-hidden">
+                          <div className={cn('h-full rounded-full transition-all', score >= 65 ? 'bg-profit' : score >= 50 ? 'bg-yellow-400' : 'bg-loss')} style={{ width: `${score}%` }} />
+                        </div>
+                        {/* Gate-like checks for new format */}
+                        <div className="grid grid-cols-1 gap-1.5">
+                          {[
+                            { name: 'Indicators Valid', pass: info.indicators_valid === true },
+                            { name: 'Regime Clear', pass: regimeStr !== 'choppy' && regimeStr !== 'unknown' },
+                            { name: 'Cost-Positive Edge', pass: edgeRatio >= 2.0 },
+                            { name: 'RSI Normal', pass: info.rsi != null && info.rsi > 30 && info.rsi < 70 },
+                            { name: 'Spread Acceptable', pass: info.spread_pct != null && info.spread_pct < 0.3 },
+                          ].map(gate => (
+                            <div key={gate.name} className="flex items-center gap-2">
+                              {gate.pass ? <CheckCircle className="w-3.5 h-3.5 text-profit flex-shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-loss flex-shrink-0" />}
+                              <span className={cn('text-[10px] font-medium', gate.pass ? 'text-profit/80' : 'text-loss/80')}>{gate.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="pt-3 border-t border-earth-700/10 grid grid-cols-2 gap-x-6 gap-y-1.5 text-[10px]">
+                          <div className="flex justify-between"><span className="text-text-muted">Edge Ratio</span><span className={cn('font-bold', edgeRatio >= 2 ? 'text-profit' : 'text-loss')}>{edgeRatio.toFixed(1)}x</span></div>
+                          <div className="flex justify-between"><span className="text-text-muted">RSI</span><span className="font-bold">{info.rsi?.toFixed(0) ?? '--'}</span></div>
+                          <div className="flex justify-between"><span className="text-text-muted">ATR %</span><span className="font-bold">{info.atr_pct?.toFixed(2) ?? '--'}%</span></div>
+                          <div className="flex justify-between"><span className="text-text-muted">Z-Score</span><span className="font-bold">{info.zscore?.toFixed(2) ?? '--'}</span></div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Old format: consensus-based card
                   if (!consensus) {
                     return (
                       <div key={candidate.id} className="bg-paper-100/80 border-2 border-earth-700/10 p-4 sm:p-6 opacity-50">
@@ -424,6 +516,7 @@ export default function Intelligence() {
                       </div>
                     );
                   }
+                  const regime = info.regime;
                   const style = CONSENSUS_STYLES[consensus.result] ?? CONSENSUS_STYLES.neutral;
                   const ResultIcon = style.icon;
                   return (

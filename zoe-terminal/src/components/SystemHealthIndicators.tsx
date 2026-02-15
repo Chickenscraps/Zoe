@@ -22,43 +22,48 @@ interface HealthIndicatorProps {
  */
 export function SyncLagBadge({ health }: HealthIndicatorProps) {
   const lag = health.metrics.syncLagMs;
-  const status = lag <= 0
-    ? 'unknown'
-    : lag < 5000
-      ? 'ok'
-      : lag < 30000
-        ? 'warning'
-        : 'error';
+  const hasTicks = health.metrics.totalTicks > 0;
+
+  // Differentiate "engine never connected" from "connected, low lag"
+  const status = !hasTicks && lag <= 0
+    ? 'offline'
+    : lag <= 0
+      ? 'ok'       // Engine running, lag=0 means very fresh
+      : lag < 5000
+        ? 'ok'
+        : lag < 30000
+          ? 'warning'
+          : 'error';
 
   const colors = {
     ok: 'bg-profit',
     warning: 'bg-yellow-400',
     error: 'bg-loss',
-    unknown: 'bg-text-muted/30',
+    offline: 'bg-text-muted/30',
   };
 
   const labels = {
     ok: 'Sync OK',
     warning: `Sync lag ${(lag / 1000).toFixed(0)}s`,
     error: `Sync lag ${(lag / 1000).toFixed(0)}s`,
-    unknown: 'No sync data',
+    offline: 'Engine offline',
   };
 
   return (
     <div
       className="flex items-center gap-1.5 cursor-default"
-      title={labels[status]}
+      title={labels[status as keyof typeof labels]}
     >
       <Wifi className={cn(
         "w-3 h-3",
         status === 'ok' ? 'text-profit/60' :
         status === 'warning' ? 'text-yellow-400/60' :
         status === 'error' ? 'text-loss/60' :
-        'text-text-muted/30'
+        'text-text-muted/30'  // offline
       )} />
       <span className={cn(
         "w-1.5 h-1.5 rounded-full",
-        colors[status],
+        colors[status as keyof typeof colors],
         status === 'ok' && 'animate-pulse',
       )} />
     </div>
@@ -71,18 +76,24 @@ export function SyncLagBadge({ health }: HealthIndicatorProps) {
  */
 export function TrustIndicator({ health }: HealthIndicatorProps) {
   const staleRate = health.metrics.staleQuoteRate;
-  const status = staleRate < 5 ? 'ok' : staleRate < 20 ? 'warning' : 'error';
+  const hasTicks = health.metrics.totalTicks > 0;
+
+  const status = !hasTicks
+    ? 'offline'
+    : staleRate < 5 ? 'ok' : staleRate < 20 ? 'warning' : 'error';
 
   const colors = {
     ok: 'text-profit/60',
     warning: 'text-yellow-400/60',
     error: 'text-loss/60',
+    offline: 'text-text-muted/30',
   };
 
   const labels = {
     ok: 'Quotes fresh',
     warning: `${staleRate.toFixed(0)}% stale quotes`,
     error: `${staleRate.toFixed(0)}% stale quotes`,
+    offline: 'No quote data',
   };
 
   return (

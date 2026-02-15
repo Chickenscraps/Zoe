@@ -1,14 +1,14 @@
 """
-Price Cache — in-memory + SQLite-backed BBO cache.
+Price Cache — in-memory + SQLite-backed BBO cache with indicator engine.
 
-Fixes the broken PaperBroker import by providing the PriceCache class.
 Fed by WS ticker callbacks, backed by LocalEventStore.local_ticker_cache.
+Now also feeds the IndicatorEngine for technical analysis.
 
 Usage:
     cache = PriceCache(local_store)
     cache.update("BTC-USD", bid=69000.0, ask=69010.0)
     snap = cache.snapshot("BTC-USD")
-    # {"bid": 69000.0, "ask": 69010.0, "mid": 69005.0, "spread_pct": 0.014}
+    indicators = cache.indicators("BTC-USD")
 """
 from __future__ import annotations
 
@@ -17,18 +17,25 @@ from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from services.local_store import LocalEventStore
+    from services.crypto_trader.indicators import IndicatorEngine, IndicatorSnapshot
 
 
 class PriceCache:
-    """In-memory + SQLite-backed BBO price cache.
+    """In-memory + SQLite-backed BBO price cache with indicator integration.
 
     Satisfies the protocol needed by PaperBroker and other components
-    that need fast price lookups.
+    that need fast price lookups. Also feeds the IndicatorEngine.
     """
 
-    def __init__(self, local_store: LocalEventStore | None = None) -> None:
+    def __init__(self, local_store: "LocalEventStore | None" = None) -> None:
         self._cache: dict[str, dict[str, Any]] = {}
         self._store = local_store
+        self._indicator_engine: "IndicatorEngine | None" = None
+        self._update_count = 0
+
+    def set_indicator_engine(self, engine: "IndicatorEngine") -> None:
+        """Attach an indicator engine to receive price updates."""
+        self._indicator_engine = engine
 
     def update(self, symbol: str, bid: float, ask: float) -> None:
         """Update cached BBO for a symbol. Called by WS ticker callback."""
@@ -46,12 +53,24 @@ class PriceCache:
             "ts": time.time(),
         }
 
+        # Feed indicator engine with mid price
+        if self._indicator_engine and mid > 0:
+            self._indicator_engine.update(symbol, mid)
+
         # Write-through to SQLite for persistence across restarts
         if self._store:
             try:
                 self._store.update_ticker(symbol, bid, ask)
             except Exception:
                 pass  # Non-fatal — in-memory cache is primary
+
+        self._update_count += 1
+
+    def indicators(self, symbol: str) -> "IndicatorSnapshot | None":
+        """Get technical indicator snapshot for a symbol."""
+        if self._indicator_engine is None:
+            return None
+        return self._indicator_engine.snapshot(symbol)
 
     def snapshot(self, symbol: str) -> dict[str, Any]:
         """Get BBO snapshot for a symbol.
